@@ -1,7 +1,9 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/kreati02/tatjana.kreativnisplet.si/AiAssistant_v1/
+    # $HOME namesto zapisane poti: ta datoteka je v repozitoriju, absolutna
+    # pot pa bi razkrila uporabnisko ime hosting racuna.
+    - export DEPLOYPATH=$HOME/tatjana.kreativnisplet.si/AiAssistant_v1/
     # Brez --chmod bi rsync -a prenesel pravice izvorne mape: cPanel git repozitorij
     # je 0700, spletni streznik pa v tako mapo ne more vstopiti in vrne 404 na vseh
     # datotekah. D755/F644 sta pravici, ki jih Apache/LiteSpeed potrebuje.
