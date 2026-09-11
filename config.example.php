@@ -96,7 +96,10 @@ define('BUSINESS_INFO_FILE', __DIR__ . '/data/business-info.json');
 // podjetja; vse pride od tu, zato se ista koda uporabi za drugo stranko
 // s spremembo teh vrstic.
 // ---------------------------------------------------------------
-define('BUSINESS_NAME',  'Tatjana');
+// Ime, s katerim se asistent predstavi stranki.
+define('ASSISTANT_NAME', 'Tatjana');
+
+define('BUSINESS_NAME',  'Tatjana AI');
 define('BUSINESS_PHONE', '+386 5 123 45 67');
 define('BUSINESS_EMAIL', 'info@example.si');
 

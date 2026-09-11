@@ -192,6 +192,7 @@ function buildSystemPrompt(): string
         '{BUSINESS_EMAIL}'       => defined('BUSINESS_EMAIL')       ? BUSINESS_EMAIL       : '',
         '{BUSINESS_NAME}'        => defined('BUSINESS_NAME')        ? BUSINESS_NAME        : '',
         '{BUSINESS_DESCRIPTION}' => defined('BUSINESS_DESCRIPTION') ? BUSINESS_DESCRIPTION : '',
+        '{ASSISTANT_NAME}'       => defined('ASSISTANT_NAME')       ? ASSISTANT_NAME       : 'asistent',
     ]);
 
     // Brez tega bi model računal termine glede na datum svojega učenja.
