@@ -3,123 +3,176 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kurivo Gorica — testni klepet</title>
+<title>Tatjana AI — klepet</title>
 <style>
-  /* Nevtralna črno-bela paleta, skladna s klasično Astra temo (brez barvnega poudarka). */
+  /* Paleta povzeta po spletni strani: bela podlaga, skoraj črno besedilo,
+     topla oranžna za povezave, črn zaobljen gumb. Stran je namenoma samo
+     svetla, ker je taka tudi glavna stran. */
   :root {
     --bg: #ffffff;
-    --panel: #ffffff;
-    --ink: #101012;
-    --muted: #6b6b6b;
-    --line: #e1e1e1;
-    --accent: #101012;
-    --accent-contrast: #ffffff;
-    --accent-soft: #f2f2f2;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #121212;
-      --panel: #1a1a1a;
-      --ink: #f2f2f2;
-      --muted: #9a9a9a;
-      --line: #333333;
-      --accent: #f2f2f2;
-      --accent-contrast: #101012;
-      --accent-soft: #262626;
-    }
+    --ink: #111111;
+    --muted: #6f6f6f;
+    --line: #e6e6e6;
+    --accent: #bf6c2c;
+    --bubble: #f5f4f2;
+    --btn: #111111;
+    --btn-ink: #ffffff;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font: 15px/1.6 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
-    display: flex;
-    justify-content: center;
-    padding: 24px 16px;
+    font: 16px/1.6 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  main { width: 100%; max-width: 680px; }
-  h1 { font-size: 20px; font-weight: 700; margin: 0 0 2px; letter-spacing: -.01em; }
-  .sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 26px 0;
+  }
+  .brand { font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
+  header nav a { font-size: 15px; }
+
+  h1 {
+    font-size: clamp(34px, 6vw, 56px);
+    font-weight: 300;
+    letter-spacing: -.02em;
+    text-align: center;
+    margin: 48px 0 8px;
+  }
+  .sub {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 40px;
+  }
+
   #log {
-    background: var(--panel);
     border: 1px solid var(--line);
-    border-radius: 4px;
-    padding: 16px;
-    height: 58vh;
-    min-height: 320px;
+    border-radius: 14px;
+    padding: 22px;
+    height: 52vh;
+    min-height: 300px;
     overflow-y: auto;
   }
-  .msg { margin-bottom: 14px; display: flex; flex-direction: column; gap: 4px; }
-  .msg .who { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  #log:empty::after {
+    content: "Vprašanja o ponudbi, cenah, dostavi ali naročilu.";
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .msg { margin-bottom: 18px; display: flex; flex-direction: column; gap: 5px; }
+  .msg .who {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+  }
   .msg .body { white-space: pre-wrap; }
   .msg.user .body {
-    background: var(--accent-soft);
-    padding: 8px 12px;
-    border-radius: 4px;
+    background: var(--bubble);
+    padding: 10px 15px;
+    border-radius: 14px;
     align-self: flex-start;
+    max-width: 85%;
   }
-  .msg.error .body { color: #b00020; font-weight: 600; }
+  .msg.error .body { color: #b3261e; }
   .tools {
     font-size: 12px;
     color: var(--muted);
     font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
   }
-  form { display: flex; gap: 8px; margin-top: 12px; }
+
+  form { display: flex; gap: 10px; margin-top: 18px; }
   input[type=text] {
     flex: 1;
-    padding: 11px 13px;
+    padding: 14px 18px;
     border: 1px solid var(--line);
-    border-radius: 3px;
-    background: var(--panel);
+    border-radius: 999px;
+    background: var(--bg);
     color: var(--ink);
     font: inherit;
   }
-  input[type=text]:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
+  input[type=text]:focus {
+    outline: none;
+    border-color: var(--ink);
+  }
   button {
-    padding: 11px 20px;
-    border: 1px solid var(--accent);
-    border-radius: 3px;
-    background: var(--accent);
-    color: var(--accent-contrast);
+    padding: 14px 30px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--btn);
+    color: var(--btn-ink);
     font: inherit;
-    font-weight: 600;
-    letter-spacing: .01em;
     cursor: pointer;
   }
-  button:disabled { opacity: .5; cursor: default; }
-  .samples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  button:disabled { opacity: .45; cursor: default; }
+
+  .samples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
   .samples button {
     background: transparent;
     border: 1px solid var(--line);
-    color: var(--ink);
-    font-size: 12.5px;
-    font-weight: 400;
-    padding: 5px 10px;
-    border-radius: 3px;
+    color: var(--accent);
+    font-size: 14px;
+    padding: 8px 16px;
   }
-  footer { margin-top: 14px; font-size: 12px; color: var(--muted); }
+  .samples button:hover { border-color: var(--accent); }
+
+  footer {
+    margin: 56px 0 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  footer .brand { font-size: 17px; }
+  footer button {
+    background: transparent;
+    color: var(--accent);
+    padding: 0;
+    font-size: 13px;
+    border-radius: 0;
+  }
 </style>
 </head>
 <body>
-<main>
-  <h1>Kurivo Gorica — testni klepet</h1>
-  <p class="sub">Besedilni test asistenta pred glasovno različico. Pod vsakim odgovorom piše, katera orodja je uporabil.</p>
+<div class="wrap">
+  <header>
+    <div class="brand">Tatjana AI</div>
+    <nav><a href="../">Domov</a></nav>
+  </header>
+
+  <h1>Te kaj zanima?</h1>
+  <p class="sub">Pod vsakim odgovorom piše, katere podatke je asistent preveril.</p>
 
   <div id="log" aria-live="polite"></div>
 
   <form id="form">
     <input type="text" id="input" placeholder="Napišite vprašanje…" autocomplete="off" required>
-    <button type="submit" id="send">Pošlji</button>
+    <button type="submit" id="send">Povprašaj</button>
   </form>
 
   <div class="samples" id="samples"></div>
 
   <footer>
-    Pogovor se ob osvežitvi strani izbriše. Klici se beležijo v <code>logs/</code>.
-    <button type="button" id="reset" style="background:transparent;border:0;color:var(--accent);padding:0;font-size:12px;text-decoration:underline;cursor:pointer">Počisti pogovor</button>
+    <div class="brand">Tatjana AI</div>
+    <div>
+      Pogovor se ob osvežitvi izbriše.
+      <button type="button" id="reset">Počisti pogovor</button>
+    </div>
   </footer>
-</main>
+</div>
 
 <script>
 const ENDPOINT = 'ai/chat.php';
@@ -146,7 +199,7 @@ function addMessage(role, text, tools) {
 
   const who = document.createElement('div');
   who.className = 'who';
-  who.textContent = role === 'user' ? 'Vi' : role === 'error' ? 'Napaka' : 'Asistent';
+  who.textContent = role === 'user' ? 'Vi' : role === 'error' ? 'Napaka' : 'Tatjana';
 
   const body = document.createElement('div');
   body.className = 'body';
@@ -157,7 +210,7 @@ function addMessage(role, text, tools) {
   if (tools && tools.length) {
     const t = document.createElement('div');
     t.className = 'tools';
-    t.textContent = '→ orodja: ' + tools.join(', ');
+    t.textContent = 'preverjeno: ' + tools.join(', ');
     wrap.append(t);
   }
 
@@ -192,7 +245,7 @@ async function send(text) {
     addMessage('error', 'Strežnik ni dosegljiv: ' + err.message);
   } finally {
     sendEl.disabled = false;
-    sendEl.textContent = 'Pošlji';
+    sendEl.textContent = 'Povprašaj';
     inputEl.focus();
   }
 }

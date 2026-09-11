@@ -11,9 +11,9 @@
 
 ## 1. Baza
 
-1. V cPanelu ustvari bazo (npr. `kurivo_voice_test`) in uporabnika z vsemi pravicami nanjo.
+1. V cPanelu ustvari bazo (npr. `asistent_test`) in uporabnika z vsemi pravicami nanjo.
    Zapiši si ime baze, uporabnika in geslo — na shared hostingu imata ime baze in
-   uporabnika običajno predpono, npr. `mojracun_kurivo`.
+   uporabnika običajno predpono, npr. `mojracun_asistent`.
 2. Odpri phpMyAdmin, levo izberi to bazo.
 3. Zavihek **SQL** → prilepi vsebino `sql/schema.sql` → **Izvedi**.
 4. Preveri, da so nastale štiri tabele in da ima `products` 20 vrstic.
@@ -45,8 +45,8 @@ Kopiraj `config.example.php` v `config.php` in izpolni:
 
 ```php
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'mojracun_kurivo');
-define('DB_USER', 'mojracun_kurivo');
+define('DB_NAME', 'mojracun_asistent');
+define('DB_USER', 'mojracun_asistent');
 define('DB_PASS', 'geslo-iz-cpanela');
 
 define('OPENAI_API_KEY', 'sk-...');

@@ -1,16 +1,16 @@
 -- ============================================================
--- Kurivo Gorica Voice AI — testna baza
+-- Testna baza za AI asistenta (izdelki, stranke, narocila, delovni cas)
 -- ============================================================
 -- Uporaba v phpMyAdmin:
---   1. Levo izberi bazo (npr. kurivo_voice_test). Na shared hostingu
+--   1. Levo izberi bazo (npr. asistent_test). Na shared hostingu
 --      bazo ustvariš v cPanelu, ne tukaj.
 --   2. Zavihek "SQL" -> prilepi to datoteko -> Izvedi.
 --   3. Skripta je idempotentna: lahko jo poženeš večkrat.
 --
 -- Če imaš pravice za ustvarjanje baz (lokalni XAMPP), odkomentiraj:
--- CREATE DATABASE IF NOT EXISTS kurivo_voice_test
+-- CREATE DATABASE IF NOT EXISTS asistent_test
 --   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
--- USE kurivo_voice_test;
+-- USE asistent_test;
 -- ============================================================
 
 SET NAMES utf8mb4;

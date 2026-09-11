@@ -18,7 +18,7 @@ define('TIMEZONE', 'Europe/Ljubljana');
 // Baza
 // ---------------------------------------------------------------
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'kurivo_voice_test');
+define('DB_NAME', 'asistent_test');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
@@ -91,8 +91,14 @@ define('CHAT_ALLOWED_ORIGINS', []);
 define('BUSINESS_INFO_FILE', __DIR__ . '/data/business-info.json');
 
 // ---------------------------------------------------------------
-// Podatki podjetja — uporabljeni v odgovorih, kadar tool nima podatka.
+// Podatki podjetja — vstavijo se v sistemski prompt in v odgovore.
+// Sistemski prompt (ai/system-prompt.txt) nima nikjer vpisanega imena
+// podjetja; vse pride od tu, zato se ista koda uporabi za drugo stranko
+// s spremembo teh vrstic.
 // ---------------------------------------------------------------
-define('BUSINESS_NAME',  'Kurivo Gorica');
+define('BUSINESS_NAME',  'Tatjana');
 define('BUSINESS_PHONE', '+386 5 123 45 67');
-define('BUSINESS_EMAIL', 'info@kurivogorica.si');
+define('BUSINESS_EMAIL', 'info@example.si');
+
+// Ena do dve povedi: s čim se podjetje ukvarja in kje posluje.
+define('BUSINESS_DESCRIPTION', 'Podjetje prodaja drva, pelete in brikete.');

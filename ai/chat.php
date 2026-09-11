@@ -188,9 +188,10 @@ function buildSystemPrompt(): string
     }
 
     $prompt = strtr($prompt, [
-        '{BUSINESS_PHONE}' => defined('BUSINESS_PHONE') ? BUSINESS_PHONE : '',
-        '{BUSINESS_EMAIL}' => defined('BUSINESS_EMAIL') ? BUSINESS_EMAIL : '',
-        '{BUSINESS_NAME}'  => defined('BUSINESS_NAME')  ? BUSINESS_NAME  : '',
+        '{BUSINESS_PHONE}'       => defined('BUSINESS_PHONE')       ? BUSINESS_PHONE       : '',
+        '{BUSINESS_EMAIL}'       => defined('BUSINESS_EMAIL')       ? BUSINESS_EMAIL       : '',
+        '{BUSINESS_NAME}'        => defined('BUSINESS_NAME')        ? BUSINESS_NAME        : '',
+        '{BUSINESS_DESCRIPTION}' => defined('BUSINESS_DESCRIPTION') ? BUSINESS_DESCRIPTION : '',
     ]);
 
     // Brez tega bi model računal termine glede na datum svojega učenja.

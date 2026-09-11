@@ -10,8 +10,8 @@
 
 declare(strict_types=1);
 
-if (!defined('KURIVO_BOOTSTRAPPED')) {
-    define('KURIVO_BOOTSTRAPPED', true);
+if (!defined('APP_BOOTSTRAPPED')) {
+    define('APP_BOOTSTRAPPED', true);
 
     $configFile = __DIR__ . '/config.php';
     if (!is_readable($configFile)) {
