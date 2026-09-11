@@ -47,16 +47,11 @@ curl -X POST https://domena.si/voice-ai/tools/product-lookup.php \
   "success": true,
   "data": [
     {
-      "id": 2,
       "name": "Bukova drva, suha, 33 cm",
-      "category": "drva",
       "unit": "kubik",
       "price": 105,
       "price_display": "105,00 € za kubični meter",
-      "stock": 18,
-      "in_stock": true,
-      "availability": "na zalogi",
-      "description": "Sušena bukev, standardna dolžina za centralne peči."
+      "availability": "na zalogi"
     }
   ],
   "error": null
@@ -65,6 +60,11 @@ curl -X POST https://domena.si/voice-ai/tools/product-lookup.php \
 
 Polji `price_display` in `availability` sta pripravljena za branje na glas — model
 jih samo prebere, namesto da bi sam oblikoval ceno ali sklanjal enoto.
+
+Nabor polj je namenoma ozek. Vsak odgovor orodja gre v pogovor z modelom in se
+plača po žetonih, zato opisa izdelka in številčne zaloge ne vračamo — asistent
+stranki pove ime, ceno in ali je izdelek na voljo. Iskanje vrne največ 5 zadetkov
+(3 pri `get_price` in `check_stock`).
 
 **Iskanje in slovenska sklanjatev.** Iskalni niz se razbije na besede, daljše od petih
 znakov pa se skrajšajo na koren (`peletov` → `pelet`, `bukovih` → `bukov`). Zato zadene

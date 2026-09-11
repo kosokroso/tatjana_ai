@@ -22,7 +22,10 @@ final class ProductTool extends Tool
         $category = $this->enumValue($input, 'category', self::CATEGORIES, null);
 
         // Pri preverjanju zaloge stranko zanima ena stvar, ne cel katalog.
-        $limit = $action === 'search' ? 8 : 5;
+        // Vsak zadetek gre v pogovor z modelom in se šteje v porabo žetonov,
+        // zato raje manj zadetkov: pri telefonskem odgovoru jih itak ne našteje
+        // več kot dva ali tri.
+        $limit = $action === 'search' ? 5 : 3;
 
         $products = $this->adapter->searchProducts($query, $category, $limit);
 
@@ -41,25 +44,22 @@ final class ProductTool extends Tool
     }
 
     /**
-     * Poleg surovih vrednosti vrnemo tudi pripravljene nize v slovenščini.
-     * AI jih samo prebere, namesto da bi sam oblikoval ceno ali sklanjal enoto —
-     * manj možnosti, da si kaj izmisli ali narobe zaokroži.
+     * Poleg surove cene vrnemo tudi pripravljen niz v slovenščini. AI ga samo
+     * prebere, namesto da bi sam oblikoval ceno ali sklanjal enoto — manj
+     * možnosti, da si kaj izmisli ali narobe zaokroži.
+     *
+     * Namenoma vračamo malo polj. Vsak znak tu gre v pogovor z modelom in se
+     * plača: opis izdelka in številčna zaloga sta za odgovor stranki odveč,
+     * ker asistent pove ime, ceno in ali je izdelek na voljo.
      */
     private function formatProduct(array $product): array
     {
-        $inStock = $product['stock_quantity'] > 0;
-
         return [
-            'id'            => $product['id'],
             'name'          => $product['name'],
-            'category'      => $product['category'],
             'unit'          => $product['unit'],
             'price'         => round($product['price_per_unit'], 2),
             'price_display' => $this->formatPrice($product['price_per_unit']) . ' za ' . $this->unitPhrase($product['unit']),
-            'stock'         => $product['stock_quantity'],
-            'in_stock'      => $inStock,
-            'availability'  => $inStock ? 'na zalogi' : 'trenutno ni na zalogi',
-            'description'   => $product['description'],
+            'availability'  => $product['stock_quantity'] > 0 ? 'na zalogi' : 'trenutno ni na zalogi',
         ];
     }
 
