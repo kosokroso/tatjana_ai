@@ -192,6 +192,30 @@ final class DirectMySQLAdapter implements AdapterInterface
         return $hours;
     }
 
+    public function createInquiry(array $inquiry): int
+    {
+        try {
+            $stmt = $this->pdo()->prepare(
+                'INSERT INTO inquiries (name, phone, email, product, quantity, note, source, status, created_at)
+                 VALUES (:name, :phone, :email, :product, :quantity, :note, :source, \'new\', NOW())'
+            );
+            $stmt->execute([
+                ':name'     => $inquiry['name'],
+                ':phone'    => $inquiry['phone'],
+                ':email'    => $inquiry['email']    ?? null,
+                ':product'  => $inquiry['product']  ?? null,
+                ':quantity' => $inquiry['quantity'] ?? null,
+                ':note'     => $inquiry['note']     ?? null,
+                ':source'   => $inquiry['source']   ?? 'chat',
+            ]);
+
+            return (int) $this->pdo()->lastInsertId();
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::createInquiry: ' . $e->getMessage());
+            throw new AdapterException('Povpraševanja ni bilo mogoče shraniti.');
+        }
+    }
+
     // ----------------------------------------------------------------
 
     private function mapProduct(array $row): array

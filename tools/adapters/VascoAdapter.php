@@ -42,4 +42,9 @@ final class VascoAdapter implements AdapterInterface
     {
         throw new AdapterException('VascoAdapter::getBusinessHours ni implementiran.');
     }
+
+    public function createInquiry(array $inquiry): int
+    {
+        throw new AdapterException('VascoAdapter::createInquiry ni implementiran.');
+    }
 }

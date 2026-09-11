@@ -20,6 +20,7 @@ DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS customers;
 DROP TABLE IF EXISTS business_hours;
+DROP TABLE IF EXISTS inquiries;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -76,6 +77,31 @@ CREATE TABLE orders (
   CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES customers(id),
   CONSTRAINT fk_orders_product  FOREIGN KEY (product_id)  REFERENCES products(id)
 ) ENGINE=InnoDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- inquiries
+-- Povprasevanja, ki jih zbere asistent. Niso narocila: podjetje
+-- stranko poklice nazaj, potrdi ceno in termin.
+--
+-- POZOR: spodnji DROP to tabelo izprazni. Ce je na strezniku ze
+-- kaj pravih povprasevanj, pred ponovnim zagonom skripte naredi
+-- izvoz ali zakomentiraj vrstico "DROP TABLE IF EXISTS inquiries".
+-- ------------------------------------------------------------
+CREATE TABLE inquiries (
+  id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  created_at  DATETIME     NOT NULL,
+  name        VARCHAR(120) NOT NULL,
+  phone       VARCHAR(40)  NOT NULL,
+  email       VARCHAR(160) NULL,
+  product     VARCHAR(160) NULL,
+  quantity    VARCHAR(60)  NULL,
+  note        VARCHAR(500) NULL,
+  source      VARCHAR(20)  NOT NULL DEFAULT 'chat' COMMENT 'chat | voice',
+  status      ENUM('new','handled','discarded') NOT NULL DEFAULT 'new',
+  PRIMARY KEY (id),
+  KEY idx_inquiries_status (status),
+  KEY idx_inquiries_created (created_at)
+) ENGINE=InnoDB AUTO_INCREMENT=500 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
 -- business_hours

@@ -33,6 +33,7 @@ final class ToolRegistry
         $this->register(new ProductTool($adapter));
         $this->register(new OrderTool($adapter, $logger));
         $this->register(new BusinessInfoTool($adapter, $infoFile));
+        $this->register(new InquiryTool($adapter));
     }
 
     public static function create(): self

@@ -34,7 +34,7 @@ define('ADAPTER', 'DirectMySQLAdapter');
 // ---------------------------------------------------------------
 // Tooli, ki so dovoljeni prek HTTP. Karkoli drugega vrne 404.
 // ---------------------------------------------------------------
-define('ALLOWED_TOOLS', ['product-lookup', 'order-lookup', 'business-info']);
+define('ALLOWED_TOOLS', ['product-lookup', 'order-lookup', 'business-info', 'submit-inquiry']);
 
 // ---------------------------------------------------------------
 // Logging
@@ -105,3 +105,19 @@ define('BUSINESS_EMAIL', 'info@example.si');
 
 // Ena do dve povedi: s čim se podjetje ukvarja in kje posluje.
 define('BUSINESS_DESCRIPTION', 'Podjetje prodaja drva, pelete in brikete.');
+
+// ---------------------------------------------------------------
+// Povpraševanja
+// Zapis gre vedno v bazo (tabela inquiries). E-pošta je samo obvestilo:
+// če pošiljanje ne uspe, povpraševanje ostane shranjeno.
+// Pusti prazno, da se obvestila ne pošiljajo.
+// FROM naj bo naslov na tvoji domeni, sicer ga poštni strežniki zavrnejo.
+// ---------------------------------------------------------------
+define('INQUIRY_EMAIL_TO',   '');
+define('INQUIRY_EMAIL_FROM', '');
+
+// ---------------------------------------------------------------
+// Razvojni pregled baze (data-view.php). Prazno = stran je izklopljena.
+// Stran prikazuje osebne podatke strank — pred predajo stranki jo odstrani.
+// ---------------------------------------------------------------
+define('DATA_VIEW_KEY', '');

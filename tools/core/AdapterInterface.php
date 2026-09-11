@@ -41,6 +41,17 @@ interface AdapterInterface
      *                 vsaka: day_of_week, opens_at, closes_at, closed
      */
     public function getBusinessHours(): array;
+
+    /**
+     * Shrani povpraševanje stranke in vrne njegovo številko.
+     *
+     * Edina metoda, ki piše. Pri drugem ERP-ju bo zapis pristal drugam (nov
+     * dokument, REST klic), zato spada sem in ne v tool.
+     *
+     * @param array $inquiry name, phone, email, product, quantity, note, source
+     * @throws AdapterException če zapisa ni bilo mogoče shraniti
+     */
+    public function createInquiry(array $inquiry): int;
 }
 
 /**

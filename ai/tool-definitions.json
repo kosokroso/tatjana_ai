@@ -50,6 +50,43 @@
   {
     "type": "function",
     "function": {
+      "name": "submit_inquiry",
+      "description": "Odda povpraševanje stranke, da jo podjetje pokliče nazaj. Uporabi šele, ko imaš ime in telefonsko številko stranke in ko je stranka povedala, da želi ponudbo ali klic. Povpraševanje ni naročilo — podjetje ceno in termin potrdi ob klicu.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Ime in priimek stranke, kot ga je povedala."
+          },
+          "phone": {
+            "type": "string",
+            "description": "Telefonska številka stranke za povratni klic. Obvezna."
+          },
+          "email": {
+            "type": "string",
+            "description": "E-pošta stranke, če jo je povedala. Neobvezno."
+          },
+          "product": {
+            "type": "string",
+            "description": "Kaj stranka želi, z njenimi besedami: 'bukova drva 33 cm', 'peleti A1 paleta'."
+          },
+          "quantity": {
+            "type": "string",
+            "description": "Količina, kot jo je povedala stranka: '3 kubike', '2 paleti', '40 vreč'."
+          },
+          "note": {
+            "type": "string",
+            "description": "Karkoli drugega, kar je za dostavo pomembno: ozek dovoz, želeni teden, nadstropje."
+          }
+        },
+        "required": ["name", "phone"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
       "name": "get_business_info",
       "description": "Vrne podatke o poslovanju: delovni čas (vključno s tem, ali je odprto prav zdaj), območja in cene dostave ter načine plačila.",
       "parameters": {

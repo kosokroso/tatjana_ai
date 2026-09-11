@@ -76,6 +76,7 @@ if (!defined('APP_BOOTSTRAPPED')) {
     require_once __DIR__ . '/tools/implementations/ProductTool.php';
     require_once __DIR__ . '/tools/implementations/OrderTool.php';
     require_once __DIR__ . '/tools/implementations/BusinessInfoTool.php';
+    require_once __DIR__ . '/tools/implementations/InquiryTool.php';
 }
 
 return ToolRegistry::create();

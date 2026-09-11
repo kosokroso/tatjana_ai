@@ -74,6 +74,15 @@ test_call "načini plačila"   business-info.php '{"info_type":"payments"}'     
 test_call "neveljaven tip"   business-info.php '{"info_type":"skrivnosti"}'       false
 echo
 
+echo "submit-inquiry"
+test_call "polno povprasevanje"      submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111","product":"bukova drva","quantity":"3 kubike"}' true
+test_call "samo ime in telefon"      submit-inquiry.php '{"name":"Testni Test","phone":"+38641000111"}'                                          true
+test_call "manjka telefon"           submit-inquiry.php '{"name":"Testni Test"}'                                                                 false
+test_call "manjka ime"               submit-inquiry.php '{"phone":"041 000 111"}'                                                                false
+test_call "prekratka stevilka"       submit-inquiry.php '{"name":"Testni Test","phone":"041"}'                                                   false
+test_call "neveljavna e-posta"       submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111","email":"ni-email"}'                        false
+echo
+
 echo "varnost"
 GET_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/tools/product-lookup.php")
 if [ "$GET_STATUS" = "405" ]; then

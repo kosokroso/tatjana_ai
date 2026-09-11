@@ -167,6 +167,50 @@ To datoteko lahko ureja podjetje samo, brez posega v kodo.
 
 ---
 
+## POST /tools/submit-inquiry.php
+
+Odda povpraševanje stranke, da jo podjetje pokliče nazaj. Edini tool, ki piše.
+
+**Zahtevek**
+
+| Polje | Obvezno | Opis |
+|---|---|---|
+| `name` | **da** | Ime in priimek stranke, do 120 znakov |
+| `phone` | **da** | Telefon za povratni klic; mora vsebovati vsaj 8 števk |
+| `email` | ne | Preveri se s `FILTER_VALIDATE_EMAIL` |
+| `product` | ne | Kaj stranka želi, z njenimi besedami |
+| `quantity` | ne | Količina, kot jo je povedala: "3 kubike", "2 paleti" |
+| `note` | ne | Ozek dovoz, želeni teden ipd., do 500 znakov |
+
+```bash
+curl -X POST https://domena.si/voice-ai/tools/submit-inquiry.php \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Janez Novak","phone":"041 234 567","product":"bukova drva","quantity":"3 kubike"}'
+```
+
+**Odgovor**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 501,
+    "message": "Povpraševanje je zabeleženo pod številko 501. Podjetje se javi stranki na navedeno telefonsko številko."
+  },
+  "error": null
+}
+```
+
+Zapis gre v tabelo `inquiries` in je vir resnice. E-pošta podjetju (`INQUIRY_EMAIL_TO`)
+je samo obvestilo — če pošiljanje ne uspe, povpraševanje ostane shranjeno in stranka
+dobi enak odgovor, ker bi sicer zaradi težave s poštnim strežnikom izgubili posel.
+Neuspeh se zapiše v dnevnik strežnika.
+
+Vrednosti stranke nikoli ne gredo v glave e-pošte, samo v telo — sicer bi vrednost
+z znakom za novo vrstico omogočila vrivanje glav in zlorabo strežnika za neželeno pošto.
+
+---
+
 ## Kako dodaš nov tool (5 korakov)
 
 1. **Razred.** Ustvari `tools/implementations/MojTool.php`, ki razširja `Tool`.
