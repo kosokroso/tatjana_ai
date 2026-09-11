@@ -1,13 +1,9 @@
-# .git/ vsebuje celotno zgodovino kode (in bi, če je repo tu, izpostavila vso preteklo
-# vsebino config.php, če bi bila kdaj pomotoma commitana) — ne sme biti dosegljiva prek brskalnika.
-<IfModule mod_authz_core.c>
-    <DirectoryMatch "^.*\.git/.*$">
-        Require all denied
-    </DirectoryMatch>
-</IfModule>
-<IfModule !mod_authz_core.c>
-    <DirectoryMatch "^.*\.git/.*$">
-        Order allow,deny
-        Deny from all
-    </DirectoryMatch>
+# .git/ vsebuje celotno zgodovino kode — ne sme biti dosegljiva prek brskalnika.
+# DirectoryMatch v .htaccess kontekstu ni veljaven (samo v glavni konfiguraciji
+# strežnika) in je na tem LiteSpeed hostingu povzročil, da je bila CELA mapa
+# nedosegljiva (404 na vseh datotekah). RewriteRule je edina varna pot v .htaccess.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} \.git(/|$) [NC]
+    RewriteRule ^ - [F,L]
 </IfModule>
