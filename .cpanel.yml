@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/kreati02/tatjana.kreativnisplet.si/AiAssistant_v1/
+    - /usr/bin/rsync -a --exclude='.git' --exclude='.cpanel.yml' --exclude='config.php' --exclude='logs/*.log' ./ $DEPLOYPATH
