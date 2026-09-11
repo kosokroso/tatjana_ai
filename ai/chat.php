@@ -131,8 +131,15 @@ try {
         'user_message' => $lastMessage,
         'error'        => 'openai: ' . $e->getMessage(),
     ]);
-    // Stranki ne kažemo tehnične napake — dobi uporaben izhod.
-    respond(true, ['reply' => fallbackReply(), 'tools_used' => [], 'degraded' => true], null, 200);
+    // Stranki ne kažemo tehnične napake — dobi uporaben izhod. Statusna koda
+    // (429 = omejitev ali kredit, 401 = kljuc, 404 = model) gre zraven, ker brez
+    // nje vzroka odpovedi z zunanje strani ni mogoce ugotoviti.
+    respond(true, [
+        'reply'       => fallbackReply(),
+        'tools_used'  => [],
+        'degraded'    => true,
+        'reason_code' => $e->getCode(),
+    ], null, 200);
 } catch (Throwable $e) {
     error_log('chat.php: ' . $e->getMessage());
     respond(false, null, 'Prišlo je do napake pri obdelavi sporočila.', 500);
