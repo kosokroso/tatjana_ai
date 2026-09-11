@@ -1,0 +1,14 @@
+# Konfiguracija z gesli in API ključi — nikoli v repozitorij
+config.php
+
+# Logi vsebujejo osebne podatke strank
+logs/*.log
+logs/*.jsonl
+logs/ratelimit/
+
+# Urejevalniki in OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp

@@ -1,0 +1,26 @@
+{
+  "delivery_regions": {
+    "summary": "Dostavljamo po Goriški, Vipavski dolini in Krasu. Izven tega območja po dogovoru.",
+    "free_delivery_note": "Dostava je brezplačna nad 3 kubike oziroma nad eno paleto peletov.",
+    "regions": [
+      { "name": "Nova Gorica z okolico", "fee_eur": 0,  "typical_days": "2–4 delovne dni" },
+      { "name": "Šempeter, Vrtojba, Renče", "fee_eur": 0,  "typical_days": "2–4 delovne dni" },
+      { "name": "Solkan, Kanal, Deskle", "fee_eur": 10, "typical_days": "3–5 delovnih dni" },
+      { "name": "Ajdovščina in Vipavska dolina", "fee_eur": 15, "typical_days": "3–5 delovnih dni" },
+      { "name": "Sežana in Kras", "fee_eur": 20, "typical_days": "5–7 delovnih dni" },
+      { "name": "Idrija, Cerkno", "fee_eur": 25, "typical_days": "5–7 delovnih dni" }
+    ],
+    "restrictions": "Za ozke dovoze in strme klance uporabljamo manjši kamion — to je treba povedati ob naročilu."
+  },
+  "payments": {
+    "summary": "Plačilo ob dostavi z gotovino ali kartico, podjetja tudi po predračunu.",
+    "methods": [
+      "gotovina ob dostavi",
+      "kartica ob dostavi (POS terminal na vozilu)",
+      "predračun z nakazilom na TRR (za podjetja in javne zavode)",
+      "obročno plačilo na 3 obroke pri nakupu nad 500 evrov"
+    ],
+    "invoice_note": "Račun izdamo ob dostavi. Za podjetja ga na željo pošljemo po e-pošti.",
+    "deposit_note": "Za naročila nad 1000 evrov zaračunamo 30 % predplačilo ob potrditvi termina."
+  }
+}

@@ -1,0 +1,13 @@
+# .git/ vsebuje celotno zgodovino kode (in bi, če je repo tu, izpostavila vso preteklo
+# vsebino config.php, če bi bila kdaj pomotoma commitana) — ne sme biti dosegljiva prek brskalnika.
+<IfModule mod_authz_core.c>
+    <DirectoryMatch "^.*\.git/.*$">
+        Require all denied
+    </DirectoryMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <DirectoryMatch "^.*\.git/.*$">
+        Order allow,deny
+        Deny from all
+    </DirectoryMatch>
+</IfModule>

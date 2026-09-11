@@ -1,0 +1,68 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "search_products",
+      "description": "Poišče izdelke v katalogu po imenu, vrsti lesa ali kategoriji. Vrne ceno, enoto mere in razpoložljivost. Uporabi vedno, kadar stranka sprašuje o ceni, ponudbi ali zalogi — nikoli ne navajaj cen po spominu.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Kaj stranka išče, z besedami stranke: 'bukova drva', 'peleti v vrečah', 'hrast 25 cm', 'briketi'."
+          },
+          "action": {
+            "type": "string",
+            "enum": ["search", "get_price", "check_stock"],
+            "description": "search = splošna ponudba, get_price = zanima jo cena, check_stock = zanima jo razpoložljivost."
+          },
+          "category": {
+            "type": "string",
+            "enum": ["drva", "peleti", "briketi"],
+            "description": "Neobvezno zožanje na kategorijo, kadar je iz pogovora jasna."
+          }
+        },
+        "required": ["query"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "lookup_order",
+      "description": "Pogleda stanje naročila in termin dostave. Zahteva DVA podatka: številko naročila in telefonsko številko ali e-pošto, s katero je bilo naročilo oddano. Brez obojega klic ne bo uspel — če stranka pove samo številko naročila, jo najprej vprašaj za telefonsko številko.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "Številka naročila, npr. '10005'."
+          },
+          "verify": {
+            "type": "string",
+            "description": "Telefonska številka ali e-pošta stranke, s katero je bilo naročilo oddano. Služi preverjanju, da podatkov ne dobi napačna oseba."
+          }
+        },
+        "required": ["order_id", "verify"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_business_info",
+      "description": "Vrne podatke o poslovanju: delovni čas (vključno s tem, ali je odprto prav zdaj), območja in cene dostave ter načine plačila.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "info_type": {
+            "type": "string",
+            "enum": ["hours", "delivery_regions", "payments"],
+            "description": "hours = delovni čas, delivery_regions = kam dostavljamo in po kakšni ceni, payments = načini plačila."
+          }
+        },
+        "required": ["info_type"]
+      }
+    }
+  }
+]
