@@ -60,7 +60,38 @@ final class OpenAIClient
         return $body['choices'][0]['message'];
     }
 
+    /**
+     * Prehodne napake (429 = omejitev hitrosti, 5xx = težava pri OpenAI) rešimo
+     * s ponovnim poskusom, namesto da bi stranka takoj dobila "sistem ne dela".
+     * Nov OpenAI račun ima nizko omejitev zahtevkov na minuto, zato se to zgodi
+     * tudi pri normalni rabi.
+     */
+    private const RETRY_DELAYS_SECONDS = [2, 5];
+
     private function post(array $payload): array
+    {
+        $attempt = 0;
+
+        while (true) {
+            try {
+                return $this->postOnce($payload);
+            } catch (OpenAIException $e) {
+                $status = $e->getCode();
+                $isTransient = $status === 429 || ($status >= 500 && $status < 600);
+
+                if (!$isTransient || $attempt >= count(self::RETRY_DELAYS_SECONDS)) {
+                    throw $e;
+                }
+
+                error_log("OpenAIClient: prehodna napaka (HTTP {$status}), ponovni poskus cez "
+                    . self::RETRY_DELAYS_SECONDS[$attempt] . ' s');
+                sleep(self::RETRY_DELAYS_SECONDS[$attempt]);
+                $attempt++;
+            }
+        }
+    }
+
+    private function postOnce(array $payload): array
     {
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
