@@ -3,9 +3,9 @@
 AI asistent za spletno stran in kasneje telefon. Besedilni klepet odgovarja na
 vprašanja o ponudbi, cenah, naročilih in dostavi ter zbira povpraševanja.
 
-**Testno okolje:** https://tatjana.kreativnisplet.si/AiAssistant_v1/
+**Živi naslov:** https://kreativnisplet.si/asistent/ (noindex, ni povezan iz menija)
 **Repozitorij:** https://github.com/kosokroso/tatjana_ai
-**Zadnje preverjeno:** 13. 9. 2026 — 24/24 testov v `tests/test-tools.sh` zelenih
+**Zadnje preverjeno:** 13. 9. 2026 — 26/26 testov zelenih, klepet in povpraševanje preverjena v živo
 
 ---
 
@@ -69,6 +69,16 @@ vprašanja o ponudbi, cenah, naročilih in dostavi ter zbira povpraševanja.
       `data-view.php` prikazuje imena, telefone in naslove strank.
 - [ ] Preveriti, da je v OpenAI nastavljena mesečna omejitev porabe
 - [ ] Nastaviti `INQUIRY_EMAIL_TO` in preveriti, da obvestilo o povpraševanju res pride
+
+### Odprto takoj
+
+- [ ] **Obvestila po e-pošti ne delujejo.** `mail()` je na tem strežniku izklopljen
+      (vidno na `data-view.php`). Povpraševanja se shranijo v bazo in so vidna na
+      strani za pregled, obvestilo pa ne odide. Odločitev: SMTP prek lastnega
+      poštnega predala ali storitev za transakcijsko pošto prek cURL.
+- [ ] **Zamenjaj geslo baze in WordPressove varnostne ključe** — `wp-config.php`
+      je bil prilepljen v pogovor, zato je geslo žive baze razkrito.
+- [ ] Dnevna varnostna kopija `ai_` tabel v cron (glej docs/setup.md)
 
 ### Odločitve, ki čakajo
 
