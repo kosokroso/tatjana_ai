@@ -73,7 +73,7 @@ final class InquiryTool extends Tool
         return ToolResponse::ok([
             'id'      => $id,
             'message' => 'Povpraševanje je zabeleženo pod številko ' . $id
-                . '. Podjetje se javi stranki na navedeno telefonsko številko.',
+                . '. Podjetje pripravi ponudbo in jo pošlje na navedeni e-poštni naslov.',
         ]);
     }
 
