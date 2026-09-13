@@ -189,6 +189,24 @@ if ($authorised) {
         <tr><td>PHP</td><td><?= h(PHP_VERSION) ?></td></tr>
         <tr><td>mail()</td><td><?= function_exists('mail') ? 'na voljo' : 'NI na voljo — obvestila po e-pošti ne delujejo' ?></td></tr>
         <tr><td>cURL</td><td><?= function_exists('curl_init') ? 'na voljo' : 'NI na voljo' ?></td></tr>
+        <tr><td>vtičnice</td><td><?= function_exists('stream_socket_client') ? 'na voljo' : 'NI na voljo — SMTP ne bo delal' ?></td></tr>
+        <tr><td>OpenSSL</td><td><?= extension_loaded('openssl') ? 'na voljo' : 'NI na voljo — SMTP prek SSL ne bo delal' ?></td></tr>
+        <tr><td>povezava na mail.kreativnisplet.si:465</td><td><?php
+            if (!function_exists('stream_socket_client')) {
+                echo 'ni mogoče preveriti';
+            } else {
+                $napaka = '';
+                $koda = 0;
+                $vtic = @stream_socket_client('ssl://mail.kreativnisplet.si:465', $koda, $napaka, 5);
+                if ($vtic) {
+                    $pozdrav = trim((string) @fgets($vtic, 512));
+                    fclose($vtic);
+                    echo h('odprta — ' . $pozdrav);
+                } else {
+                    echo h('ni mogoče vzpostaviti (' . $napaka . ')');
+                }
+            }
+        ?></td></tr>
         <tr><td>predpona tabel</td><td><?= h($prefix === '' ? '(brez)' : $prefix) ?></td></tr>
         <tr><td>obvestila na</td><td><?= h(defined('INQUIRY_EMAIL_TO') && INQUIRY_EMAIL_TO !== '' ? INQUIRY_EMAIL_TO : '(izklopljeno)') ?></td></tr>
       </tbody>
