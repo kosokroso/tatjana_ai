@@ -3,7 +3,12 @@ deployment:
   tasks:
     # $HOME namesto zapisane poti: ta datoteka je v repozitoriju, absolutna
     # pot pa bi razkrila uporabnisko ime hosting racuna.
-    - export DEPLOYPATH=$HOME/tatjana.kreativnisplet.si/AiAssistant_v1/
+    # Asistent tece kot podmapa glavne strani (kreativnisplet.si/asistent/),
+    # ne na loceni poddomeni. Isti izvor pomeni, da CORS ni v igri in da
+    # obiskovalec ne zapusti domene podjetja.
+    # Rsync cilja izkljucno to podmapo — WordPressovih datotek v public_html
+    # se ne dotakne.
+    - export DEPLOYPATH=$HOME/public_html/asistent/
     # Brez --chmod bi rsync -a prenesel pravice izvorne mape: cPanel git repozitorij
     # je 0700, spletni streznik pa v tako mapo ne more vstopiti in vrne 404 na vseh
     # datotekah. D755/F644 sta pravici, ki jih Apache/LiteSpeed potrebuje.

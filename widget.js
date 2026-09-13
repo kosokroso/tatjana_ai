@@ -4,13 +4,14 @@
  * Uporaba: na stran dodaj posodo in to skripto.
  *
  *   <div id="tatjana-chat"></div>
- *   <script src="https://tatjana.kreativnisplet.si/AiAssistant_v1/widget.js" defer></script>
+ *   <script src="/asistent/widget.js" defer></script>
  *
  * Naslov končne točke se prebere iz src te skripte, zato v kodi ni nikjer
  * zapisane domene — ista datoteka dela tudi pri naslednji stranki.
  *
- * Domena strani, ki modul vgradi, mora biti v CHAT_ALLOWED_ORIGINS v
- * config.php, sicer strežnik zahtevke zavrne s 403.
+ * Kadar modul teče na isti domeni kot stran (priporočeno), dodatnih nastavitev
+ * ni. Pri vgradnji s tuje domene mora biti ta domena v CHAT_ALLOWED_ORIGINS
+ * v config.php, sicer strežnik zahtevke zavrne s 403.
  */
 (function () {
   'use strict';
