@@ -84,7 +84,9 @@ if ($authorised) {
             'SELECT day_of_week, opens_at, closes_at, closed FROM ' . $prefix . 'business_hours ORDER BY day_of_week');
     } catch (PDOException $e) {
         error_log('data-view.php: ' . $e->getMessage());
-        $connectionError = 'Povezava s podatkovno bazo ni uspela.';
+        // Sporočilo pokažemo, ker je stran zaklenjena s ključem in ker brez njega
+        // ni mogoče ločiti napačnega gesla od napačnega imena baze.
+        $connectionError = $e->getMessage();
     }
 }
 ?>
