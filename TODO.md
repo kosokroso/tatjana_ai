@@ -68,14 +68,15 @@ vprašanja o ponudbi, cenah, naročilih in dostavi ter zbira povpraševanja.
 - [ ] **Odstraniti `data-view.php` in `chat-test.html`** s strežnika ali ju zaščititi.
       `data-view.php` prikazuje imena, telefone in naslove strank.
 - [ ] Preveriti, da je v OpenAI nastavljena mesečna omejitev porabe
-- [ ] Nastaviti `INQUIRY_EMAIL_TO` in preveriti, da obvestilo o povpraševanju res pride
+- [x] `INQUIRY_EMAIL_TO` nastavljen, obvestilo preverjeno v živo (povpraševanje #506)
 
 ### Odprto takoj
 
-- [ ] **Obvestila po e-pošti ne delujejo.** `mail()` je na tem strežniku izklopljen
-      (vidno na `data-view.php`). Povpraševanja se shranijo v bazo in so vidna na
-      strani za pregled, obvestilo pa ne odide. Odločitev: SMTP prek lastnega
-      poštnega predala ali storitev za transakcijsko pošto prek cURL.
+- [x] **Obvestila po e-pošti.** `mail()` je na tem strežniku izklopljen, zato asistent
+      pošilja prek lastnega odjemalca SMTP (`tools/core/Mailer.php`) in poštnega predala
+      `info@kreativnisplet.si`. WordPressov `wp_mail()` ni bil mogoč: `config.php` in
+      `wp-config.php` definirata iste konstante, zato bi WordPress v istem procesu dobil
+      naše vrednosti. Preizkus pošiljanja je na `data-view.php`.
 - [ ] **Zamenjaj geslo baze in WordPressove varnostne ključe** — `wp-config.php`
       je bil prilepljen v pogovor, zato je geslo žive baze razkrito.
 - [ ] Dnevna varnostna kopija `ai_` tabel v cron (glej docs/setup.md)
@@ -140,3 +141,5 @@ Zapisane zato, da jih ne lovimo dvakrat.
 | `SQLSTATE[HY093]: Invalid parameter number` | Isti named placeholder večkrat v enem stavku. Pri pravih pripravljenih stavkih to ni dovoljeno — vsaka pojavitev rabi svojega. |
 | Chat skoraj vedno vrne "sistem mi trenutno ne odgovori" | Omejitev porabe žetonov na minuto pri `gpt-4o` na novem OpenAI računu. Rešeno s prehodom na `gpt-4o-mini`. |
 | Asistent pove napačno ceno | Sistemski prompt je zahteval pretvorbo cen v besede; model je 78 € povedal kot "osemdeset evrov". Cene se zdaj izpisujejo s številko. |
+| `535 Incorrect authentication data` pri SMTP | Napačno geslo predala ali uporabniško ime brez domene. Uporabnik mora biti cel naslov. |
+| Deploy naloži staro kodo | Kliknjen je bil samo Deploy HEAD Commit brez Update from Remote. |
