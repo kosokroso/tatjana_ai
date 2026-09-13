@@ -2,9 +2,12 @@
 /**
  * Oddaja povpraševanja stranke.
  *
- * Vhod:  { "name": "Janez Novak", "phone": "041 234 567", "product": "bukova drva",
- *          "quantity": "3 kubike", "email": "...", "note": "..." }
+ * Vhod:  { "name": "Janez Novak", "phone": "041 234 567", "email": "janez@example.com",
+ *          "product": "napredna spletna stran", "quantity": "1", "note": "..." }
  * Izhod: številka povpraševanja, ki jo asistent pove stranki.
+ *
+ * Ime, telefon IN e-pošta so obvezni: brez e-pošte podjetje ne more poslati
+ * ponudbe, brez telefona pa ne more poklicati nazaj.
  *
  * Povpraševanje NI naročilo. Podjetje stranko pokliče nazaj, potrdi ceno in
  * termin. Asistent tega ne sme predstaviti kot potrjen posel.
@@ -27,8 +30,8 @@ final class InquiryTool extends Tool
     {
         $name  = $this->requireString($input, 'name', 120);
         $phone = $this->requireString($input, 'phone', 40);
+        $email = $this->requireString($input, 'email', 160);
 
-        $email    = $this->optionalString($input, 'email', 160);
         $product  = $this->optionalString($input, 'product', 160);
         $quantity = $this->optionalString($input, 'quantity', 60);
         $note     = $this->optionalString($input, 'note', 500);
@@ -40,9 +43,9 @@ final class InquiryTool extends Tool
             );
         }
 
-        if ($email !== null && $email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return ToolResponse::invalidInput(
-                'E-poštni naslov ni veljaven. Prosi stranko, naj ga pove še enkrat, ali pa ga izpusti.'
+                'E-poštni naslov ni veljaven. Prosi stranko, naj ga pove še enkrat, po črkah.'
             );
         }
 

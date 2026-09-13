@@ -105,12 +105,12 @@ define('BUSINESS_INFO_FILE', __DIR__ . '/data/business-info.json');
 // Ime, s katerim se asistent predstavi stranki.
 define('ASSISTANT_NAME', 'Tatjana');
 
-define('BUSINESS_NAME',  'Tatjana AI');
-define('BUSINESS_PHONE', '+386 5 123 45 67');
-define('BUSINESS_EMAIL', 'info@example.si');
+define('BUSINESS_NAME',  'Kreativni Splet');
+define('BUSINESS_PHONE', '+386 31 455 881');
+define('BUSINESS_EMAIL', 'info@kreativnisplet.si');
 
 // Ena do dve povedi: s čim se podjetje ukvarja in kje posluje.
-define('BUSINESS_DESCRIPTION', 'Podjetje prodaja drva, pelete in brikete.');
+define('BUSINESS_DESCRIPTION', 'Podjetje izdeluje spletne strani in spletne trgovine ter vodi oglase na druzbenih omrezjih, SEO optimizacijo, oblikovanje znamke in fotografiranje. Sedez je v Braniku na Goriskem, dela pa po vsej Sloveniji in za tuje narocnike.');
 
 // ---------------------------------------------------------------
 // Povpraševanja

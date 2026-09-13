@@ -1,26 +1,26 @@
 {
-  "delivery_regions": {
-    "summary": "Dostavljamo po Goriški, Vipavski dolini in Krasu. Izven tega območja po dogovoru.",
-    "free_delivery_note": "Dostava je brezplačna nad 3 kubike oziroma nad eno paleto peletov.",
-    "regions": [
-      { "name": "Nova Gorica z okolico", "fee_eur": 0,  "typical_days": "2–4 delovne dni" },
-      { "name": "Šempeter, Vrtojba, Renče", "fee_eur": 0,  "typical_days": "2–4 delovne dni" },
-      { "name": "Solkan, Kanal, Deskle", "fee_eur": 10, "typical_days": "3–5 delovnih dni" },
-      { "name": "Ajdovščina in Vipavska dolina", "fee_eur": 15, "typical_days": "3–5 delovnih dni" },
-      { "name": "Sežana in Kras", "fee_eur": 20, "typical_days": "5–7 delovnih dni" },
-      { "name": "Idrija, Cerkno", "fee_eur": 25, "typical_days": "5–7 delovnih dni" }
+  "delivery": {
+    "summary": "Enostavne spletne strani izdelamo v približno dveh tednih. Na povpraševanja odgovorimo v 24 urah.",
+    "process": [
+      "Uvodni pogovor in pregled želja",
+      "Ponudba s ceno in rokom",
+      "Priprava osnutka in usklajevanje",
+      "Izdelava, testiranje in objava",
+      "Predaja ter po želji mesečno vzdrževanje"
     ],
-    "restrictions": "Za ozke dovoze in strme klance uporabljamo manjši kamion — to je treba povedati ob naročilu."
+    "timelines": [
+      { "service": "Enostavna spletna stran", "typical": "približno 2 tedna" },
+      { "service": "Napredna spletna stran", "typical": "odvisno od obsega, dogovorimo ob ponudbi" },
+      { "service": "Spletna trgovina Shopify", "typical": "odvisno od števila izdelkov, dogovorimo ob ponudbi" }
+    ],
+    "coverage": "Delamo s strankami po vsej Sloveniji in tudi s tujimi naročniki. Sestanek je lahko v živo ali na daljavo.",
+    "note": "Rok je odvisen od tega, kako hitro prejmemo besedila in slike stranke."
   },
   "payments": {
-    "summary": "Plačilo ob dostavi z gotovino ali kartico, podjetja tudi po predračunu.",
+    "summary": "Cena in način plačila se dogovorita ob potrditvi ponudbe.",
     "methods": [
-      "gotovina ob dostavi",
-      "kartica ob dostavi (POS terminal na vozilu)",
-      "predračun z nakazilom na TRR (za podjetja in javne zavode)",
-      "obročno plačilo na 3 obroke pri nakupu nad 500 evrov"
+      "nakazilo na TRR po predračunu ali računu"
     ],
-    "invoice_note": "Račun izdamo ob dostavi. Za podjetja ga na željo pošljemo po e-pošti.",
-    "deposit_note": "Za naročila nad 1000 evrov zaračunamo 30 % predplačilo ob potrditvi termina."
+    "note": "Za podrobnosti o plačilnih pogojih in morebitnem plačilu po delih se dogovorimo ob pripravi ponudbe."
   }
 }

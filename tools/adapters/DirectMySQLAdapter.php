@@ -92,10 +92,11 @@ final class DirectMySQLAdapter implements AdapterInterface
             $params[':category'] = $category;
         }
 
-        $sql = 'SELECT id, name, category, unit, price_per_unit, stock_quantity, description
+        // Storitve brez objavljene cene (NULL) naj pridejo na konec, ne na zacetek.
+        $sql = 'SELECT id, name, category, unit, price_per_unit, price_from, stock_quantity, description
                 FROM products
                 WHERE ' . implode(' AND ', $where) . '
-                ORDER BY (stock_quantity > 0) DESC, price_per_unit ASC
+                ORDER BY (stock_quantity > 0) DESC, (price_per_unit IS NULL) ASC, price_per_unit ASC
                 LIMIT ' . (int) $limit;
 
         try {
@@ -112,7 +113,7 @@ final class DirectMySQLAdapter implements AdapterInterface
     {
         try {
             $stmt = $this->pdo()->prepare(
-                'SELECT id, name, category, unit, price_per_unit, stock_quantity, description
+                'SELECT id, name, category, unit, price_per_unit, price_from, stock_quantity, description
                  FROM products WHERE id = :id AND active = 1'
             );
             $stmt->execute([':id' => $id]);
@@ -225,7 +226,10 @@ final class DirectMySQLAdapter implements AdapterInterface
             'name'           => $row['name'],
             'category'       => $row['category'],
             'unit'           => $row['unit'],
-            'price_per_unit' => (float) $row['price_per_unit'],
+            // NULL ostane NULL — pomeni "cena po dogovoru". Pretvorba v (float)
+            // bi jo spremenila v 0 in asistent bi stranki povedal, da je zastonj.
+            'price_per_unit' => $row['price_per_unit'] === null ? null : (float) $row['price_per_unit'],
+            'price_from'     => (bool) ($row['price_from'] ?? false),
             'stock_quantity' => (float) $row['stock_quantity'],
             'description'    => $row['description'],
         ];

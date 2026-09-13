@@ -10,7 +10,7 @@
  */
 final class BusinessInfoTool extends Tool
 {
-    private const TYPES = ['hours', 'delivery_regions', 'payments'];
+    private const TYPES = ['hours', 'delivery', 'payments'];
 
     /** @var string|null */
     private $infoFile;

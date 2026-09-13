@@ -50,37 +50,39 @@ echo "Testiram $BASE_URL"
 echo
 
 echo "product-lookup"
-test_call "iskanje bukovih drv"        product-lookup.php '{"query":"bukova drva","action":"get_price"}'   true
-test_call "sklanjana oblika (peletov)" product-lookup.php '{"query":"peletov"}'                            true
-test_call "zožanje na kategorijo"      product-lookup.php '{"query":"paleta","category":"peleti"}'          true
-test_call "neobstoječ izdelek"         product-lookup.php '{"query":"premog"}'                             false
+test_call "iskanje spletne strani"     product-lookup.php '{"query":"spletna stran","action":"get_price"}' true
+test_call "sklanjana oblika (trgovine)" product-lookup.php '{"query":"trgovine"}'                          true
+test_call "zožanje na kategorijo"      product-lookup.php '{"query":"oglasi","category":"trzenje"}'         true
+test_call "storitev brez objavljene cene" product-lookup.php '{"query":"logotip","action":"get_price"}'     true
+test_call "neobstoječa storitev"       product-lookup.php '{"query":"traktor"}'                            false
 test_call "manjka query"               product-lookup.php '{"action":"search"}'                            false
 test_call "neveljavna akcija"          product-lookup.php '{"query":"drva","action":"delete_all"}'          false
 echo
 
 echo "order-lookup"
-test_call "pravilna številka in telefon" order-lookup.php '{"order_id":"10005","verify":"041 234 567"}'     true
-test_call "isti telefon v obliki E.164"  order-lookup.php '{"order_id":"10005","verify":"+38641234567"}'    true
-test_call "preverjanje z e-pošto"        order-lookup.php '{"order_id":"10006","verify":"marija.kos@siol.net"}' true
-test_call "TUJ telefon (mora zavrniti)"  order-lookup.php '{"order_id":"10005","verify":"031 876 543"}'     false
-test_call "brez preverjanja"             order-lookup.php '{"order_id":"10005"}'                            false
+test_call "pravilna številka in telefon" order-lookup.php '{"order_id":"10001","verify":"041 234 567"}'     true
+test_call "isti telefon v obliki E.164"  order-lookup.php '{"order_id":"10001","verify":"+38641234567"}'    true
+test_call "preverjanje z e-pošto"        order-lookup.php '{"order_id":"10002","verify":"test2@example.com"}' true
+test_call "TUJ telefon (mora zavrniti)"  order-lookup.php '{"order_id":"10001","verify":"031 876 543"}'     false
+test_call "brez preverjanja"             order-lookup.php '{"order_id":"10001"}'                            false
 test_call "neobstoječe naročilo"         order-lookup.php '{"order_id":"99999","verify":"041 234 567"}'     false
 echo
 
 echo "business-info"
 test_call "delovni čas"      business-info.php '{"info_type":"hours"}'            true
-test_call "območja dostave"  business-info.php '{"info_type":"delivery_regions"}' true
+test_call "roki in potek dela" business-info.php '{"info_type":"delivery"}'      true
 test_call "načini plačila"   business-info.php '{"info_type":"payments"}'         true
 test_call "neveljaven tip"   business-info.php '{"info_type":"skrivnosti"}'       false
 echo
 
 echo "submit-inquiry"
-test_call "polno povprasevanje"      submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111","product":"bukova drva","quantity":"3 kubike"}' true
-test_call "samo ime in telefon"      submit-inquiry.php '{"name":"Testni Test","phone":"+38641000111"}'                                          true
-test_call "manjka telefon"           submit-inquiry.php '{"name":"Testni Test"}'                                                                 false
-test_call "manjka ime"               submit-inquiry.php '{"phone":"041 000 111"}'                                                                false
-test_call "prekratka stevilka"       submit-inquiry.php '{"name":"Testni Test","phone":"041"}'                                                   false
-test_call "neveljavna e-posta"       submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111","email":"ni-email"}'                        false
+test_call "polno povprasevanje"      submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111","email":"test@example.com","product":"napredna spletna stran"}' true
+test_call "obvezni trije podatki"    submit-inquiry.php '{"name":"Testni Test","phone":"+38641000111","email":"test@example.com"}'                true
+test_call "manjka telefon"           submit-inquiry.php '{"name":"Testni Test","email":"test@example.com"}'                                       false
+test_call "manjka ime"               submit-inquiry.php '{"phone":"041 000 111","email":"test@example.com"}'                                      false
+test_call "manjka e-posta"           submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111"}'                                            false
+test_call "prekratka stevilka"       submit-inquiry.php '{"name":"Testni Test","phone":"041","email":"test@example.com"}'                         false
+test_call "neveljavna e-posta"       submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111","email":"ni-email"}'                         false
 echo
 
 echo "varnost"
@@ -109,6 +111,6 @@ echo
 echo "Primer polnega odgovora (product-lookup):"
 curl -s -X POST "$BASE_URL/tools/product-lookup.php" \
   -H "Content-Type: application/json" \
-  -d '{"query":"bukova drva","action":"get_price"}' | $PRETTY
+  -d '{"query":"spletna stran","action":"get_price"}' | $PRETTY
 
 [ "$FAILED" -eq 0 ]

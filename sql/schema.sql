@@ -1,16 +1,13 @@
 -- ============================================================
--- Testna baza za AI asistenta (izdelki, stranke, narocila, delovni cas)
+-- Baza za AI asistenta — Kreativni Splet
 -- ============================================================
 -- Uporaba v phpMyAdmin:
---   1. Levo izberi bazo (npr. asistent_test). Na shared hostingu
---      bazo ustvariš v cPanelu, ne tukaj.
+--   1. Levo izberi bazo. Na shared hostingu jo ustvaris v cPanelu, ne tukaj.
 --   2. Zavihek "SQL" -> prilepi to datoteko -> Izvedi.
---   3. Skripta je idempotentna: lahko jo poženeš večkrat.
+--   3. Skripta je idempotentna: lahko jo pozenes veckrat.
 --
--- Če imaš pravice za ustvarjanje baz (lokalni XAMPP), odkomentiraj:
--- CREATE DATABASE IF NOT EXISTS asistent_test
---   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
--- USE asistent_test;
+-- POZOR: skripta tabele najprej POBRISE. Ce so v bazi ze prava
+-- povprasevanja strank, jih prej izvozi.
 -- ============================================================
 
 SET NAMES utf8mb4;
@@ -25,15 +22,22 @@ DROP TABLE IF EXISTS inquiries;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ------------------------------------------------------------
--- products
+-- products — katalog storitev
+--
+-- price_per_unit sme biti NULL: pri storitvah, ki nimajo objavljene
+-- cene, asistent pove "cena po dogovoru" namesto da bi si jo izmislil.
+--
+-- price_from pomeni izhodiscno ceno ("od 399 EUR"). Brez te oznake bi
+-- asistent stranki povedal izhodiscno ceno kot koncno.
 -- ------------------------------------------------------------
 CREATE TABLE products (
   id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name            VARCHAR(160)   NOT NULL,
-  category        VARCHAR(40)    NOT NULL COMMENT 'drva | peleti | briketi',
-  unit            VARCHAR(20)    NOT NULL COMMENT 'kubik | vreča | paleta | tona | paket | zaboj',
-  price_per_unit  DECIMAL(10,2)  NOT NULL,
-  stock_quantity  DECIMAL(10,2)  NOT NULL DEFAULT 0,
+  category        VARCHAR(40)    NOT NULL COMMENT 'spletne-strani | trzenje | oblikovanje | vzdrzevanje',
+  unit            VARCHAR(20)    NOT NULL COMMENT 'paket | mesec | projekt | ura',
+  price_per_unit  DECIMAL(10,2)  NULL COMMENT 'NULL = cena po dogovoru',
+  price_from      TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '1 = izhodiscna cena, koncna je odvisna od obsega',
+  stock_quantity  DECIMAL(10,2)  NOT NULL DEFAULT 1 COMMENT 'pri storitvah 1 = na voljo, 0 = trenutno ne sprejemamo',
   description     VARCHAR(400)   NULL,
   active          TINYINT(1)     NOT NULL DEFAULT 1,
   PRIMARY KEY (id),
@@ -57,18 +61,17 @@ CREATE TABLE customers (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- orders
--- Ena vrstica = eno naročilo z enim izdelkom (MVP).
--- Tool vrne "items" kot polje z enim elementom, da se oblika
--- odgovora ne spremeni, če kasneje dodaš order_items tabelo.
+-- orders — projekti strank
+-- Ena vrstica = en projekt. Stranka prek asistenta preveri, kako
+-- napreduje, sele ko pove stevilko projekta IN svoj telefon/e-posto.
 -- ------------------------------------------------------------
 CREATE TABLE orders (
   id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
   customer_id    INT UNSIGNED NOT NULL,
   product_id     INT UNSIGNED NOT NULL,
-  quantity       DECIMAL(10,2) NOT NULL,
+  quantity       DECIMAL(10,2) NOT NULL DEFAULT 1,
   order_date     DATE          NOT NULL,
-  delivery_date  DATE          NULL COMMENT 'NULL dokler ni dogovorjen termin',
+  delivery_date  DATE          NULL COMMENT 'predviden zakljucek; NULL dokler ni dogovorjen',
   status         ENUM('pending','scheduled','delivered','cancelled') NOT NULL DEFAULT 'pending',
   note           VARCHAR(300)  NULL,
   PRIMARY KEY (id),
@@ -79,20 +82,17 @@ CREATE TABLE orders (
 ) ENGINE=InnoDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- inquiries
--- Povprasevanja, ki jih zbere asistent. Niso narocila: podjetje
--- stranko poklice nazaj, potrdi ceno in termin.
+-- inquiries — povprasevanja, ki jih zbere asistent
 --
--- POZOR: spodnji DROP to tabelo izprazni. Ce je na strezniku ze
--- kaj pravih povprasevanj, pred ponovnim zagonom skripte naredi
--- izvoz ali zakomentiraj vrstico "DROP TABLE IF EXISTS inquiries".
+-- ime, telefon IN e-posta so obvezni: brez e-poste podjetje ne more
+-- poslati ponudbe, brez telefona pa ne more poklicati nazaj.
 -- ------------------------------------------------------------
 CREATE TABLE inquiries (
   id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   created_at  DATETIME     NOT NULL,
   name        VARCHAR(120) NOT NULL,
   phone       VARCHAR(40)  NOT NULL,
-  email       VARCHAR(160) NULL,
+  email       VARCHAR(160) NOT NULL,
   product     VARCHAR(160) NULL,
   quantity    VARCHAR(60)  NULL,
   note        VARCHAR(500) NULL,
@@ -106,6 +106,10 @@ CREATE TABLE inquiries (
 -- ------------------------------------------------------------
 -- business_hours
 -- day_of_week: 1 = ponedeljek ... 7 = nedelja (ISO-8601)
+--
+-- POZOR: spodnje vrednosti so PRIVZETE, ne preverjene. Popravi jih na
+-- pravi delovni cas, preden asistent zazivi na strani — stranki jih
+-- bo povedal kot dejstvo.
 -- ------------------------------------------------------------
 CREATE TABLE business_hours (
   day_of_week  TINYINT UNSIGNED NOT NULL,
@@ -116,58 +120,45 @@ CREATE TABLE business_hours (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
--- TESTNI PODATKI
+-- KATALOG STORITEV
+-- Cene so povzete po kreativnisplet.si. Kjer cena ni objavljena,
+-- je NULL — asistent v tem primeru pove "cena po dogovoru".
 -- ============================================================
 
-INSERT INTO products (id, name, category, unit, price_per_unit, stock_quantity, description) VALUES
-(1,  'Bukova drva, suha, 25 cm',              'drva',    'kubik',  110.00,  24.00, 'Sušena bukev, vlaga pod 20 %. Primerna za kamine in peči na drva.'),
-(2,  'Bukova drva, suha, 33 cm',              'drva',    'kubik',  105.00,  18.00, 'Sušena bukev, standardna dolžina za centralne peči.'),
-(3,  'Bukova drva, suha, 50 cm',              'drva',    'kubik',   98.00,  12.00, 'Sušena bukev, polena 50 cm za večje kotle.'),
-(4,  'Bukova drva, sveža, 33 cm',             'drva',    'kubik',   78.00,  30.00, 'Sveže razžagana bukev. Priporočeno sušenje 12–18 mesecev.'),
-(5,  'Hrastova drva, suha, 25 cm',            'drva',    'kubik',  118.00,   9.00, 'Hrast, visoka kurilna vrednost, dolgo tli.'),
-(6,  'Gabrova drva, suha, 33 cm',             'drva',    'kubik',  115.00,   6.00, 'Gaber, najvišja kurilna vrednost med domačimi vrstami.'),
-(7,  'Mešana trda drva, suha, 33 cm',         'drva',    'kubik',   92.00,  20.00, 'Mešanica bukve, gabra in hrasta. Najbolj ugodna izbira.'),
-(8,  'Mešana drva, 25 cm, paleta 1,8 m3',     'drva',    'paleta', 185.00,   8.00, 'Zložena paleta 1,8 kubika, ovita in pripravljena za viličar.'),
-(9,  'Brezova drva, suha, 25 cm',             'drva',    'kubik',  108.00,   5.00, 'Breza, prijeten vonj, primerna za odprte kamine.'),
-(10, 'Smrekova drva, suha, 33 cm',            'drva',    'kubik',   68.00,  15.00, 'Mehak les, hitro zagori. Primerno za podkurjanje.'),
-(11, 'Bukova drva v vreči, 25 cm, 30 l',      'drva',    'vreča',    6.50, 120.00, 'Vreča 30 litrov, priročno za manjše količine.'),
-(12, 'Kaminska drva, bukev, 20 cm, zaboj',    'drva',    'zaboj',  125.00,   7.00, 'Zaboj 1 kubik, enakomerno cepljena polena 20 cm.'),
-(13, 'Peleti A1 smreka, vreča 15 kg',         'peleti',  'vreča',    5.90, 340.00, 'Certificirani ENplus A1, 100 % smreka, pepel pod 0,7 %.'),
-(14, 'Peleti A1 smreka, paleta 975 kg',       'peleti',  'paleta', 365.00,  14.00, 'Paleta 65 vreč po 15 kg. Najbolj prodajan izdelek.'),
-(15, 'Peleti A1 bukev, vreča 15 kg',          'peleti',  'vreča',    6.20, 180.00, 'Bukovi peleti, višja gostota, daljši čas gorenja.'),
-(16, 'Peleti A1 bukev, paleta 990 kg',        'peleti',  'paleta', 385.00,   6.00, 'Paleta 66 vreč po 15 kg, bukovi peleti ENplus A1.'),
-(17, 'Peleti A2, vreča 15 kg',                'peleti',  'vreča',    5.20,  95.00, 'Razred A2, nekoliko več pepela, ugodnejša cena.'),
-(18, 'Peleti razsuti (vpih), 1 tona',         'peleti',  'tona',   340.00,  25.00, 'Dostava s cisterno in vpih v zalogovnik. Minimalno 3 tone.'),
-(19, 'Lesni briketi bukev, paket 10 kg',      'briketi', 'paket',    4.80, 210.00, 'Stisnjeno bukovo žaganje brez veziv.'),
-(20, 'Lesni briketi, paleta 960 kg',          'briketi', 'paleta', 330.00,   9.00, 'Paleta 96 paketov po 10 kg.');
+INSERT INTO products (id, name, category, unit, price_per_unit, price_from, stock_quantity, description) VALUES
+(1,  'Enostavna spletna stran',              'spletne-strani', 'paket',   399.00, 1, 1, 'Enostranska predstavitvena stran ali stran z eno podstranjo. Vkljucuje osnovno SEO optimizacijo, kontaktni obrazec, SSL certifikat in prilagoditev mobilnim napravam. Izdelava priblizno dva tedna.'),
+(2,  'Napredna spletna stran',               'spletne-strani', 'paket',   899.00, 1, 1, 'Neomejeno stevilo podstrani, veckjezicnost, blog in Google Analytics 4. Primerno za podjetja, ki zelijo redno objavljati vsebine.'),
+(3,  'Spletna trgovina Shopify',             'spletne-strani', 'paket',  1100.00, 1, 1, 'Postavitev trgovine Shopify z urejanjem izdelkov, placilnimi sistemi, SEO za spletne trgovine in postavitvijo akcij.'),
+(4,  'Vzdrzevanje spletne strani',           'vzdrzevanje',    'mesec',    30.00, 1, 1, 'Od 30 do 120 EUR na mesec glede na obseg. Posodobitve, varnost, varnostne kopije in spremembe vsebine.'),
+(5,  'Meta oglasi (Facebook in Instagram)',  'trzenje',        'projekt',   NULL, 0, 1, 'Priprava in vodenje ciljanih oglasnih kampanj na Facebooku in Instagramu. Cena je odvisna od obsega in oglasnega proracuna.'),
+(6,  'SEO optimizacija',                     'trzenje',        'projekt',   NULL, 0, 1, 'Tehnicna in vsebinska optimizacija za iskalnike. Obseg dolocimo po pregledu obstojece strani.'),
+(7,  'Vodenje druzbenih omrezij',            'trzenje',        'mesec',     NULL, 0, 1, 'Strategija, priprava vsebin in vodenje profilov na TikToku, Facebooku in Instagramu.'),
+(8,  'Logotip in celostna graficna podoba',  'oblikovanje',    'projekt',   NULL, 0, 1, 'Oblikovanje logotipa in celostne graficne podobe znamke.'),
+(9,  'Fotografiranje',                       'oblikovanje',    'projekt',   NULL, 0, 1, 'Profesionalno fotografiranje izdelkov, prostorov in ekipe za uporabo na spletni strani in druzbenih omrezjih.'),
+(10, 'Video produkcija',                     'oblikovanje',    'projekt',   NULL, 0, 1, 'Snemanje in montaza video vsebin za splet in druzbena omrezja.');
+
+-- ============================================================
+-- TESTNI PODATKI
+-- Spodnje stranke in projekti so IZMISLJENI, namenjeni preizkusu
+-- poizvedbe po stanju projekta. Pred zagonom na pravi strani jih
+-- pobrisi ali zamenjaj s pravimi:
+--     DELETE FROM orders; DELETE FROM customers;
+-- ============================================================
 
 INSERT INTO customers (id, name, phone, email, address, created_date) VALUES
-(1, 'Janez Novak',            '+38641234567', 'janez.novak@gmail.com',   'Prvomajska ulica 12, 5000 Nova Gorica',          '2023-10-14'),
-(2, 'Marija Kos',             '+38631876543', 'marija.kos@siol.net',     'Vipavska cesta 45, 5270 Ajdovščina',             '2024-02-03'),
-(3, 'Gostilna Pri Lipi d.o.o.','+38653021122', 'info@prilipi.si',        'Trg Edvarda Kardelja 3, 5000 Nova Gorica',       '2022-06-21'),
-(4, 'Ana Furlan',             '+38640111222', 'ana.furlan@gmail.com',    'Ulica Gradnikove brigade 7, 5000 Nova Gorica',   '2026-08-29'),
-(5, 'Peter Vodopivec',        '+38651998877', 'p.vodopivec@outlook.com', 'Solkanska cesta 18, 5250 Solkan',                '2026-09-02');
+(1, 'Testna stranka Ena',  '+38641234567', 'test1@example.com', 'Testni naslov 1', '2026-05-04'),
+(2, 'Testna stranka Dve',  '+38631876543', 'test2@example.com', 'Testni naslov 2', '2026-07-18');
 
--- Današnji datum ob pripravi podatkov: 2026-09-11
 INSERT INTO orders (id, customer_id, product_id, quantity, order_date, delivery_date, status, note) VALUES
-(10001, 1, 1,  6.00, '2026-06-12', '2026-06-20', 'delivered', 'Dostava na dvorišče, stranka je bila doma.'),
-(10002, 1, 14, 2.00, '2026-07-30', '2026-08-05', 'delivered', 'Dve paleti peletov, razloženo pod nadstrešek.'),
-(10003, 2, 7,  4.00, '2026-05-18', '2026-05-27', 'delivered', NULL),
-(10004, 3, 18, 5.00, '2026-08-01', '2026-08-08', 'delivered', 'Vpih v zalogovnik, gostilna Pri Lipi.'),
-(10005, 1, 2,  8.00, '2026-09-02', '2026-09-18', 'scheduled', 'Dostava dopoldne, stranka želi klic pol ure prej.'),
-(10006, 2, 13, 40.00,'2026-09-05', '2026-09-15', 'scheduled', '40 vreč peletov, dostava do garaže.'),
-(10007, 3, 16, 3.00, '2026-09-07', '2026-09-22', 'scheduled', 'Tri palete bukovih peletov za sezono.'),
-(10008, 5, 8,  1.00, '2026-09-08', '2026-09-16', 'scheduled', 'Prva dostava, dovoz je ozek — manjši kamion.'),
-(10009, 4, 11, 10.00,'2026-09-09', NULL,         'pending',   'Čaka potrditev termina.'),
-(10010, 2, 19, 20.00,'2026-09-10', NULL,         'pending',   'Stranka se še odloča med briketi in peleti.'),
-(10011, 5, 5,  3.00, '2026-09-10', NULL,         'pending',   'Hrastova drva — preveriti zalogo pred potrditvijo.'),
-(10012, 4, 13, 15.00,'2026-08-20', '2026-08-26', 'cancelled', 'Stranka je preklicala, kupila drugje.');
+(10001, 1, 2, 1, '2026-08-10', '2026-09-20', 'scheduled', 'Napredna stran, ceka se gradivo stranke.'),
+(10002, 2, 3, 1, '2026-08-28', NULL,         'pending',   'Shopify trgovina, termin se ni dogovorjen.'),
+(10003, 1, 4, 1, '2026-06-01', '2026-06-05', 'delivered', 'Mesecno vzdrzevanje, aktivno.');
 
 INSERT INTO business_hours (day_of_week, opens_at, closes_at, closed) VALUES
-(1, '08:00:00', '18:00:00', 0),
-(2, '08:00:00', '18:00:00', 0),
-(3, '08:00:00', '18:00:00', 0),
-(4, '08:00:00', '18:00:00', 0),
-(5, '08:00:00', '18:00:00', 0),
-(6, '08:00:00', '14:00:00', 0),
+(1, '09:00:00', '17:00:00', 0),
+(2, '09:00:00', '17:00:00', 0),
+(3, '09:00:00', '17:00:00', 0),
+(4, '09:00:00', '17:00:00', 0),
+(5, '09:00:00', '17:00:00', 0),
+(6, NULL,       NULL,       1),
 (7, NULL,       NULL,       1);

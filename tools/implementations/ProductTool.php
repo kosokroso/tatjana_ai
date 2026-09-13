@@ -8,7 +8,7 @@
 final class ProductTool extends Tool
 {
     private const ACTIONS    = ['search', 'get_price', 'check_stock'];
-    private const CATEGORIES = ['drva', 'peleti', 'briketi'];
+    private const CATEGORIES = ['spletne-strani', 'trzenje', 'oblikovanje', 'vzdrzevanje'];
 
     public function name(): string
     {
@@ -54,30 +54,54 @@ final class ProductTool extends Tool
      */
     private function formatProduct(array $product): array
     {
-        return [
+        $item = [
             'name'          => $product['name'],
             'unit'          => $product['unit'],
-            'price'         => round($product['price_per_unit'], 2),
-            'price_display' => $this->formatPrice($product['price_per_unit']) . ' za ' . $this->unitPhrase($product['unit']),
-            'availability'  => $product['stock_quantity'] > 0 ? 'na zalogi' : 'trenutno ni na zalogi',
+            'price'         => $product['price_per_unit'],
+            'price_display' => $this->priceDisplay($product),
+            'available'     => $product['stock_quantity'] > 0,
         ];
+
+        if (!empty($product['description'])) {
+            $item['description'] = $product['description'];
+        }
+
+        return $item;
     }
 
-    private function formatPrice(float $price): string
+    /**
+     * Pripravljen niz, ki ga asistent samo prebere.
+     *
+     * Dve stvari, ki ju model ne sme narediti sam: izhodiščne cene predstaviti
+     * kot končno ("399 €" namesto "od 399 €") in manjkajočo ceno nadomestiti
+     * z ugibanjem. Oboje se tu odloči enkrat in pravilno.
+     */
+    private function priceDisplay(array $product): string
     {
-        // Slovenski zapis: decimalna vejica, presledek pred valuto.
-        return number_format($price, 2, ',', '.') . ' €';
+        if ($product['price_per_unit'] === null) {
+            return 'cena po dogovoru';
+        }
+
+        $price = number_format((float) $product['price_per_unit'], 2, ',', '.') . ' €';
+
+        if (!empty($product['price_from'])) {
+            return 'od ' . $price . ' za ' . $this->unitPhrase($product['unit']);
+        }
+
+        return $price . ' za ' . $this->unitPhrase($product['unit']);
     }
 
     private function unitPhrase(string $unit): string
     {
         $phrases = [
-            'kubik'  => 'kubični meter',
-            'vreča'  => 'vrečo',
-            'paleta' => 'paleto',
-            'tona'   => 'tono',
-            'paket'  => 'paket',
-            'zaboj'  => 'zaboj',
+            'paket'   => 'paket',
+            'mesec'   => 'mesec',
+            'projekt' => 'projekt',
+            'ura'     => 'uro',
+            'kubik'   => 'kubični meter',
+            'vreča'   => 'vrečo',
+            'paleta'  => 'paleto',
+            'tona'    => 'tono',
         ];
         return $phrases[$unit] ?? $unit;
     }

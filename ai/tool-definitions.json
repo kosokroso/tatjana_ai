@@ -3,23 +3,23 @@
     "type": "function",
     "function": {
       "name": "search_products",
-      "description": "Poišče izdelke v katalogu po imenu, vrsti lesa ali kategoriji. Vrne ceno, enoto mere in razpoložljivost. Uporabi vedno, kadar stranka sprašuje o ceni, ponudbi ali zalogi — nikoli ne navajaj cen po spominu.",
+      "description": "Poišče storitve v ponudbi po imenu ali področju. Vrne ceno, enoto in opis, kaj storitev vključuje. Uporabi vedno, kadar stranka sprašuje o ponudbi, ceni ali o tem, kaj je v paketu — nikoli ne navajaj cen ali vsebine paketov po spominu.",
       "parameters": {
         "type": "object",
         "properties": {
           "query": {
             "type": "string",
-            "description": "Kaj stranka išče, z besedami stranke: 'bukova drva', 'peleti v vrečah', 'hrast 25 cm', 'briketi'."
+            "description": "Kaj stranka išče, z besedami stranke: 'spletna stran', 'trgovina', 'oglasi na Facebooku', 'logotip', 'vzdrževanje'."
           },
           "action": {
             "type": "string",
             "enum": ["search", "get_price", "check_stock"],
-            "description": "search = splošna ponudba, get_price = zanima jo cena, check_stock = zanima jo razpoložljivost."
+            "description": "search = splošna ponudba, get_price = zanima jo cena, check_stock = zanima jo, ali storitev sploh opravljate."
           },
           "category": {
             "type": "string",
-            "enum": ["drva", "peleti", "briketi"],
-            "description": "Neobvezno zožanje na kategorijo, kadar je iz pogovora jasna."
+            "enum": ["spletne-strani", "trzenje", "oblikovanje", "vzdrzevanje"],
+            "description": "Neobvezno zožanje na področje, kadar je iz pogovora jasno."
           }
         },
         "required": ["query"]
@@ -30,17 +30,17 @@
     "type": "function",
     "function": {
       "name": "lookup_order",
-      "description": "Pogleda stanje naročila in termin dostave. Zahteva DVA podatka: številko naročila in telefonsko številko ali e-pošto, s katero je bilo naročilo oddano. Brez obojega klic ne bo uspel — če stranka pove samo številko naročila, jo najprej vprašaj za telefonsko številko.",
+      "description": "Pogleda stanje projekta obstoječe stranke. Zahteva DVA podatka: številko projekta in telefonsko številko ali e-pošto, s katero je bil projekt naročen. Brez obojega klic ne bo uspel — če stranka pove samo številko, jo najprej vprašaj za telefonsko številko.",
       "parameters": {
         "type": "object",
         "properties": {
           "order_id": {
             "type": "string",
-            "description": "Številka naročila, npr. '10005'."
+            "description": "Številka projekta, npr. '10001'."
           },
           "verify": {
             "type": "string",
-            "description": "Telefonska številka ali e-pošta stranke, s katero je bilo naročilo oddano. Služi preverjanju, da podatkov ne dobi napačna oseba."
+            "description": "Telefonska številka ali e-pošta stranke, s katero je bil projekt naročen. Služi preverjanju, da podatkov ne dobi napačna oseba."
           }
         },
         "required": ["order_id", "verify"]
@@ -51,36 +51,36 @@
     "type": "function",
     "function": {
       "name": "submit_inquiry",
-      "description": "Odda povpraševanje stranke, da jo podjetje pokliče nazaj. Uporabi šele, ko imaš ime in telefonsko številko stranke in ko je stranka povedala, da želi ponudbo ali klic. Povpraševanje ni naročilo — podjetje ceno in termin potrdi ob klicu.",
+      "description": "Odda povpraševanje, da podjetje stranki pripravi ponudbo. Uporabi šele, ko imaš VSE TRI podatke — ime, telefonsko številko in e-pošto — in ko je stranka potrdila, da naj povpraševanje oddaš. Povpraševanje ni naročilo in ni potrjena cena.",
       "parameters": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string",
-            "description": "Ime in priimek stranke, kot ga je povedala."
+            "description": "Ime in priimek stranke ali naziv podjetja, kot ga je povedala."
           },
           "phone": {
             "type": "string",
-            "description": "Telefonska številka stranke za povratni klic. Obvezna."
+            "description": "Telefonska številka za povratni klic. Obvezna."
           },
           "email": {
             "type": "string",
-            "description": "E-pošta stranke, če jo je povedala. Neobvezno."
+            "description": "E-poštni naslov, na katerega podjetje pošlje ponudbo. Obvezen."
           },
           "product": {
             "type": "string",
-            "description": "Kaj stranka želi, z njenimi besedami: 'bukova drva 33 cm', 'peleti A1 paleta'."
+            "description": "Kaj stranka potrebuje, z njenimi besedami: 'napredna spletna stran', 'Shopify trgovina', 'vodenje Instagrama'."
           },
           "quantity": {
             "type": "string",
-            "description": "Količina, kot jo je povedala stranka: '3 kubike', '2 paleti', '40 vreč'."
+            "description": "Obseg, če ga je stranka navedla: 'stran s petimi podstranmi', 'tri mesece vodenja'."
           },
           "note": {
             "type": "string",
-            "description": "Karkoli drugega, kar je za dostavo pomembno: ozek dovoz, želeni teden, nadstropje."
+            "description": "Karkoli drugega, kar je za ponudbo pomembno: rok, obstoječa stran, panoga, proračun."
           }
         },
-        "required": ["name", "phone"]
+        "required": ["name", "phone", "email"]
       }
     }
   },
@@ -88,14 +88,14 @@
     "type": "function",
     "function": {
       "name": "get_business_info",
-      "description": "Vrne podatke o poslovanju: delovni čas (vključno s tem, ali je odprto prav zdaj), območja in cene dostave ter načine plačila.",
+      "description": "Pridobi podatke o poslovanju: delovni čas (vključno s tem, ali je odprto prav zdaj), roke izdelave in način dela ter pogoje plačila.",
       "parameters": {
         "type": "object",
         "properties": {
           "info_type": {
             "type": "string",
-            "enum": ["hours", "delivery_regions", "payments"],
-            "description": "hours = delovni čas, delivery_regions = kam dostavljamo in po kakšni ceni, payments = načini plačila."
+            "enum": ["hours", "delivery", "payments"],
+            "description": "hours = delovni čas, delivery = roki izdelave in način dela, payments = pogoji plačila."
           }
         },
         "required": ["info_type"]
