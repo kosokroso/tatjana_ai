@@ -9,6 +9,38 @@
 Če katera od razširitev manjka, to vidiš v cPanelu pod "Select PHP Version" →
 "Extensions". Brez cURL chat ne dela, brez PDO MySQL ne dela nič.
 
+## Ločena baza ali baza spletne strani?
+
+Koda deluje v obeh postavitvah — odloča `DB_NAME` in `DB_PREFIX` v `config.php`.
+
+**Skupna baza s spletno stranjo** (trenutna izbira). Manj vnosov v cPanelu, in ko
+bo asistent kdaj moral brati prave podatke strani, so na dosegu. Tabele nosijo
+predpono `ai_`, da se ne pomešajo z `wp_`.
+
+Kaj to pomeni v praksi:
+
+- WordPressova jedrna posodobitev tujih tabel **ne briše** — upravlja samo svoje.
+  Tudi vtičnik ob odstranitvi pobriše samo tabele, ki jih ima zapisane v kodi.
+- Nevarna sta dva primera: vtičniki za "čiščenje baze", ki neznane tabele prikažejo
+  kot osirotele in ponudijo brisanje, ter obnovitev starejše varnostne kopije ali
+  selitev celotne baze.
+- Zato je **redna varnostna kopija teh tabel edina prava zaščita**. V bazi, kjer ima
+  WordPressov uporabnik vse pravice, tabel ni mogoče narediti neizbrisljivih.
+
+Cron v cPanelu, dnevno:
+
+```
+mysqldump -u UPORABNIK -pGESLO BAZA ai_products ai_customers ai_orders ai_business_hours ai_inquiries > ~/backups/asistent-$(date +\%F).sql
+```
+
+Mapa `~/backups` mora biti **zunaj** `public_html`, sicer je izvoz baze dosegljiv
+prek brskalnika.
+
+**Ločena baza.** Napaka v asistentu ne more poškodovati spletne strani, uhajanje
+`config.php` ne izda poverilnic strani, kopiji se obnavljata neodvisno. Ceno plačaš
+z enim dodatnim vnosom v cPanelu. Preklopiš tako, da v `config.php` vpišeš drugo
+bazo in `DB_PREFIX` pustiš prazen.
+
 ## 1. Baza
 
 1. V cPanelu ustvari bazo (npr. `asistent_test`) in uporabnika z vsemi pravicami nanjo.

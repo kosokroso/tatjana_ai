@@ -13,11 +13,11 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS orders;
-DROP TABLE IF EXISTS products;
-DROP TABLE IF EXISTS customers;
-DROP TABLE IF EXISTS business_hours;
-DROP TABLE IF EXISTS inquiries;
+DROP TABLE IF EXISTS ai_orders;
+DROP TABLE IF EXISTS ai_products;
+DROP TABLE IF EXISTS ai_customers;
+DROP TABLE IF EXISTS ai_business_hours;
+DROP TABLE IF EXISTS ai_inquiries;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -30,7 +30,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- price_from pomeni izhodiscno ceno ("od 399 EUR"). Brez te oznake bi
 -- asistent stranki povedal izhodiscno ceno kot koncno.
 -- ------------------------------------------------------------
-CREATE TABLE products (
+CREATE TABLE ai_products (
   id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name            VARCHAR(160)   NOT NULL,
   category        VARCHAR(40)    NOT NULL COMMENT 'spletne-strani | trzenje | oblikovanje | vzdrzevanje',
@@ -48,7 +48,7 @@ CREATE TABLE products (
 -- ------------------------------------------------------------
 -- customers
 -- ------------------------------------------------------------
-CREATE TABLE customers (
+CREATE TABLE ai_customers (
   id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name          VARCHAR(160) NOT NULL,
   phone         VARCHAR(40)  NOT NULL COMMENT 'E.164 zapis: +38641234567',
@@ -65,7 +65,7 @@ CREATE TABLE customers (
 -- Ena vrstica = en projekt. Stranka prek asistenta preveri, kako
 -- napreduje, sele ko pove stevilko projekta IN svoj telefon/e-posto.
 -- ------------------------------------------------------------
-CREATE TABLE orders (
+CREATE TABLE ai_orders (
   id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
   customer_id    INT UNSIGNED NOT NULL,
   product_id     INT UNSIGNED NOT NULL,
@@ -77,8 +77,8 @@ CREATE TABLE orders (
   PRIMARY KEY (id),
   KEY idx_orders_customer (customer_id),
   KEY idx_orders_status (status),
-  CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES customers(id),
-  CONSTRAINT fk_orders_product  FOREIGN KEY (product_id)  REFERENCES products(id)
+  CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES ai_customers(id),
+  CONSTRAINT fk_orders_product  FOREIGN KEY (product_id)  REFERENCES ai_products(id)
 ) ENGINE=InnoDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
@@ -87,7 +87,7 @@ CREATE TABLE orders (
 -- ime, telefon IN e-posta so obvezni: brez e-poste podjetje ne more
 -- poslati ponudbe, brez telefona pa ne more poklicati nazaj.
 -- ------------------------------------------------------------
-CREATE TABLE inquiries (
+CREATE TABLE ai_inquiries (
   id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   created_at  DATETIME     NOT NULL,
   name        VARCHAR(120) NOT NULL,
@@ -111,7 +111,7 @@ CREATE TABLE inquiries (
 -- pravi delovni cas, preden asistent zazivi na strani — stranki jih
 -- bo povedal kot dejstvo.
 -- ------------------------------------------------------------
-CREATE TABLE business_hours (
+CREATE TABLE ai_business_hours (
   day_of_week  TINYINT UNSIGNED NOT NULL,
   opens_at     TIME         NULL,
   closes_at    TIME         NULL,
@@ -125,7 +125,7 @@ CREATE TABLE business_hours (
 -- je NULL — asistent v tem primeru pove "cena po dogovoru".
 -- ============================================================
 
-INSERT INTO products (id, name, category, unit, price_per_unit, price_from, stock_quantity, description) VALUES
+INSERT INTO ai_products (id, name, category, unit, price_per_unit, price_from, stock_quantity, description) VALUES
 (1,  'Enostavna spletna stran',              'spletne-strani', 'paket',   399.00, 1, 1, 'Enostranska predstavitvena stran ali stran z eno podstranjo. Vkljucuje osnovno SEO optimizacijo, kontaktni obrazec, SSL certifikat in prilagoditev mobilnim napravam. Izdelava priblizno dva tedna.'),
 (2,  'Napredna spletna stran',               'spletne-strani', 'paket',   899.00, 1, 1, 'Neomejeno stevilo podstrani, veckjezicnost, blog in Google Analytics 4. Primerno za podjetja, ki zelijo redno objavljati vsebine.'),
 (3,  'Spletna trgovina Shopify',             'spletne-strani', 'paket',  1100.00, 1, 1, 'Postavitev trgovine Shopify z urejanjem izdelkov, placilnimi sistemi, SEO za spletne trgovine in postavitvijo akcij.'),
@@ -142,19 +142,19 @@ INSERT INTO products (id, name, category, unit, price_per_unit, price_from, stoc
 -- Spodnje stranke in projekti so IZMISLJENI, namenjeni preizkusu
 -- poizvedbe po stanju projekta. Pred zagonom na pravi strani jih
 -- pobrisi ali zamenjaj s pravimi:
---     DELETE FROM orders; DELETE FROM customers;
+--     DELETE FROM ai_orders; DELETE FROM ai_customers;
 -- ============================================================
 
-INSERT INTO customers (id, name, phone, email, address, created_date) VALUES
+INSERT INTO ai_customers (id, name, phone, email, address, created_date) VALUES
 (1, 'Testna stranka Ena',  '+38641234567', 'test1@example.com', 'Testni naslov 1', '2026-05-04'),
 (2, 'Testna stranka Dve',  '+38631876543', 'test2@example.com', 'Testni naslov 2', '2026-07-18');
 
-INSERT INTO orders (id, customer_id, product_id, quantity, order_date, delivery_date, status, note) VALUES
+INSERT INTO ai_orders (id, customer_id, product_id, quantity, order_date, delivery_date, status, note) VALUES
 (10001, 1, 2, 1, '2026-08-10', '2026-09-20', 'scheduled', 'Napredna stran, ceka se gradivo stranke.'),
 (10002, 2, 3, 1, '2026-08-28', NULL,         'pending',   'Shopify trgovina, termin se ni dogovorjen.'),
 (10003, 1, 4, 1, '2026-06-01', '2026-06-05', 'delivered', 'Mesecno vzdrzevanje, aktivno.');
 
-INSERT INTO business_hours (day_of_week, opens_at, closes_at, closed) VALUES
+INSERT INTO ai_business_hours (day_of_week, opens_at, closes_at, closed) VALUES
 (1, '09:00:00', '17:00:00', 0),
 (2, '09:00:00', '17:00:00', 0),
 (3, '09:00:00', '17:00:00', 0),

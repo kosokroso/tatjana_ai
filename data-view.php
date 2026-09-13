@@ -46,6 +46,12 @@ function fetchTable(PDO $pdo, string $sql): array
 $tables = [];
 $connectionError = null;
 
+// Ista predpona kot v adapterju. Preverjena, ker se ime tabele zlepi v SQL.
+$prefix = defined('DB_PREFIX') ? (string) DB_PREFIX : '';
+if ($prefix !== '' && !preg_match('/^[A-Za-z0-9_]{1,32}$/', $prefix)) {
+    exit('Neveljaven DB_PREFIX.');
+}
+
 if ($authorised) {
     try {
         $pdo = new PDO(
@@ -57,25 +63,25 @@ if ($authorised) {
 
         $tables['Povpraševanja'] = fetchTable($pdo,
             'SELECT id, created_at, name, phone, email, product, quantity, note, source, status
-             FROM inquiries ORDER BY id DESC');
+             FROM ' . $prefix . 'inquiries ORDER BY id DESC');
 
         $tables['Naročila'] = fetchTable($pdo,
             'SELECT o.id, c.name AS stranka, p.name AS izdelek, o.quantity AS kolicina,
                     o.order_date, o.delivery_date, o.status, o.note
-             FROM orders o
-             JOIN customers c ON c.id = o.customer_id
-             JOIN products  p ON p.id = o.product_id
+             FROM ' . $prefix . 'orders o
+             JOIN ' . $prefix . 'customers c ON c.id = o.customer_id
+             JOIN ' . $prefix . 'products  p ON p.id = o.product_id
              ORDER BY o.id');
 
         $tables['Izdelki'] = fetchTable($pdo,
             'SELECT id, name, category, unit, price_per_unit, stock_quantity, active, description
-             FROM products ORDER BY category, name');
+             FROM ' . $prefix . 'products ORDER BY category, name');
 
         $tables['Stranke'] = fetchTable($pdo,
-            'SELECT id, name, phone, email, address, created_date FROM customers ORDER BY id');
+            'SELECT id, name, phone, email, address, created_date FROM ' . $prefix . 'customers ORDER BY id');
 
         $tables['Delovni čas'] = fetchTable($pdo,
-            'SELECT day_of_week, opens_at, closes_at, closed FROM business_hours ORDER BY day_of_week');
+            'SELECT day_of_week, opens_at, closes_at, closed FROM ' . $prefix . 'business_hours ORDER BY day_of_week');
     } catch (PDOException $e) {
         error_log('data-view.php: ' . $e->getMessage());
         $connectionError = 'Povezava s podatkovno bazo ni uspela.';

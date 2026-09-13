@@ -50,6 +50,7 @@ final class ToolRegistry
             'user'    => DB_USER,
             'pass'    => DB_PASS,
             'charset' => defined('DB_CHARSET') ? DB_CHARSET : 'utf8mb4',
+            'prefix'  => defined('DB_PREFIX')  ? DB_PREFIX  : '',
         ]);
 
         $logger = new Logger(

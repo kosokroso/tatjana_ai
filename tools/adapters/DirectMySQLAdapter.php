@@ -11,13 +11,30 @@ final class DirectMySQLAdapter implements AdapterInterface
     private $pdo = null;
     /** @var array */
     private $config;
+    /** @var string */
+    private $prefix;
 
     /**
-     * @param array $config host, name, user, pass, charset
+     * @param array $config host, name, user, pass, charset, prefix
      */
     public function __construct(array $config)
     {
         $this->config = $config;
+
+        // Imena tabel ne morejo skozi pripravljen stavek, zato se predpona
+        // zlepi v SQL. Iz konfiguracije sicer ne pride uporabnikov vnos, a
+        // znak zunaj tega nabora bi vseeno pomenil zlomljen ali vrinjen SQL.
+        $prefix = (string) ($config['prefix'] ?? '');
+        if ($prefix !== '' && !preg_match('/^[A-Za-z0-9_]{1,32}$/', $prefix)) {
+            throw new AdapterException('DB_PREFIX sme vsebovati samo črke, številke in podčrtaj.');
+        }
+        $this->prefix = $prefix;
+    }
+
+    /** Ime tabele s predpono, npr. "products" -> "ai_products". */
+    private function table(string $name): string
+    {
+        return $this->prefix . $name;
     }
 
     private function pdo(): PDO
@@ -94,7 +111,7 @@ final class DirectMySQLAdapter implements AdapterInterface
 
         // Storitve brez objavljene cene (NULL) naj pridejo na konec, ne na zacetek.
         $sql = 'SELECT id, name, category, unit, price_per_unit, price_from, stock_quantity, description
-                FROM products
+                FROM ' . $this->table('products') . '
                 WHERE ' . implode(' AND ', $where) . '
                 ORDER BY (stock_quantity > 0) DESC, (price_per_unit IS NULL) ASC, price_per_unit ASC
                 LIMIT ' . (int) $limit;
@@ -114,7 +131,7 @@ final class DirectMySQLAdapter implements AdapterInterface
         try {
             $stmt = $this->pdo()->prepare(
                 'SELECT id, name, category, unit, price_per_unit, price_from, stock_quantity, description
-                 FROM products WHERE id = :id AND active = 1'
+                 FROM ' . $this->table('products') . ' WHERE id = :id AND active = 1'
             );
             $stmt->execute([':id' => $id]);
             $row = $stmt->fetch();
@@ -134,9 +151,9 @@ final class DirectMySQLAdapter implements AdapterInterface
                         p.name AS product_name, p.unit AS product_unit, p.price_per_unit,
                         c.id AS customer_id, c.name AS customer_name,
                         c.phone AS customer_phone, c.email AS customer_email
-                 FROM orders o
-                 JOIN products  p ON p.id = o.product_id
-                 JOIN customers c ON c.id = o.customer_id
+                 FROM ' . $this->table('orders') . ' o
+                 JOIN ' . $this->table('products') . '  p ON p.id = o.product_id
+                 JOIN ' . $this->table('customers') . ' c ON c.id = o.customer_id
                  WHERE o.id = :id'
             );
             $stmt->execute([':id' => $orderId]);
@@ -171,7 +188,7 @@ final class DirectMySQLAdapter implements AdapterInterface
     {
         try {
             $stmt = $this->pdo()->query(
-                'SELECT day_of_week, opens_at, closes_at, closed FROM business_hours ORDER BY day_of_week'
+                'SELECT day_of_week, opens_at, closes_at, closed FROM ' . $this->table('business_hours') . ' ORDER BY day_of_week'
             );
             $rows = $stmt->fetchAll();
         } catch (PDOException $e) {
@@ -197,7 +214,7 @@ final class DirectMySQLAdapter implements AdapterInterface
     {
         try {
             $stmt = $this->pdo()->prepare(
-                'INSERT INTO inquiries (name, phone, email, product, quantity, note, source, status, created_at)
+                'INSERT INTO ' . $this->table('inquiries') . ' (name, phone, email, product, quantity, note, source, status, created_at)
                  VALUES (:name, :phone, :email, :product, :quantity, :note, :source, \'new\', NOW())'
             );
             $stmt->execute([

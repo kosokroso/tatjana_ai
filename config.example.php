@@ -22,6 +22,12 @@ define('DB_NAME', 'asistent_test');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
+// Predpona tabel asistenta. Kadar asistent deli bazo s spletno stranjo,
+// locuje njegove tabele od WordPressovih (ai_inquiries proti wp_posts) in
+// naredi ocitno, cigave so - pomembno, ker vticniki za ciscenje baze neznane
+// tabele ponudijo v brisanje.
+define('DB_PREFIX', 'ai_');
+
 
 // ---------------------------------------------------------------
 // Adapter — določa, od kod tooli berejo podatke.
