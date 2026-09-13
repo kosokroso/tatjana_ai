@@ -28,14 +28,24 @@
 
   var ENDPOINT = script.src.replace(/widget\.js(\?.*)?$/, 'ai/chat.php');
   var IME = script.getAttribute('data-ime') || 'Tatjana';
-  var UVOD = script.getAttribute('data-uvod')
-    || 'Pozdravljeni. Vprašajte me o ponudbi, cenah ali rokih izdelave.';
+
+  // Uvod naredi tri stvari: predstavi ponudbo, povabi k opisu projekta in
+  // pove, kam pogovor pelje. Brez tretjega dela obiskovalec vpraša ceno,
+  // dobi odgovor in odide, ne da bi pustil kontakt.
+  var UVOD = script.getAttribute('data-uvod') ||
+    'Pozdravljeni, sem ' + IME + ', asistentka Kreativnega Spleta.\n\n' +
+    'Izdelujemo predstavitvene spletne strani in trgovine Shopify, vodimo oglase na Facebooku ' +
+    'in Instagramu, skrbimo za SEO in družbena omrežja ter oblikujemo logotipe, fotografiramo ' +
+    'in snemamo video.\n\n' +
+    'Povejte mi, kaj potrebujete — na kratko opišite projekt in kaj vam je pomembno. ' +
+    'Odgovorim na vprašanja o ceni in rokih, nato pa zabeležim povpraševanje in kolegi vam ' +
+    'pošljejo ponudbo po e-pošti.';
 
   var VZORCI = [
-    'Koliko stane spletna stran?',
-    'Kaj vključuje napredni paket?',
-    'Kako dolgo traja izdelava?',
-    'Delate tudi spletne trgovine?'
+    'Rabim novo spletno stran',
+    'Zanima me spletna trgovina',
+    'Koliko stane SEO optimizacija?',
+    'Želim ponudbo'
   ];
 
   // Vsa pravila so pod .tsi- predpono, da se ne zaletijo s temo strani.
