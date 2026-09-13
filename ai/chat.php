@@ -51,14 +51,33 @@ if (defined('REQUIRE_HTTPS') && REQUIRE_HTTPS && !$isHttps) {
     respond(false, null, 'Zahtevana je povezava HTTPS.', 403);
 }
 
-// Vsak klic tu stane denar, zato je omejitev strožja kot pri toolih.
-$limiter = new RateLimiter(
-    LOG_DIR . '/ratelimit',
-    defined('CHAT_RATE_LIMIT_PER_MINUTE') ? CHAT_RATE_LIMIT_PER_MINUTE : 20
-);
-if (!$limiter->allow('chat:' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'))) {
+if (!originAllowed()) {
+    respond(false, null, 'Zahtevek ne prihaja z dovoljene strani.', 403);
+}
+
+// Vsak klic tu stane denar, zato so omejitve strožje kot pri toolih.
+// Minuta ustavi naval, dan pa nekoga, ki bi počasi in ves dan trošil kredit.
+// Skupna dnevna kapica je trda zgornja meja stroška, ne glede na to,
+// s koliko različnih naslovov klici prihajajo.
+$ip        = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+$stateDir  = LOG_DIR . '/ratelimit';
+$perMinute = defined('CHAT_RATE_LIMIT_PER_MINUTE') ? CHAT_RATE_LIMIT_PER_MINUTE : 20;
+$perDay    = defined('CHAT_RATE_LIMIT_PER_DAY')    ? CHAT_RATE_LIMIT_PER_DAY    : 100;
+$perDayAll = defined('CHAT_MAX_PER_DAY_TOTAL')     ? CHAT_MAX_PER_DAY_TOTAL     : 500;
+
+if (!(new RateLimiter($stateDir, $perMinute, 60))->allow('chat:' . $ip)) {
     header('Retry-After: 60');
     respond(false, null, 'Preveč sporočil zapored. Poskusite čez minuto.', 429);
+}
+
+if (!(new RateLimiter($stateDir, $perDay, 86400))->allow('chat-dan:' . $ip)) {
+    error_log('chat.php: dnevna omejitev dosezena za ' . $ip);
+    respond(false, null, 'Dnevna omejitev sporočil je dosežena. Pokličite nas prosim po telefonu.', 429);
+}
+
+if (!(new RateLimiter($stateDir, $perDayAll, 86400))->allow('chat-dan-skupaj')) {
+    error_log('chat.php: SKUPNA dnevna omejitev dosezena - preveri, ali gre za zlorabo');
+    respond(false, null, 'Klepet trenutno ni na voljo. Pokličite nas prosim po telefonu.', 429);
 }
 
 $requestId = bin2hex(random_bytes(6));
@@ -251,6 +270,51 @@ function fallbackReply(): string
     $phone = defined('BUSINESS_PHONE') ? BUSINESS_PHONE : '';
     return 'Oprostite, sistem mi trenutno ne odgovori. Pokličite nas prosim na ' . $phone
         . ' in vam takoj pomagamo.';
+}
+
+/**
+ * Ali zahtevek prihaja s strani, ki ji zaupamo?
+ *
+ * Dokler je CHAT_ALLOWED_ORIGINS prazen, preverjanja ni — to je razvojni način,
+ * v katerem endpoint lahko kliče kdorkoli (tudi curl pri testiranju).
+ * Ko vpišeš domeno stranke, vsi drugi izvori dobijo 403.
+ *
+ * Preverjanje ni nepremagljivo: glavo Origin je z orodji, kot je curl, mogoče
+ * poljubno nastaviti. Ustavi pa zlorabo iz brskalnika s tuje strani in naključno
+ * najdene skripte, ki bi trošile kredit. Trdo mejo stroška postavljata dnevni
+ * kapici, ne to.
+ */
+function originAllowed(): bool
+{
+    $allowed = defined('CHAT_ALLOWED_ORIGINS') ? CHAT_ALLOWED_ORIGINS : [];
+    if (!$allowed) {
+        return true;
+    }
+
+    $source = $_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? '';
+    if ($source === '') {
+        return false;
+    }
+
+    $host = parse_url($source, PHP_URL_HOST);
+    if (!is_string($host) || $host === '') {
+        return false;
+    }
+
+    // Stran, ki je na istem gostitelju kot endpoint, je vedno v redu —
+    // to je primer, ko klepet teče na domeni podjetja.
+    if (strcasecmp($host, (string) ($_SERVER['HTTP_HOST'] ?? '')) === 0) {
+        return true;
+    }
+
+    foreach ($allowed as $origin) {
+        $allowedHost = parse_url((string) $origin, PHP_URL_HOST) ?: $origin;
+        if (strcasecmp($host, (string) $allowedHost) === 0) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function applyCors(): void

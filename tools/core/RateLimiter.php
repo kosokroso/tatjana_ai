@@ -1,22 +1,26 @@
 <?php
 /**
- * Preprosta omejitev števila zahtevkov na IP na minuto.
+ * Preprosta omejitev števila zahtevkov v danem časovnem oknu.
  *
  * Datotečna izvedba, ker shared hosting običajno nima Redisa.
- * Velja samo za klice od zunaj — chat sloj kliče toole neposredno v PHP
- * in gre mimo te omejitve.
+ *
+ * Okno je nastavljivo, ker minuta in dan lovita različni zlorabi: minuta
+ * ustavi naval, dan pa nekoga, ki bi počasi, a ves dan trošil tuj OpenAI kredit.
  */
 final class RateLimiter
 {
     /** @var string */
     private $stateDir;
     /** @var int */
-    private $limitPerMinute;
+    private $limit;
+    /** @var int */
+    private $windowSeconds;
 
-    public function __construct(string $stateDir, int $limitPerMinute)
+    public function __construct(string $stateDir, int $limit, int $windowSeconds = 60)
     {
-        $this->stateDir       = rtrim($stateDir, '/\\');
-        $this->limitPerMinute = $limitPerMinute;
+        $this->stateDir      = rtrim($stateDir, '/\\');
+        $this->limit         = $limit;
+        $this->windowSeconds = max(1, $windowSeconds);
     }
 
     /**
@@ -24,7 +28,7 @@ final class RateLimiter
      */
     public function allow(string $identifier): bool
     {
-        if ($this->limitPerMinute <= 0) {
+        if ($this->limit <= 0) {
             return true;
         }
         if (!is_dir($this->stateDir) && !@mkdir($this->stateDir, 0750, true) && !is_dir($this->stateDir)) {
@@ -33,8 +37,11 @@ final class RateLimiter
             return true;
         }
 
-        $minute = (int) floor(time() / 60);
-        $file   = $this->stateDir . DIRECTORY_SEPARATOR . sha1($identifier) . '.cnt';
+        $minute = (int) floor(time() / $this->windowSeconds);
+        // Okno je del imena datoteke, sicer bi si minutni in dnevni števec
+        // za isti IP povozila stanje.
+        $file = $this->stateDir . DIRECTORY_SEPARATOR
+            . sha1($identifier) . '-' . $this->windowSeconds . '.cnt';
 
         $handle = @fopen($file, 'c+');
         if ($handle === false) {
@@ -54,7 +61,7 @@ final class RateLimiter
             }
 
             $count++;
-            $allowed = $count <= $this->limitPerMinute;
+            $allowed = $count <= $this->limit;
 
             ftruncate($handle, 0);
             rewind($handle);
@@ -73,7 +80,9 @@ final class RateLimiter
 
     private function purgeStale(): void
     {
-        $cutoff = time() - 3600;
+        // Dnevni števci morajo preživeti dlje od minutnih, sicer bi se
+        // omejitev sredi dneva ponastavila.
+        $cutoff = time() - max(3600, $this->windowSeconds * 2);
         foreach ((array) glob($this->stateDir . DIRECTORY_SEPARATOR . '*.cnt') as $file) {
             if (is_file($file) && filemtime($file) < $cutoff) {
                 @unlink($file);

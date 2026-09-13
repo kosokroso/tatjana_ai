@@ -54,6 +54,12 @@ define('RATE_LIMIT_PER_MINUTE', 60);
 
 // Chat endpoint je strožji, ker vsak klic stane pri OpenAI.
 define('CHAT_RATE_LIMIT_PER_MINUTE', 20);
+// Dnevna omejitev na IP in skupna dnevna kapica za chat.
+// Skupna kapica je trda zgornja meja stroška pri OpenAI: ko je dosezena,
+// klepet za ta dan neha odgovarjati, ne glede na to, od kod klici prihajajo.
+define('CHAT_RATE_LIMIT_PER_DAY', 100);
+define('CHAT_MAX_PER_DAY_TOTAL', 500);
+
 
 // ---------------------------------------------------------------
 // Skupna skrivnost za strežnik-na-strežnik klice (kasnejši glasovni sloj).

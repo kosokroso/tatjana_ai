@@ -52,11 +52,17 @@ vprašanja o ponudbi, cenah, naročilih in dostavi ter zbira povpraševanja.
 
 ### Nujno — preden gre stran pred pravo stranko
 
-- [ ] **Zaščititi `ai/chat.php`.** Zdaj ga lahko kdorkoli, ki najde URL, kliče in troši
-      tvoj OpenAI kredit. Omejitev 20 sporočil na IP na minuto ustavi grobo zlorabo,
-      ne pa nekoga, ki bi stran uporabljal ves dan.
-      Kratkoročno: cPanel → Password Protect Directories.
-      Pravilno: `CHAT_ALLOWED_ORIGINS` + vgradnja v stran stranke.
+- [x] **Omejiti strošek zlorabe `ai/chat.php`.** Dodani dnevna omejitev na IP
+      (`CHAT_RATE_LIMIT_PER_DAY`, privzeto 100) in skupna dnevna kapica
+      (`CHAT_MAX_PER_DAY_TOTAL`, privzeto 500). Skupna kapica je trda zgornja meja
+      dnevnega stroška ne glede na to, od kod klici prihajajo. Številki prilagodi
+      pričakovanemu prometu.
+- [x] **Preverjanje izvora.** Ko je `CHAT_ALLOWED_ORIGINS` prazen, preverjanja ni
+      (razvojni način). Ko vpišeš domeno stranke, vsi drugi izvori dobijo 403.
+- [ ] **Vpisati domeno stranke v `CHAT_ALLOWED_ORIGINS`**, ko bo klepet vgrajen v
+      njihovo stran. Dokler je polje prazno, lahko endpoint kliče kdorkoli.
+      Preverjanje izvora ni nepremagljivo (glavo `Origin` je s curl mogoče nastaviti) —
+      trdo mejo stroška postavljata dnevni kapici, ne to.
 - [ ] **Zamenjati razkrite skrivnosti.** OpenAI ključ, geslo baze in GitHub žeton so
       bili med razvojem prilepljeni v pogovor. Ustvari nove in stare prekliči.
 - [ ] **Odstraniti `data-view.php` in `chat-test.html`** s strežnika ali ju zaščititi.
