@@ -61,7 +61,14 @@ final class InquiryTool extends Tool
 
         $id = $this->adapter->createInquiry($inquiry);
 
-        $this->notifyBusiness($id, $inquiry);
+        // Povpraševanje je shranjeno; od tu naprej ne sme nič več pasti.
+        // Brez tega ovoja bi izklopljen mail() na strežniku podrl cel klic in
+        // stranka bi dobila napako, čeprav je njen zapis varno v bazi.
+        try {
+            $this->notifyBusiness($id, $inquiry);
+        } catch (Throwable $e) {
+            error_log("InquiryTool: obvestila za povprasevanje #{$id} ni bilo mogoce poslati: " . $e->getMessage());
+        }
 
         return ToolResponse::ok([
             'id'      => $id,
@@ -81,6 +88,12 @@ final class InquiryTool extends Tool
         $from = defined('INQUIRY_EMAIL_FROM') ? trim(INQUIRY_EMAIL_FROM) : '';
 
         if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        // Marsikateri shared hosting ima mail() med disabled_functions.
+        if (!function_exists('mail')) {
+            error_log('InquiryTool: funkcija mail() na tem strezniku ni na voljo');
             return;
         }
 

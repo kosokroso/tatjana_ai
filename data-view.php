@@ -180,6 +180,21 @@ if ($authorised) {
     Pred predajo stranki jo odstrani s strežnika.
   </div>
 
+  <h2>Strežnik</h2>
+  <p class="count">&nbsp;</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>postavka</th><th>vrednost</th></tr></thead>
+      <tbody>
+        <tr><td>PHP</td><td><?= h(PHP_VERSION) ?></td></tr>
+        <tr><td>mail()</td><td><?= function_exists('mail') ? 'na voljo' : 'NI na voljo — obvestila po e-pošti ne delujejo' ?></td></tr>
+        <tr><td>cURL</td><td><?= function_exists('curl_init') ? 'na voljo' : 'NI na voljo' ?></td></tr>
+        <tr><td>predpona tabel</td><td><?= h($prefix === '' ? '(brez)' : $prefix) ?></td></tr>
+        <tr><td>obvestila na</td><td><?= h(defined('INQUIRY_EMAIL_TO') && INQUIRY_EMAIL_TO !== '' ? INQUIRY_EMAIL_TO : '(izklopljeno)') ?></td></tr>
+      </tbody>
+    </table>
+  </div>
+
   <?php foreach ($tables as $title => [$rows, $error]): ?>
     <h2><?= h($title) ?></h2>
     <?php if ($error !== null): ?>
