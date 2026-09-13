@@ -6,55 +6,86 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Asistent — Kreativni Splet</title>
 <style>
+  /* Paleta povzeta po kreativnisplet.si: topla krem podlaga, turkizni naslovi,
+     oranžna za pozive k dejanju, zaobljene oblike. */
   :root {
-    --bg: #ffffff;
-    --ink: #111111;
-    --muted: #6f6f6f;
-    --line: #e6e6e6;
-    --accent: #bf6c2c;
+    --bg: #fdf9f5;
+    --panel: #ffffff;
+    --ink: #23201d;
+    --muted: #8a8079;
+    --line: #ece3d8;
+    --accent: #e8943a;
+    --teal: #3aaecf;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font: 16px/1.6 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+    font: 16px/1.6 "Segoe UI", -apple-system, Roboto, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
-  .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px 72px; }
+
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 24px 80px; }
+
   header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 26px 0; flex-wrap: wrap; gap: 12px;
+    padding: 22px 0; flex-wrap: wrap; gap: 12px;
+    border-bottom: 1px solid var(--line);
   }
-  .brand { font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
+  .brand { font-weight: 800; font-size: 17px; letter-spacing: -.01em; }
+  .brand span { color: var(--teal); }
+  header nav a {
+    color: var(--ink); font-size: 14.5px; font-weight: 500;
+    border: 1px solid var(--line); background: var(--panel);
+    padding: 9px 20px; border-radius: 999px;
+  }
+  header nav a:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+
   h1 {
-    font-size: clamp(32px, 6vw, 52px);
-    font-weight: 300; letter-spacing: -.02em;
-    text-align: center; margin: 44px 0 10px;
+    font-size: clamp(38px, 7vw, 68px);
+    font-weight: 800;
+    letter-spacing: -.03em;
+    line-height: 1.05;
+    text-align: center;
+    color: var(--teal);
+    margin: 56px 0 14px;
   }
-  .sub { text-align: center; color: var(--muted); font-size: 15px; margin: 0 0 40px; }
+  h1 em {
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent);
+  }
+  .sub {
+    text-align: center; color: var(--muted); font-size: 16px;
+    max-width: 540px; margin: 0 auto 44px;
+  }
+
   footer {
-    margin-top: 48px; padding-top: 22px; border-top: 1px solid var(--line);
+    margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line);
     font-size: 13px; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">Kreativni Splet</div>
+    <div class="brand">Kreativni <span>Splet</span></div>
     <nav><a href="https://kreativnisplet.si/">Nazaj na stran</a></nav>
   </header>
 
-  <h1>Te kaj zanima?</h1>
-  <p class="sub">Vprašajte o ponudbi, cenah ali rokih izdelave. Za ponudbo pustite kontakt.</p>
+  <h1>Te kaj <em>zanima?</em></h1>
+  <p class="sub">Vprašajte o ponudbi, cenah ali rokih izdelave. Za ponudbo pustite kontakt in oglasimo se vam.</p>
 
   <div id="tatjana-chat"></div>
 
   <footer>
-    Testna stran asistenta. Ni povezana iz menija in ni indeksirana.
+    <span>Testna stran asistenta. Ni povezana iz menija in ni indeksirana.</span>
+    <span>info@kreativnisplet.si &nbsp;·&nbsp; +386 31 455 881</span>
   </footer>
 </div>
 

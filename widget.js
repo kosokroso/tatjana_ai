@@ -41,25 +41,34 @@
   // Vsa pravila so pod .tsi- predpono, da se ne zaletijo s temo strani.
   // Lastnosti so navedene izrecno, ker tema sicer podeduje svoje.
   var CSS = [
-    '.tsi-w{--tsi-ink:#111;--tsi-muted:#6f6f6f;--tsi-line:#e6e6e6;--tsi-accent:#bf6c2c;--tsi-bubble:#f5f4f2;',
-    'max-width:720px;margin:0 auto;font:16px/1.6 -apple-system,"Segoe UI",Roboto,system-ui,sans-serif;color:var(--tsi-ink);box-sizing:border-box}',
-    '.tsi-w *{box-sizing:border-box}',
-    '.tsi-log{border:1px solid var(--tsi-line);border-radius:14px;padding:20px;height:420px;overflow-y:auto;background:#fff}',
-    '.tsi-msg{margin:0 0 16px;display:flex;flex-direction:column;gap:5px}',
-    '.tsi-who{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--tsi-muted);margin:0}',
+    '.tsi-w{--tsi-bg:#fdf9f5;--tsi-panel:#ffffff;--tsi-ink:#23201d;--tsi-muted:#8a8079;',
+    '--tsi-line:#ece3d8;--tsi-accent:#e8943a;--tsi-teal:#3aaecf;--tsi-bubble:#f6efe6;',
+    // Pisavo podedujemo od gostiteljske strani, da se modul ne loci od nje.
+    'max-width:760px;margin:0 auto;font-family:inherit;font-size:16px;line-height:1.6;',
+    'color:var(--tsi-ink);box-sizing:border-box}',
+    '.tsi-w *{box-sizing:border-box;font-family:inherit}',
+    '.tsi-log{background:var(--tsi-panel);border:1px solid var(--tsi-line);border-radius:22px;',
+    'padding:24px;height:420px;overflow-y:auto}',
+    '.tsi-msg{margin:0 0 18px;display:flex;flex-direction:column;gap:6px}',
+    '.tsi-who{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--tsi-muted);margin:0;font-weight:600}',
+    '.tsi-msg.tsi-bot .tsi-who{color:var(--tsi-teal)}',
     '.tsi-body{white-space:pre-wrap;margin:0;color:var(--tsi-ink)}',
-    '.tsi-msg.tsi-user .tsi-body{background:var(--tsi-bubble);padding:10px 15px;border-radius:14px;align-self:flex-start;max-width:85%}',
-    '.tsi-msg.tsi-err .tsi-body{color:#b3261e}',
-    '.tsi-form{display:flex;gap:10px;margin:16px 0 0}',
-    '.tsi-in{flex:1;padding:14px 18px;border:1px solid var(--tsi-line);border-radius:999px;font:inherit;color:var(--tsi-ink);background:#fff;min-width:0}',
-    '.tsi-in:focus{outline:none;border-color:var(--tsi-ink)}',
-    '.tsi-send{padding:14px 30px;border:0;border-radius:999px;background:var(--tsi-ink);color:#fff;font:inherit;cursor:pointer}',
+    '.tsi-msg.tsi-user .tsi-body{background:var(--tsi-bubble);padding:11px 17px;border-radius:18px;align-self:flex-start;max-width:85%}',
+    '.tsi-msg.tsi-err .tsi-body{color:#c0392b}',
+    '.tsi-form{display:flex;gap:10px;margin:18px 0 0}',
+    '.tsi-in{flex:1;padding:15px 22px;border:1px solid var(--tsi-line);border-radius:999px;',
+    'font:inherit;color:var(--tsi-ink);background:var(--tsi-panel);min-width:0}',
+    '.tsi-in:focus{outline:none;border-color:var(--tsi-accent)}',
+    '.tsi-send{padding:15px 32px;border:0;border-radius:999px;background:var(--tsi-accent);',
+    'color:#fff;font:inherit;font-weight:600;cursor:pointer;transition:opacity .15s}',
+    '.tsi-send:hover{opacity:.88}',
     '.tsi-send[disabled]{opacity:.45;cursor:default}',
-    '.tsi-chips{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}',
-    '.tsi-chip{background:transparent;border:1px solid var(--tsi-line);color:var(--tsi-accent);font:inherit;font-size:14px;padding:8px 16px;border-radius:999px;cursor:pointer}',
-    '.tsi-chip:hover{border-color:var(--tsi-accent)}',
-    '.tsi-note{font-size:12px;color:var(--tsi-muted);margin:14px 0 0}',
-    '@media(max-width:520px){.tsi-send{padding:14px 20px}.tsi-log{height:340px}}'
+    '.tsi-chips{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}',
+    '.tsi-chip{background:var(--tsi-panel);border:1px solid var(--tsi-line);color:var(--tsi-ink);',
+    'font:inherit;font-size:14px;padding:9px 18px;border-radius:999px;cursor:pointer}',
+    '.tsi-chip:hover{border-color:var(--tsi-accent);color:var(--tsi-accent)}',
+    '.tsi-note{font-size:12.5px;color:var(--tsi-muted);margin:16px 0 0}',
+    '@media(max-width:520px){.tsi-send{padding:15px 22px}.tsi-log{height:340px;padding:18px;border-radius:18px}}'
   ].join('');
 
   function vstavi() {
@@ -92,7 +101,7 @@
 
     function sporocilo(vloga, besedilo) {
       var el = document.createElement('div');
-      el.className = 'tsi-msg' + (vloga === 'user' ? ' tsi-user' : vloga === 'err' ? ' tsi-err' : '');
+      el.className = 'tsi-msg ' + (vloga === 'user' ? 'tsi-user' : vloga === 'err' ? 'tsi-err' : 'tsi-bot');
 
       var kdo = document.createElement('p');
       kdo.className = 'tsi-who';
