@@ -180,6 +180,38 @@ if ($authorised) {
     Pred predajo stranki jo odstrani s strežnika.
   </div>
 
+  <h2>Preizkus pošiljanja</h2>
+  <p class="count">&nbsp;</p>
+  <div class="scroll">
+    <?php
+    if (isset($_GET['test-mail'])) {
+        require_once __DIR__ . '/tools/core/Mailer.php';
+        try {
+            $mailer = new Mailer([
+                'host'   => defined('SMTP_HOST')   ? SMTP_HOST   : '',
+                'port'   => defined('SMTP_PORT')   ? SMTP_PORT   : 465,
+                'secure' => defined('SMTP_SECURE') ? SMTP_SECURE : 'ssl',
+                'user'   => defined('SMTP_USER')   ? SMTP_USER   : '',
+                'pass'   => defined('SMTP_PASS')   ? SMTP_PASS   : '',
+            ]);
+            $mailer->send(
+                INQUIRY_EMAIL_TO,
+                'Preizkus pošiljanja iz asistenta',
+                "To je preizkusno sporočilo.\n\nČe si ga prejel, obvestila o povpraševanjih delujejo.",
+                defined('INQUIRY_EMAIL_FROM') && INQUIRY_EMAIL_FROM !== '' ? INQUIRY_EMAIL_FROM : (string) SMTP_USER,
+                defined('BUSINESS_NAME') ? BUSINESS_NAME : ''
+            );
+            echo '<p class="empty">Poslano na ' . h(INQUIRY_EMAIL_TO) . '. Preveri predal, tudi neželeno pošto.</p>';
+        } catch (Throwable $e) {
+            echo '<p class="error">' . h($e->getMessage()) . '</p>';
+        }
+    } else {
+        echo '<p class="empty"><a href="?key=' . h($givenKey) . '&amp;test-mail=1">Pošlji preizkusno sporočilo</a> na '
+            . h(defined('INQUIRY_EMAIL_TO') ? INQUIRY_EMAIL_TO : '(ni nastavljeno)') . '</p>';
+    }
+    ?>
+  </div>
+
   <h2>Strežnik</h2>
   <p class="count">&nbsp;</p>
   <div class="scroll">

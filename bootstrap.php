@@ -68,6 +68,7 @@ if (!defined('APP_BOOTSTRAPPED')) {
     require_once __DIR__ . '/tools/core/Logger.php';
     require_once __DIR__ . '/tools/core/RateLimiter.php';
     require_once __DIR__ . '/tools/core/SlovenianDate.php';
+    require_once __DIR__ . '/tools/core/Mailer.php';
     require_once __DIR__ . '/tools/core/ToolRegistry.php';
 
     require_once __DIR__ . '/tools/adapters/DirectMySQLAdapter.php';

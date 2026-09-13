@@ -129,6 +129,18 @@ define('INQUIRY_EMAIL_TO',   '');
 define('INQUIRY_EMAIL_FROM', '');
 
 // ---------------------------------------------------------------
+// SMTP za obvestila o povprasevanjih.
+// Na tem gostovanju je mail() izklopljen, zato posiljamo neposredno prek
+// postnega predala. Iste vrednosti kot v vticniku FluentSMTP.
+// Pusti host prazen, da se uporabi mail() (kjer deluje).
+// ---------------------------------------------------------------
+define('SMTP_HOST',   '');
+define('SMTP_PORT',   465);
+define('SMTP_SECURE', 'ssl');          // 'ssl' za 465, 'tls' za 587
+define('SMTP_USER',   '');
+define('SMTP_PASS',   '');
+
+// ---------------------------------------------------------------
 // Razvojni pregled baze (data-view.php). Prazno = stran je izklopljena.
 // Stran prikazuje osebne podatke strank — pred predajo stranki jo odstrani.
 // ---------------------------------------------------------------

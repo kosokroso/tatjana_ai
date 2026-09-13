@@ -91,12 +91,6 @@ final class InquiryTool extends Tool
             return;
         }
 
-        // Marsikateri shared hosting ima mail() med disabled_functions.
-        if (!function_exists('mail')) {
-            error_log('InquiryTool: funkcija mail() na tem strezniku ni na voljo');
-            return;
-        }
-
         $lines = [
             'Novo povpraševanje prek spletnega asistenta.',
             '',
@@ -111,9 +105,34 @@ final class InquiryTool extends Tool
             'Prejeto:   ' . date('d.m.Y H:i'),
         ];
 
-        $body = implode("\n", array_map('trim', $lines));
+        $body    = implode("\n", array_map('trim', $lines));
+        $subject = 'Novo povpraševanje #' . $id;
 
-        $subject = '=?UTF-8?B?' . base64_encode('Novo povpraševanje #' . $id) . '?=';
+        $mailer = new Mailer([
+            'host'    => defined('SMTP_HOST')   ? SMTP_HOST   : '',
+            'port'    => defined('SMTP_PORT')   ? SMTP_PORT   : 465,
+            'secure'  => defined('SMTP_SECURE') ? SMTP_SECURE : 'ssl',
+            'user'    => defined('SMTP_USER')   ? SMTP_USER   : '',
+            'pass'    => defined('SMTP_PASS')   ? SMTP_PASS   : '',
+        ]);
+
+        if ($mailer->isConfigured()) {
+            // Pošiljatelj mora biti naslov na lastni domeni, sicer ga prejemnikovi
+            // strežniki zavrnejo zaradi SPF. Naslov stranke gre v telo, ne sem.
+            $mailer->send(
+                $to,
+                $subject,
+                $body,
+                $from !== '' ? $from : (string) SMTP_USER,
+                defined('BUSINESS_NAME') ? BUSINESS_NAME : ''
+            );
+            return;
+        }
+
+        if (!function_exists('mail')) {
+            error_log('InquiryTool: SMTP ni nastavljen, mail() pa na tem strezniku ni na voljo');
+            return;
+        }
 
         $headers = "MIME-Version: 1.0\r\n"
             . "Content-Type: text/plain; charset=UTF-8\r\n";
@@ -121,9 +140,7 @@ final class InquiryTool extends Tool
             $headers .= 'From: ' . $from . "\r\n";
         }
 
-        if (!@mail($to, $subject, $body, $headers)) {
-            // Povpraševanje je v bazi, zato to ni napaka za stranko — samo zapis
-            // za podjetje, da obvestila ni dobilo po pošti.
+        if (!@mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, $headers)) {
             error_log("InquiryTool: obvestila za povprasevanje #{$id} ni bilo mogoce poslati na {$to}");
         }
     }
