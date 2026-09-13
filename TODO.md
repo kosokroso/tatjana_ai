@@ -1,145 +1,154 @@
 # Stanje projekta
 
-AI asistent za spletno stran in kasneje telefon. Besedilni klepet odgovarja na
-vprašanja o ponudbi, cenah, naročilih in dostavi ter zbira povpraševanja.
+AI asistentka Tatjana za spletno stran, kasneje telefon. Odgovarja na vprašanja o
+ponudbi, cenah in rokih ter zbira povpraševanja.
 
-**Živi naslov:** https://kreativnisplet.si/asistent/ (noindex, ni povezan iz menija)
+**Naslov:** https://kreativnisplet.si/asistent/ (noindex, ni povezan iz menija)
 **Repozitorij:** https://github.com/kosokroso/tatjana_ai
-**Zadnje preverjeno:** 13. 9. 2026 — 26/26 testov zelenih, klepet in povpraševanje preverjena v živo
+**Zadnje preverjeno:** 13. 9. 2026 — 26/26 testov, klepet in povpraševanje preverjena v živo
 
 ---
 
 ## Narejeno
 
 ### Podatkovni sloj
-- [x] Testna baza MySQL: 20 izdelkov, 5 strank, 12 naročil, delovni čas, povpraševanja
+- [x] Katalog storitev agencije (paketi, trženje, oblikovanje, vzdrževanje)
+- [x] Cena sme biti prazna → asistent pove "cena po dogovoru", ne izmišlja zneska
+- [x] `price_from` → "od 399 €", da izhodiščna cena ni predstavljena kot končna
 - [x] `AdapterInterface` — poslovna logika nikoli ne gre neposredno v bazo
-- [x] `DirectMySQLAdapter` — vse poizvedbe prek pripravljenih stavkov
-- [x] `VascoAdapter` — predloga za prehod na pravi ERP (še ni implementiran)
-- [x] Iskanje, ki prenese slovensko sklanjatev ("peletov" najde "Peleti A1")
+- [x] `DirectMySQLAdapter` — pripravljeni stavki, predpona tabel `ai_`
+- [x] Skupna baza z WordPressom, tabele ločene s predpono
+- [x] Iskanje prenese slovensko sklanjatev ("trgovine" najde "Spletna trgovina Shopify")
+- [x] `VascoAdapter` — predloga za prehod na ERP (ni implementiran)
 
-### Orodja (tool sloj)
-- [x] `product-lookup` — cene, zaloga, ponudba
-- [x] `order-lookup` — stanje naročila; **zahteva številko naročila IN telefon/e-pošto lastnika**
-- [x] `business-info` — delovni čas, območja dostave, načini plačila
-- [x] `submit-inquiry` — zbere povpraševanje, zapiše v bazo, obvesti podjetje po e-pošti
+### Orodja
+- [x] `product-lookup` — storitve, cene, kaj paket vključuje
+- [x] `order-lookup` — stanje projekta; **zahteva številko IN telefon/e-pošto lastnika**
+- [x] `business-info` — delovni čas, roki in potek dela, pogoji plačila
+- [x] `submit-inquiry` — **zahteva ime, telefon IN e-pošto**; zapiše v bazo in obvesti podjetje
 - [x] Enotna oblika odgovora s kodami napak (`not_found` ≠ `system_error`)
-- [x] Omejitev števila zahtevkov na IP
-- [x] Dnevnik klicev z maskiranjem osebnih podatkov in samodejnim brisanjem po 14 dneh
+- [x] Dnevnik klicev z maskiranjem osebnih podatkov, brisanje po 14 dneh
 
 ### Chat sloj
 - [x] `ai/chat.php` — pogovor z OpenAI in klicanje orodij
 - [x] Ponovni poskus ob prehodni napaki (429, 5xx)
-- [x] Sistemski prompt: brez izmišljanja podatkov, varovanje podatkov strank, zavrnitev ukazov tipa "pozabi navodila"
-- [x] Ime asistentke in podjetja v celoti iz `config.php` — ista koda gre k naslednji stranki brez posega v kodo
-- [x] `chat-test.html` — testna stran, usklajena z videzom spletne strani
-- [x] `data-view.php` — pregled vseh tabel za lažje testiranje, zaklenjen s ključem
+- [x] Model `gpt-4o-mini`
+- [x] Sistemski prompt: brez izmišljanja podatkov, varovanje podatkov strank,
+      zavrnitev ukazov tipa "pozabi navodila", aktivno vodenje k povpraševanju
+- [x] Ime asistentke in podatki podjetja v celoti iz `config.php`
+
+### Vmesnik
+- [x] `widget.js` — vgradnja v poljubno stran z eno posodo in eno skripto
+- [x] Videz usklajen s kreativnisplet.si, pisava podedovana od gostiteljske strani
+- [x] Uvod predstavi ponudbo in pelje k povpraševanju
+- [x] `data-view.php` — pregled tabel in stanja strežnika, zaklenjen s ključem
+
+### Pošiljanje pošte
+- [x] Lasten odjemalec SMTP (`tools/core/Mailer.php`) — `mail()` je na tem gostovanju izklopljen
+- [x] Pošilja prek `info@kreativnisplet.si`, vrata 465, SSL
+- [x] Preizkus pošiljanja na `data-view.php`
+- [x] Zapis v bazo je vir resnice — če pošta odpove, povpraševanje ostane
+
+### Zaščita
+- [x] Dnevna omejitev na IP in skupna dnevna kapica (trda meja stroška pri OpenAI)
+- [x] Preverjanje izvora prek `CHAT_ALLOWED_ORIGINS`
+- [x] `REQUIRE_HTTPS`, `logs/` in `.git/` nedosegljiva, `config.php` ne razkrije kode
+- [x] `config.php` nikoli ni šel v git (preverjena celotna zgodovina)
 
 ### Preverjeno v živo
-- [x] 24 avtomatskih testov orodij
-- [x] Cel pogovor s povpraševanjem od začetka do konca (zapis #503 v bazi)
-- [x] Robni primeri: prompt injection, vprašanje o tujem naročilu, dostava izven območja, prošnja za popust, vprašanje izven teme — vsi pravilno zavrnjeni
-
-### Infrastruktura
-- [x] Deploy: GitHub → cPanel Git → `.cpanel.yml` (rsync s pravilnimi pravicami)
-- [x] `config.php` z gesli nikoli ni šel v git (preverjena celotna zgodovina)
-- [x] `logs/` in `.git/` nedosegljiva prek brskalnika, `config.php` ne razkrije kode
-- [x] `REQUIRE_HTTPS` vklopljen
+- [x] 26 avtomatskih testov orodij
+- [x] Cel pogovor s povpraševanjem, obvestilo po e-pošti prispelo (#506)
+- [x] Robni primeri: prompt injection, vprašanje o tujem projektu, prošnja za popust,
+      vprašanje izven teme — vsi pravilno zavrnjeni
 
 ---
 
 ## Odprto
 
-### Nujno — preden gre stran pred pravo stranko
+### Nujno
 
-- [x] **Omejiti strošek zlorabe `ai/chat.php`.** Dodani dnevna omejitev na IP
-      (`CHAT_RATE_LIMIT_PER_DAY`, privzeto 100) in skupna dnevna kapica
-      (`CHAT_MAX_PER_DAY_TOTAL`, privzeto 500). Skupna kapica je trda zgornja meja
-      dnevnega stroška ne glede na to, od kod klici prihajajo. Številki prilagodi
-      pričakovanemu prometu.
-- [x] **Preverjanje izvora.** Ko je `CHAT_ALLOWED_ORIGINS` prazen, preverjanja ni
-      (razvojni način). Ko vpišeš domeno stranke, vsi drugi izvori dobijo 403.
-- [ ] **Vpisati domeno stranke v `CHAT_ALLOWED_ORIGINS`**, ko bo klepet vgrajen v
-      njihovo stran. Dokler je polje prazno, lahko endpoint kliče kdorkoli.
-      Preverjanje izvora ni nepremagljivo (glavo `Origin` je s curl mogoče nastaviti) —
-      trdo mejo stroška postavljata dnevni kapici, ne to.
-- [ ] **Zamenjati razkrite skrivnosti.** OpenAI ključ, geslo baze in GitHub žeton so
-      bili med razvojem prilepljeni v pogovor. Ustvari nove in stare prekliči.
-- [ ] **Odstraniti `data-view.php` in `chat-test.html`** s strežnika ali ju zaščititi.
-      `data-view.php` prikazuje imena, telefone in naslove strank.
-- [ ] Preveriti, da je v OpenAI nastavljena mesečna omejitev porabe
-- [x] `INQUIRY_EMAIL_TO` nastavljen, obvestilo preverjeno v živo (povpraševanje #506)
+- [ ] **Zamenjaj geslo baze in WordPressove varnostne ključe.** `wp-config.php` je bil
+      prilepljen v pogovor z asistentom, zato je geslo žive baze razkrito.
+      Postopek: odpri oba urejevalnika vnaprej → cPanel MySQL Databases → Change Password
+      → popravi `wp-config.php` in `asistent/config.php`. Stran je vmes nekaj sekund dol.
+- [ ] **Zamenjaj OpenAI ključ in GitHub žeton** — prav tako razkrita med razvojem.
+- [ ] **Dnevna varnostna kopija `ai_` tabel** v cron. Povpraševanja so posel; vtičnik za
+      čiščenje baze jih lahko pobriše in kopija je edina zaščita. Ukaz v `docs/setup.md`.
+- [ ] Preveri, da je v OpenAI nastavljena mesečna omejitev porabe.
 
-### Odprto takoj
+### Pred javnim zagonom
 
-- [x] **Obvestila po e-pošti.** `mail()` je na tem strežniku izklopljen, zato asistent
-      pošilja prek lastnega odjemalca SMTP (`tools/core/Mailer.php`) in poštnega predala
-      `info@kreativnisplet.si`. WordPressov `wp_mail()` ni bil mogoč: `config.php` in
-      `wp-config.php` definirata iste konstante, zato bi WordPress v istem procesu dobil
-      naše vrednosti. Preizkus pošiljanja je na `data-view.php`.
-- [ ] **Zamenjaj geslo baze in WordPressove varnostne ključe** — `wp-config.php`
-      je bil prilepljen v pogovor, zato je geslo žive baze razkrito.
-- [ ] Dnevna varnostna kopija `ai_` tabel v cron (glej docs/setup.md)
+- [ ] **Odstrani `data-view.php` in `chat-test.html`** s strežnika. Prvi prikazuje
+      osebne podatke strank, oba sta zdaj na živi domeni.
+- [ ] Popravi delovni čas v tabeli `ai_business_hours` — vpisan je privzeti pon–pet 9–17,
+      ne preverjen. Asistent ga stranki pove kot dejstvo.
+- [ ] Dopolni pogoje plačila v `data/business-info.json` (zdaj samo nevtralna formulacija).
+- [ ] Pobriši testne stranke in projekte: `DELETE FROM ai_orders; DELETE FROM ai_customers;`
+- [ ] Vgradi klepet v `landing.html` ali podstran:
+      `<div id="tatjana-chat"></div><script src="/asistent/widget.js" defer></script>`
 
 ### Odločitve, ki čakajo
 
-- [ ] **Javni ali zasebni repozitorij.** Zdaj je javen, ker cPanel Git zasebnega ni
-      zmogel klonirati. Skrivnosti v njem ni, a kodo, ki jo nameravaš prodajati, lahko
-      kdorkoli prekopira. Za zasebnega je treba prej urediti deploy:
-      GitHub Actions → FTP (samodejno ob pushu) ali SSH deploy key.
-- [ ] Pravi podatki stranke namesto testnih (izdelki, cene, območja dostave, kontakt)
+- [ ] **Javni ali zasebni repozitorij.** Zdaj javen, ker cPanel Git zasebnega ni zmogel
+      klonirati. Skrivnosti v njem ni, a kodo, ki jo nameravaš prodajati, lahko kdorkoli
+      prekopira. Za zasebnega je treba prej urediti deploy: GitHub Actions → FTP ali SSH ključ.
+- [ ] Presoja, ali je `gpt-4o-mini` dovolj dober za slovenščino, ali je vreden večji model.
 
 ### Naslednja faza — glas
 
-- [ ] **Preveriti slovenske telefonske številke pri LiveKit** ali potrebo po lokalnem
-      SIP operaterju. To vprašanje lahko podre celoten pristop, zato gre prvo.
-- [ ] **Preizkusiti kakovost slovenskega STT/TTS** z vzorčnimi posnetki, brez
-      naročnine in brez telefonske številke. Prepoznava slovenskega govora po telefonu
-      je največje tveganje projekta — ne prenos zvoka.
-- [ ] Šele nato: agent na LiveKit, ki kliče iste `POST /tools/*.php` s `TOOL_SECRET`.
-      Poslovna logika se ne prepisuje.
+- [ ] **Preveri slovenske telefonske številke pri LiveKit** ali potrebo po lokalnem SIP
+      operaterju. To vprašanje lahko podre celoten pristop, zato gre prvo.
+- [ ] **Preizkusi kakovost slovenskega STT/TTS** z vzorčnimi posnetki, brez naročnine in
+      brez telefonske številke. Prepoznava slovenskega govora po telefonu je največje
+      tveganje projekta — ne prenos zvoka.
+- [ ] Šele nato agent, ki kliče iste `POST /tools/*.php` s `TOOL_SECRET`.
 
 ### Kasneje
 
-- [ ] `VascoAdapter` implementirati, ko bo znan pravi ERP
-- [ ] Pregled povpraševanj za podjetje (kdo je poklical, kaj želi, kaj je že urejeno)
-- [ ] Presoja, ali je `gpt-4o-mini` dovolj dober za slovenščino, ali je vreden večji model
+- [ ] Pregled povpraševanj za podjetje (kdo je pisal, kaj želi, kaj je že urejeno)
+- [ ] `VascoAdapter`, ko bo znan pravi ERP
 
 ---
 
 ## Kako deployam
 
-1. Spremembe grejo na GitHub (`git push`)
+1. `git push`
 2. cPanel → Git Version Control → repozitorij `tatjana_ai`
 3. **Update from Remote** (to je pull) → **Deploy HEAD Commit**
 
-Sam Deploy brez Update naloži staro kodo — to naju je enkrat zavedlo.
+Sam Deploy brez Update naloži staro kodo — to naju je zavedlo dvakrat.
 
-`config.php` ni v gitu, zato ga deploy ne povozi. Ob spremembi nastavitev ga
-naloži ročno prek File Managerja.
+`config.php` ni v gitu, zato ga deploy ne povozi. Ob spremembi nastavitev ga naloži
+ročno prek File Managerja v `public_html/asistent/`.
 
 ## Kako testiram
 
 ```bash
-BASE_URL=https://tatjana.kreativnisplet.si/AiAssistant_v1 bash tests/test-tools.sh
+BASE_URL=https://kreativnisplet.si/asistent bash tests/test-tools.sh
 ```
 
-Vseh 24 testov mora biti zelenih. Za klepet odpri `chat-test.html`, za pregled
-podatkov `data-view.php`.
+Vseh 26 testov mora biti zelenih. Klepet na `/asistent/`, pregled podatkov in
+preizkus pošiljanja na `data-view.php`.
 
 ---
 
 ## Pasti, ki so nas že ujele
-
-Zapisane zato, da jih ne lovimo dvakrat.
 
 | Simptom | Vzrok |
 |---|---|
 | Vsaka datoteka v mapi vrne 404, mapa pa 403 | Mapa ima pravice 0700 — spletni strežnik ne more vstopiti. `rsync -a` prenese pravice izvorne mape, cPanel git repozitorij pa je 0700. Rešeno z `--chmod=D755,F644`. |
 | Enako, a pravice so v redu | `<DirectoryMatch>` v `.htaccess` ni veljaven (samo v glavni konfiguraciji strežnika). Za blokiranje `.git/` uporabi `RewriteRule`. |
 | Vsi odgovori 200 namesto prave kode, v JSON prilepljena opozorila | `config.php` shranjen kot "UTF-8 z BOM". Notepad in PowerShell to naredita privzeto. |
-| `SQLSTATE[HY093]: Invalid parameter number` | Isti named placeholder večkrat v enem stavku. Pri pravih pripravljenih stavkih to ni dovoljeno — vsaka pojavitev rabi svojega. |
-| Chat skoraj vedno vrne "sistem mi trenutno ne odgovori" | Omejitev porabe žetonov na minuto pri `gpt-4o` na novem OpenAI računu. Rešeno s prehodom na `gpt-4o-mini`. |
-| Asistent pove napačno ceno | Sistemski prompt je zahteval pretvorbo cen v besede; model je 78 € povedal kot "osemdeset evrov". Cene se zdaj izpisujejo s številko. |
+| `SQLSTATE[HY093]: Invalid parameter number` | Isti named placeholder večkrat v enem stavku. Pri pravih pripravljenih stavkih vsaka pojavitev rabi svojega. |
+| Chat skoraj vedno vrne "sistem mi trenutno ne odgovori" | Omejitev porabe žetonov pri `gpt-4o` na novem OpenAI računu. Rešeno s prehodom na `gpt-4o-mini`. |
+| Asistent pove napačno ceno | Prompt je zahteval pretvorbo cen v besede; model je 78 € povedal kot "osemdeset evrov". Cene se zdaj izpisujejo s številko. |
 | `535 Incorrect authentication data` pri SMTP | Napačno geslo predala ali uporabniško ime brez domene. Uporabnik mora biti cel naslov. |
 | Deploy naloži staro kodo | Kliknjen je bil samo Deploy HEAD Commit brez Update from Remote. |
+| Povpraševanje vrne napako, čeprav je zapis v bazi | Obvestilo po pošti je padlo in podrlo cel klic. Pošiljanje mora biti v `try/catch` — zapis je vir resnice. |
+
+## Česa ne poskušaj znova
+
+- **WordPressov `wp_mail()` iz našega procesa.** `config.php` in `wp-config.php` definirata
+  iste konstante (`DB_NAME`, `DB_USER`, `DB_HOST`), zato bi WordPress dobil naše vrednosti
+  namesto svojih — tiho spreminjanje delovanja žive strani. Zato obstaja `Mailer.php`.
+- **Cene v besedah.** Za glas bo pretvorbo opravil TTS, ki števnike obvlada.
