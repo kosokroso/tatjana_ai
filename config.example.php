@@ -87,6 +87,15 @@ define('OPENAI_API_KEY', '');
 define('OPENAI_MODEL', 'gpt-4o');
 define('OPENAI_TIMEOUT_SECONDS', 20);
 
+// ---------------------------------------------------------------
+// Govor (glasovni preizkus na voice-test.html)
+// Imena modelov se pri OpenAI spreminjajo - preveri jih, preden krivis kodo.
+// ---------------------------------------------------------------
+define('STT_MODEL', 'gpt-4o-transcribe');
+define('TTS_MODEL', 'gpt-4o-mini-tts');
+define('TTS_VOICE', 'shimmer');        // alloy, echo, fable, onyx, nova, shimmer, coral
+define('SPEECH_LANGUAGE', 'sl');
+
 define('SYSTEM_PROMPT_FILE',    __DIR__ . '/ai/system-prompt.txt');
 define('TOOL_DEFINITIONS_FILE', __DIR__ . '/ai/tool-definitions.json');
 
