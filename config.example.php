@@ -96,6 +96,16 @@ define('TTS_MODEL', 'gpt-4o-mini-tts');
 define('TTS_VOICE', 'shimmer');        // alloy, echo, fable, onyx, nova, shimmer, coral
 define('SPEECH_LANGUAGE', 'sl');
 
+// Ponudnik sinteze govora: 'azure' ali 'openai'.
+// Azure ima prava slovenska glasova (sl-SI-PetraNeural, sl-SI-RokNeural), zato
+// pravilno prebere stevila in cene, prek SSML pa telefonsko stevilko po stevkah.
+// OpenAI je vecjezicni model, ki slovenscino bere s tujim naglasom.
+define('TTS_PROVIDER', 'openai');
+
+define('AZURE_SPEECH_KEY',    '');
+define('AZURE_SPEECH_REGION', 'westeurope');
+define('AZURE_TTS_VOICE',     'sl-SI-PetraNeural');   // ali sl-SI-RokNeural
+
 define('SYSTEM_PROMPT_FILE',    __DIR__ . '/ai/system-prompt.txt');
 define('TOOL_DEFINITIONS_FILE', __DIR__ . '/ai/tool-definitions.json');
 
