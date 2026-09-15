@@ -66,6 +66,11 @@ define('CHAT_RATE_LIMIT_PER_MINUTE', 20);
 define('CHAT_RATE_LIMIT_PER_DAY', 100);
 define('CHAT_MAX_PER_DAY_TOTAL', 500);
 
+// Dnevni proracun zetonov pri OpenAI. Stetje zahtevkov denarnice ne varuje:
+// en klic z dolgo zgodovino stane toliko kot deset kratkih. 0 = brez omejitve.
+// Pri gpt-4o-mini je 200.000 zetonov priblizno nekaj deset centov na dan.
+define('DAILY_TOKEN_BUDGET', 200000);
+
 
 // ---------------------------------------------------------------
 // Skupna skrivnost za strežnik-na-strežnik klice (kasnejši glasovni sloj).

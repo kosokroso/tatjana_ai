@@ -27,6 +27,10 @@ const TOOL_NAME_MAP = [
 
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_MESSAGE_LENGTH   = 2000;
+// Zgornja dva skupaj dopuscata 40.000 znakov na klic, kar je priblizno 10.000
+// zetonov - toliko stane deset normalnih pogovorov. Zato se omeji se skupna
+// dolzina, sicer lahko bot z eno samo dolgo zgodovino podre dnevni proracun.
+const MAX_HISTORY_CHARS    = 8000;
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
@@ -56,6 +60,13 @@ if ($omejitev !== null) {
     respond(false, null, $omejitev, 429);
 }
 
+$proracun = aiBudget();
+if ($proracun->isExceeded()) {
+    error_log('chat.php: dnevni proracun zetonov porabljen (' . $proracun->used() . ')');
+    respond(false, null, 'Klepet je za danes dosegel omejitev. Pišite nam prosim na '
+        . (defined('BUSINESS_EMAIL') ? BUSINESS_EMAIL : 'e-pošto') . '.', 429);
+}
+
 $requestId = bin2hex(random_bytes(6));
 $history   = readHistory();
 
@@ -80,6 +91,7 @@ try {
 
     for ($round = 0; $round < $maxRounds; $round++) {
         $message = $client->chat($messages, $tools);
+        $proracun->add($client->lastUsage());
 
         // Nazaj pošljemo samo polja, ki jih API pričakuje — odgovor lahko
         // vsebuje tudi dodatke (refusal, annotations), ki bi klic podrli.
@@ -180,7 +192,21 @@ function readHistory(): array
         ];
     }
 
-    return array_slice($history, -MAX_HISTORY_MESSAGES);
+    $history = array_slice($history, -MAX_HISTORY_MESSAGES);
+
+    // Od konca proti zacetku, da se ohrani zadnji del pogovora: tam je vprasanje,
+    // na katero je treba odgovoriti.
+    $skupaj  = 0;
+    $obrezan = [];
+    foreach (array_reverse($history) as $sporocilo) {
+        $skupaj += mb_strlen($sporocilo['content']);
+        if ($skupaj > MAX_HISTORY_CHARS) {
+            break;
+        }
+        $obrezan[] = $sporocilo;
+    }
+
+    return array_reverse($obrezan);
 }
 
 function buildSystemPrompt(): string

@@ -83,7 +83,7 @@ function aiIsHttps(): bool
  */
 function aiRateLimitMessage(string $namespace): ?string
 {
-    $ip       = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $ip       = aiClientKey();
     $stateDir = LOG_DIR . '/ratelimit';
 
     $perMinute = defined('CHAT_RATE_LIMIT_PER_MINUTE') ? CHAT_RATE_LIMIT_PER_MINUTE : 20;
@@ -106,4 +106,39 @@ function aiRateLimitMessage(string $namespace): ?string
     }
 
     return null;
+}
+
+/**
+ * Ključ za štetje zahtevkov.
+ *
+ * Pri IPv6 dobi en sam obiskovalec pogosto cel blok /64 in bi z menjavo naslova
+ * znotraj njega obšel omejitev na IP. Zato štejemo po bloku, ne po naslovu.
+ */
+function aiClientKey(): string
+{
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+    if (strpos($ip, ':') === false) {
+        return $ip;
+    }
+
+    $paketno = @inet_pton($ip);
+    if ($paketno === false || strlen($paketno) !== 16) {
+        return $ip;
+    }
+
+    // Prvih 64 bitov je omrežje, ostalo si naprava izbere sama.
+    return bin2hex(substr($paketno, 0, 8)) . '::/64';
+}
+
+/**
+ * Ali je dnevni proračun žetonov porabljen?
+ *
+ * Štetje zahtevkov denarnice ne varuje: en klic z dolgo zgodovino stane toliko
+ * kot deset kratkih. Plača se žetone, zato se šteje njih.
+ */
+function aiBudget(): Budget
+{
+    $limit = defined('DAILY_TOKEN_BUDGET') ? (int) DAILY_TOKEN_BUDGET : 0;
+    return new Budget(LOG_DIR . '/poraba', $limit);
 }

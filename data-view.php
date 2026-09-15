@@ -240,6 +240,22 @@ if ($authorised) {
             }
         ?></td></tr>
         <tr><td>predpona tabel</td><td><?= h($prefix === '' ? '(brez)' : $prefix) ?></td></tr>
+        <tr><td>poraba žetonov danes</td><td><?php
+            require_once __DIR__ . '/tools/core/Budget.php';
+            $meja  = defined('DAILY_TOKEN_BUDGET') ? (int) DAILY_TOKEN_BUDGET : 0;
+            $pora  = new Budget(LOG_DIR . '/poraba', $meja);
+            $rablj = $pora->used();
+            echo h(number_format($rablj, 0, ',', '.'));
+            if ($meja > 0) {
+                $odstotek = (int) round($rablj / $meja * 100);
+                echo h(' od ' . number_format($meja, 0, ',', '.') . ' (' . $odstotek . ' %)');
+                if ($rablj >= $meja) {
+                    echo ' — <strong>meja dosežena, klepet je ustavljen</strong>';
+                }
+            } else {
+                echo ' (brez omejitve)';
+            }
+        ?></td></tr>
         <tr><td>obvestila na</td><td><?= h(defined('INQUIRY_EMAIL_TO') && INQUIRY_EMAIL_TO !== '' ? INQUIRY_EMAIL_TO : '(izklopljeno)') ?></td></tr>
       </tbody>
     </table>

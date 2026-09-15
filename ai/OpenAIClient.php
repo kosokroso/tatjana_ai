@@ -16,6 +16,8 @@ final class OpenAIClient
     private $model;
     /** @var int */
     private $timeout;
+    /** @var int Zetoni zadnjega klica; strosek je odvisen od njih, ne od stevila klicev. */
+    private $lastUsage = 0;
 
     public function __construct(string $apiKey, string $model, int $timeout = 20)
     {
@@ -57,7 +59,15 @@ final class OpenAIClient
             throw new OpenAIException('Odgovor OpenAI nima pričakovane oblike.');
         }
 
+        $this->lastUsage = (int) ($body['usage']['total_tokens'] ?? 0);
+
         return $body['choices'][0]['message'];
+    }
+
+    /** Poraba zadnjega klica v žetonih. */
+    public function lastUsage(): int
+    {
+        return $this->lastUsage;
     }
 
     /**
