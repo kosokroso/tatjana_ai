@@ -122,6 +122,42 @@ Agent mora teči neprekinjeno — tvoj računalnik za to ni primeren. Dve poti:
 
 ---
 
+## Stanje nastavitve (15. 9. 2026)
+
+Številka kupljena pri DIDWW: **+386 5 7774124**, Nova Gorica, ~7 €/mesec.
+Regulativno območje: Koper, Postojna, Nova Gorica.
+
+Nastavljeno in preverjeno:
+
+| | |
+|---|---|
+| LiveKit inbound trunk | `ST_NZJF2z65DiLj` → `+38657774124` |
+| LiveKit dispatch rule | `SDR_tpMPgUorXQhT` → agent `tatjana`, sobe `klic_*` |
+| SIP naslov projekta | `aiasistent-kreativnisplet-tvnm0rli.sip.livekit.cloud` |
+| DIDWW inbound trunk | "Kreativni Splet", Static Endpoint, UDP 5060, `{DID}` |
+| DIDWW Voice IN trunk | dodeljen številki |
+
+**Zakaj klici še ne delujejo:** številka je v stanju *Awaiting Registration*,
+`Identity: None`. Klic se ne pojavi niti v dnevniku DIDWW, torej ne pride do
+njihovega omrežja — Slovenija zahteva registracijo naročnika. Ko bo identiteta
+odobrena, klici stečejo brez dodatnega dela.
+
+**Nadzorna plošča LiveKit ni potrebna.** Prijava vanjo je bila pokvarjena, vse
+zgoraj je narejeno prek CLI s ključi iz `.env`:
+
+```powershell
+$lk = "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\LiveKit.LiveKitCLI_Microsoft.Winget.Source_8wekyb3d8bbwe\lk.exe"
+Get-Content .env | Where-Object { $_ -match '^\s*[A-Z_]+\s*=' } | ForEach-Object {
+  $p = $_ -split '=', 2; Set-Item -Path ("env:" + $p[0].Trim()) -Value $p[1].Trim()
+}
+& $lk sip inbound list
+& $lk sip dispatch list
+```
+
+JSON za `lk` mora biti shranjen **brez BOM**, sicer javi
+`proto: syntax error (line 1:1): invalid value`. V PowerShellu uporabi
+`[System.IO.File]::WriteAllText($pot, $json, (New-Object System.Text.UTF8Encoding($false)))`.
+
 ## Kaj testirati, preden greš k stranki
 
 | Preizkus | Kaj mora narediti |
