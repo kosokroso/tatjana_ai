@@ -50,7 +50,13 @@ ponudbi, cenah in rokih ter zbira povpraševanja.
 - [x] Zapis v bazo je vir resnice — če pošta odpove, povpraševanje ostane
 
 ### Zaščita
-- [x] Dnevna omejitev na IP in skupna dnevna kapica (trda meja stroška pri OpenAI)
+- [x] Omejitve na minuto, na dan in skupno na dan (števci klicev)
+- [x] **Dnevni proračun žetonov** — strošek so žetoni, ne klici; poraba se bere iz
+      odgovora OpenAI in sešteva, ob prekoračitvi klepet za ta dan neha odgovarjati
+- [x] Skupna dolžina zgodovine omejena na 8.000 znakov (bot ne more z eno dolgo
+      zgodovino podreti dnevnega proračuna)
+- [x] Štetje po bloku /64 pri IPv6 — en obiskovalec sicer obide omejitev z menjavo naslova
+- [x] Poraba žetonov danes vidna na `data-view.php`
 - [x] Preverjanje izvora prek `CHAT_ALLOWED_ORIGINS`
 - [x] `REQUIRE_HTTPS`, `logs/` in `.git/` nedosegljiva, `config.php` ne razkrije kode
 - [x] `config.php` nikoli ni šel v git (preverjena celotna zgodovina)
@@ -74,7 +80,9 @@ ponudbi, cenah in rokih ter zbira povpraševanja.
 - [ ] **Zamenjaj OpenAI ključ in GitHub žeton** — prav tako razkrita med razvojem.
 - [ ] **Dnevna varnostna kopija `ai_` tabel** v cron. Povpraševanja so posel; vtičnik za
       čiščenje baze jih lahko pobriše in kopija je edina zaščita. Ukaz v `docs/setup.md`.
-- [ ] Preveri, da je v OpenAI nastavljena mesečna omejitev porabe.
+- [ ] **Nastavi mesečno omejitev porabe v OpenAI** (Billing → Limits). Naša koda ustavi
+      samo to, kar gre skozi naš strežnik; če kdaj uide ključ, je omejitev pri OpenAI
+      edina stvar, ki še drži. To je zadnja obramba, ne prva.
 
 ### Pred javnim zagonom
 
@@ -94,7 +102,19 @@ ponudbi, cenah in rokih ter zbira povpraševanja.
       prekopira. Za zasebnega je treba prej urediti deploy: GitHub Actions → FTP ali SSH ključ.
 - [ ] Presoja, ali je `gpt-4o-mini` dovolj dober za slovenščino, ali je vreden večji model.
 
-### Naslednja faza — glas
+### Glas — stanje
+
+- [x] Glasovni preizkus na `voice-test.html`: mikrofon → prepis → odgovor → govor
+- [x] **Prepis slovenščine deluje**, tudi telefonske številke zapiše pravilno.
+      To je bilo največje tveganje projekta in je odpravljeno.
+- [x] Normalizacija besedila pred govorom (cene, telefonske številke) — v kodi, ne v promptu
+- [x] Azure pripravljen kot ponudnik govora (`TTS_PROVIDER`), neaktiven brez ključa
+- [ ] **Govor je počasen in robotski, telefonskih številk ne izgovori pravilno.**
+      Rešitev: Azure s `sl-SI-PetraNeural` ali `sl-SI-RokNeural` — prava slovenska
+      glasova, ne večjezični model. Brezplačni sloj F0 zajema 500.000 znakov mesečno.
+      Odloženo na kasneje.
+
+### Naslednja faza — telefon
 
 - [ ] **Preveri slovenske telefonske številke pri LiveKit** ali potrebo po lokalnem SIP
       operaterju. To vprašanje lahko podre celoten pristop, zato gre prvo.
