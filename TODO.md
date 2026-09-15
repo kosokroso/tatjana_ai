@@ -46,8 +46,18 @@ ponudbi, cenah in rokih ter zbira povpraševanja.
 ### Pošiljanje pošte
 - [x] Lasten odjemalec SMTP (`tools/core/Mailer.php`) — `mail()` je na tem gostovanju izklopljen
 - [x] Pošilja prek `info@kreativnisplet.si`, vrata 465, SSL
+- [x] Obvestila gredo na `kreativnisplet2025@gmail.com` (preverjeno 15. 9. 2026)
 - [x] Preizkus pošiljanja na `data-view.php`
 - [x] Zapis v bazo je vir resnice — če pošta odpove, povpraševanje ostane
+
+### Glas
+- [x] `voice-test.html` — mikrofon → prepis → odgovor → govor, na spletni strani
+- [x] **Azure slovenski glas** `sl-SI-PetraNeural`, regija `italynorth`
+      (West Europe ne sprejema novih strank). Cene in telefonske številke
+      izgovori pravilno; prejšnja napaka "329 namesto 399" je odpravljena.
+- [x] `TTS_PROVIDER` preklopi med `azure` in `openai` z eno vrstico
+- [x] Normalizacija besedila pred govorom v kodi, ne v promptu
+- [x] Glasovni agent za telefon (`voice-agent/agent.py`) preverjen prek mikrofona
 
 ### Zaščita
 - [x] Omejitve na minuto, na dan in skupno na dan (števci klicev)
@@ -125,14 +135,22 @@ ponudbi, cenah in rokih ter zbira povpraševanja.
       Local in National zahtevata osebni dokument in dokazilo o naslovu v Braniku.
 - [ ] Objava agenta na LiveKit Cloud ali VPS, da teče neprekinjeno
 
-### Naslednja faza — telefon
+### Telefon — vse nastavljeno, čaka na registracijo
 
-- [ ] **Preveri slovenske telefonske številke pri LiveKit** ali potrebo po lokalnem SIP
-      operaterju. To vprašanje lahko podre celoten pristop, zato gre prvo.
-- [ ] **Preizkusi kakovost slovenskega STT/TTS** z vzorčnimi posnetki, brez naročnine in
-      brez telefonske številke. Prepoznava slovenskega govora po telefonu je največje
-      tveganje projekta — ne prenos zvoka.
-- [ ] Šele nato agent, ki kliče iste `POST /tools/*.php` s `TOOL_SECRET`.
+Številka **+386 5 7774124** (DIDWW, Nova Gorica, ~7 €/mesec). Podrobnosti in
+ID-ji v [docs/telefon.md](docs/telefon.md).
+
+- [x] LiveKit trunk `ST_NZJF2z65DiLj` in dispatch `SDR_tpMPgUorXQhT` → agent `tatjana`
+- [x] DIDWW inbound trunk nastavljen in dodeljen številki
+- [x] Vse narejeno prek `lk` CLI — nadzorna plošča LiveKit je bila nedostopna
+- [ ] **Registracija identitete pri DIDWW — edina ovira, rok 30 dni.**
+      Klic se ne pojavi niti v dnevniku DIDWW, torej številka še ni živa v omrežju.
+      Identities & Addresses → identiteta tipa Business (naziv iz Poslovnega registra,
+      matična številka, Preserje 16, 5295 Branik, izpis AJPES, dokazilo o naslovu)
+      → My Numbers → Manage DID → Identity.
+      Ko odobrijo: `python agent.py dev` in pokliči. Nič več nastavljanja.
+- [ ] Objava agenta na LiveKit Cloud ali VPS, da teče brez tvojega računalnika
+- [ ] Omejitev LiveKit trunka na signalne naslove DIDWW (zdaj sprejema od koderkoli)
 
 ### Kasneje
 
@@ -175,6 +193,8 @@ preizkus pošiljanja na `data-view.php`.
 | Asistent pove napačno ceno | Prompt je zahteval pretvorbo cen v besede; model je 78 € povedal kot "osemdeset evrov". Cene se zdaj izpisujejo s številko. |
 | `535 Incorrect authentication data` pri SMTP | Napačno geslo predala ali uporabniško ime brez domene. Uporabnik mora biti cel naslov. |
 | Deploy naloži staro kodo | Kliknjen je bil samo Deploy HEAD Commit brez Update from Remote. |
+| `proto: syntax error (line 1:1): invalid value` pri `lk` | JSON shranjen z BOM. V PowerShellu uporabi `[System.IO.File]::WriteAllText` z `UTF8Encoding($false)`. |
+| Azure: "region is currently not accepting new customers" | West Europe je poln. Uporabi `italynorth`, `germanywestcentral` ali `switzerlandnorth` — koda regije mora biti v `.env` in `config.php`. |
 | Povpraševanje vrne napako, čeprav je zapis v bazi | Obvestilo po pošti je padlo in podrlo cel klic. Pošiljanje mora biti v `try/catch` — zapis je vir resnice. |
 
 ## Česa ne poskušaj znova
