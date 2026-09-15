@@ -134,6 +134,31 @@ class TelefonskiAsistent(Agent):
         return await poklici_orodje("submit-inquiry", vsebina)
 
 
+def izberi_glas():
+    """Azure, kadar je ključ nastavljen; sicer OpenAI.
+
+    Azure ima prava slovenska glasova in pravilno prebere števila, zato je za
+    produkcijo edina smiselna izbira. OpenAI je tu zato, da se da sklad
+    preizkusiti takoj, brez čakanja na še en račun — slovenščino bere s tujim
+    naglasom in telefonskih številk ne izgovori pravilno.
+    """
+    if os.getenv("AZURE_SPEECH_KEY"):
+        return azure.TTS(
+            voice=os.getenv("AZURE_TTS_VOICE", "sl-SI-PetraNeural"),
+            language="sl-SI",
+        )
+
+    log.warning("AZURE_SPEECH_KEY ni nastavljen — uporabljam OpenAI glas (slabsa slovenscina)")
+    return openai.TTS(
+        model=os.getenv("TTS_MODEL", "gpt-4o-mini-tts"),
+        voice=os.getenv("TTS_VOICE", "shimmer"),
+        instructions=(
+            "Govori v slovenščini, naravno in prijazno, z zmernim tempom. "
+            "Telefonske številke beri po števkah."
+        ),
+    )
+
+
 def preberi_nastavitve() -> dict:
     """Prenese sistemski prompt s strežnika, da je enak kot pri besedilnem klepetu."""
     r = httpx.post(
@@ -157,11 +182,7 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
         # telefonu, kjer je zvok slabši, pogosto zgreši v hrvaščino.
         stt=openai.STT(model=os.getenv("STT_MODEL", "gpt-4o-transcribe"), language="sl"),
         llm=openai.LLM(model=os.getenv("LLM_MODEL", "gpt-4o-mini"), temperature=0.3),
-        # Pravi slovenski glas, ne večjezični model. Pravilno prebere števila.
-        tts=azure.TTS(
-            voice=os.getenv("AZURE_TTS_VOICE", "sl-SI-PetraNeural"),
-            language="sl-SI",
-        ),
+        tts=izberi_glas(),
         # Zazna, kdaj je sogovornik nehal govoriti. Brez tega agent skače v besedo.
         vad=silero.VAD.load(),
     )
