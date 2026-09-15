@@ -109,10 +109,21 @@ ponudbi, cenah in rokih ter zbira povpraševanja.
       To je bilo največje tveganje projekta in je odpravljeno.
 - [x] Normalizacija besedila pred govorom (cene, telefonske številke) — v kodi, ne v promptu
 - [x] Azure pripravljen kot ponudnik govora (`TTS_PROVIDER`), neaktiven brez ključa
-- [ ] **Govor je počasen in robotski, telefonskih številk ne izgovori pravilno.**
-      Rešitev: Azure s `sl-SI-PetraNeural` ali `sl-SI-RokNeural` — prava slovenska
-      glasova, ne večjezični model. Brezplačni sloj F0 zajema 500.000 znakov mesečno.
-      Odloženo na kasneje.
+- [x] **Glasovni agent za telefon deluje** (`voice-agent/agent.py`, preverjeno 15. 9. 2026
+      v načinu `console`). Cel sklad: prepis → model → orodja na strežniku → govor.
+      Povpraševanje #511 je iz glasovnega pogovora pristalo v bazi, z bogato opombo
+      o projektu. Sistemski prompt agent prenese s strežnika, zato sta besedilni in
+      glasovni asistent vedno enaka.
+- [ ] **Azure ključ — edina znana napaka.** OpenAI glas prebere 399 kot "329".
+      Preverjeno: model zapiše pravilno, napaka je izključno v izgovorjavi.
+      Azure `sl-SI-PetraNeural` to odpravi; F0 sloj je brezplačen.
+      Vpišeš `AZURE_SPEECH_KEY` v `.env` agenta in v `config.php`, koda se ne spremeni.
+- [ ] **Slovenska telefonska številka — čaka na zalogo.** Telnyx ima za SI samo
+      toll-free (10 $ vstopnine + 10 $/mesec, dohodne minute plača podjetje).
+      DIDLogic slovenskih številk nima na zalogi, oddan je request.
+      Mobilne številke pri Telnyxu ne zahtevajo dokumentacije — preveri občasno zalogo.
+      Local in National zahtevata osebni dokument in dokazilo o naslovu v Braniku.
+- [ ] Objava agenta na LiveKit Cloud ali VPS, da teče neprekinjeno
 
 ### Naslednja faza — telefon
 
