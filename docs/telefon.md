@@ -53,16 +53,30 @@ klicih približno 330 klicev.
 ## 3. Slovenska telefonska številka
 
 LiveKit svoje številke prodaja zaenkrat samo v ZDA, zato potrebuješ SIP ponudnika.
-Preveri, kateri ima slovenske številke po sprejemljivi ceni: Twilio, Telnyx,
-didlogic ali slovenski operater s SIP trunkom.
+
+**Priporočilo: DIDLogic.** LiveKit ima zanj objavljen uraden vodič
+(*"Create and configure a didlogic SIP trunk"*), zato nastavitev ni ugibanje.
+Samopostrežno, aktivacija 8–48 ur, en račun pokriva dohodne in odhodne klice,
+novi računi prvih 30 dni nimajo mesečnega minimuma.
+
+| Ponudnik | Aktivacija | Opomba |
+|---|---|---|
+| **DIDLogic** | 8–48 h | uraden vodič za LiveKit |
+| Telnyx | samopostrežno, ~3 $/mes | uveljavljeno, več preverjanja |
+| Zadarma | samopostrežno | najceneje, brez vodiča za LiveKit |
+| Twilio | nekaj delovnih dni | največ birokracije za SI številke |
 
 **Slovenija zahteva lokalni naslov** — poštni predal ne zadošča. Sedež v Braniku
 to izpolnjuje, potreben pa bo dokaz (izpis iz registra, račun za storitev).
-Odobritev pri Twiliu traja nekaj delovnih dni; to je najdaljši korak celotnega
-postopka, zato ga sproži prvega.
+Preverjanje je najdaljši korak celotnega postopka, zato ga sproži prvega in
+medtem delaj korake 4 in 5.
 
-Ko je številka tvoja, jo v LiveKitu povežeš prek **SIP inbound trunka** — LiveKit
-ti da SIP naslov, ki ga vpišeš pri ponudniku kot cilj dohodnih klicev.
+Postopek:
+
+1. DIDLogic portal → **Numbers → Buy a number → Slovenia**
+2. Številki nastavi cilj na **SIP endpoint tvojega LiveKit projekta**
+3. V LiveKitu ustvari **inbound trunk z dispatch pravilom**, ki klic preda
+   agentu `tatjana`
 
 ## 4. Azure za slovenski glas
 
