@@ -1,0 +1,4 @@
+# Preveri najnovejse razlicice: pip install -U livekit-agents
+livekit-agents[openai,azure,silero]~=1.6
+python-dotenv~=1.0
+httpx~=0.27
