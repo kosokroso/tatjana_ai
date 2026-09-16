@@ -169,3 +169,12 @@ define('SMTP_PASS',   '');
 // Stran prikazuje osebne podatke strank — pred predajo stranki jo odstrani.
 // ---------------------------------------------------------------
 define('DATA_VIEW_KEY', '');
+
+// ---------------------------------------------------------------
+// Skrbniski pregled povprasevanj (/admin).
+// Geslo je shranjeno kot zgoscena vrednost, nikoli v cisti obliki.
+// Zgeneriras ga z:
+//     php -r "echo password_hash('tvoje-geslo', PASSWORD_DEFAULT);"
+// Prazno = stran je izklopljena in vrne 404.
+// ---------------------------------------------------------------
+define('ADMIN_PASSWORD_HASH', '');

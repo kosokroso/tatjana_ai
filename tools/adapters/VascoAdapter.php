@@ -47,4 +47,14 @@ final class VascoAdapter implements AdapterInterface
     {
         throw new AdapterException('VascoAdapter::createInquiry ni implementiran.');
     }
+
+    public function listInquiries(array $filter = []): array
+    {
+        throw new AdapterException('VascoAdapter::listInquiries ni implementiran.');
+    }
+
+    public function updateInquiryStatus(int $id, string $status): bool
+    {
+        throw new AdapterException('VascoAdapter::updateInquiryStatus ni implementiran.');
+    }
 }

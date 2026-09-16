@@ -52,6 +52,24 @@ interface AdapterInterface
      * @throws AdapterException če zapisa ni bilo mogoče shraniti
      */
     public function createInquiry(array $inquiry): int;
+
+    /**
+     * Povpraševanja za skrbniški pregled, od najnovejšega.
+     *
+     * @param array $filter status ('new'|'handled'|'discarded'), search (prosto besedilo),
+     *                      limit, offset
+     * @return array{items: array[], total: int}
+     * @throws AdapterException
+     */
+    public function listInquiries(array $filter = []): array;
+
+    /**
+     * Spremeni stanje povpraševanja.
+     *
+     * @return bool false, kadar povpraševanja s to številko ni
+     * @throws AdapterException
+     */
+    public function updateInquiryStatus(int $id, string $status): bool;
 }
 
 /**

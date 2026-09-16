@@ -78,6 +78,15 @@ final class ToolRegistry
     }
 
     /**
+     * Adapter za sloje, ki niso tooli — na primer skrbniški pregled.
+     * Tudi ti morajo do podatkov skozi vmesnik, ne mimo njega.
+     */
+    public function adapter(): AdapterInterface
+    {
+        return $this->adapter;
+    }
+
+    /**
      * Pokliče tool in vrne odgovor. Ne vrže izjeme — vsaka napaka se prevede
      * v ToolResponse, da AI sloj vedno dobi enako obliko odgovora.
      *

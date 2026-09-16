@@ -234,6 +234,75 @@ final class DirectMySQLAdapter implements AdapterInterface
         }
     }
 
+    /** Stanja, ki jih dovoljuje shema. Vrednost od drugod se zavrne. */
+    private const STANJA = ['new', 'handled', 'discarded'];
+
+    public function listInquiries(array $filter = []): array
+    {
+        $where  = [];
+        $params = [];
+
+        $status = $filter['status'] ?? '';
+        if ($status !== '' && in_array($status, self::STANJA, true)) {
+            $where[]           = 'status = :status';
+            $params[':status'] = $status;
+        }
+
+        $search = trim((string) ($filter['search'] ?? ''));
+        if ($search !== '') {
+            // Vsako polje dobi svoj placeholder — isti se v pripravljenem
+            // stavku ne sme ponoviti.
+            $where[] = '(name LIKE :s1 OR phone LIKE :s2 OR email LIKE :s3 OR product LIKE :s4 OR note LIKE :s5)';
+            foreach (['s1', 's2', 's3', 's4', 's5'] as $k) {
+                $params[':' . $k] = '%' . $search . '%';
+            }
+        }
+
+        $sqlWhere = $where ? ' WHERE ' . implode(' AND ', $where) : '';
+        $limit    = max(1, min((int) ($filter['limit'] ?? 50), 200));
+        $offset   = max(0, (int) ($filter['offset'] ?? 0));
+
+        try {
+            $stmt = $this->pdo()->prepare(
+                'SELECT COUNT(*) FROM ' . $this->table('inquiries') . $sqlWhere
+            );
+            $stmt->execute($params);
+            $total = (int) $stmt->fetchColumn();
+
+            $stmt = $this->pdo()->prepare(
+                'SELECT id, created_at, name, phone, email, product, quantity, note, source, status
+                 FROM ' . $this->table('inquiries') . $sqlWhere . '
+                 ORDER BY id DESC
+                 LIMIT ' . $limit . ' OFFSET ' . $offset
+            );
+            $stmt->execute($params);
+
+            return ['items' => $stmt->fetchAll(), 'total' => $total];
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::listInquiries: ' . $e->getMessage());
+            throw new AdapterException('Branje povpraševanj ni uspelo.');
+        }
+    }
+
+    public function updateInquiryStatus(int $id, string $status): bool
+    {
+        if (!in_array($status, self::STANJA, true)) {
+            throw new AdapterException('Neveljavno stanje povpraševanja.');
+        }
+
+        try {
+            $stmt = $this->pdo()->prepare(
+                'UPDATE ' . $this->table('inquiries') . ' SET status = :status WHERE id = :id'
+            );
+            $stmt->execute([':status' => $status, ':id' => $id]);
+
+            return $stmt->rowCount() > 0;
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::updateInquiryStatus: ' . $e->getMessage());
+            throw new AdapterException('Sprememba stanja ni uspela.');
+        }
+    }
+
     // ----------------------------------------------------------------
 
     private function mapProduct(array $row): array
