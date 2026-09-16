@@ -133,9 +133,19 @@ Nastavljeno in preverjeno:
 |---|---|
 | LiveKit inbound trunk | `ST_NZJF2z65DiLj` → `+38657774124` |
 | LiveKit dispatch rule | `SDR_tpMPgUorXQhT` → agent `tatjana`, sobe `klic_*` |
-| SIP naslov projekta | `aiasistent-kreativnisplet-tvnm0rli.sip.livekit.cloud` |
+| SIP naslov projekta | v `voice-agent/.env`, ni zapisan tu — repozitorij je javen |
 | DIDWW inbound trunk | "Kreativni Splet", Static Endpoint, UDP 5060, `{DID}` |
 | DIDWW Voice IN trunk | dodeljen številki |
+
+**Trunk sprejema klice s katerega koli naslova.** Dokler ni omejen na signalne
+naslove ponudnika, lahko vanj pošilja klice kdorkoli, ki pozna SIP naslov projekta,
+in troši minute na tvoj račun. Zato SIP naslov ne sodi v javni repozitorij, omejitev
+pa je treba nastaviti, preden gre stvar v redno uporabo:
+
+```powershell
+# allowed_addresses nastavi na signalne naslove DIDWW
+& $lk sip inbound update <SIPTrunkID> ...
+```
 
 **Zakaj klici še ne delujejo:** številka je v stanju *Awaiting Registration*,
 `Identity: None`. Klic se ne pojavi niti v dnevniku DIDWW, torej ne pride do
