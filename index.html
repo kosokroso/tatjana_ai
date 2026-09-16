@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Asistent — Kreativni Splet</title>
 <style>
-  /* Paleta povzeta po kreativnisplet.si: topla krem podlaga, turkizni naslovi,
+  /* Paleta po kreativnisplet.si: topla krem podlaga, turkizni naslovi,
      oranžna za pozive k dejanju, zaobljene oblike. */
   :root {
     --bg: #fdf9f5;
@@ -28,7 +28,7 @@
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
 
-  .wrap { max-width: 900px; margin: 0 auto; padding: 0 24px 80px; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
 
   header {
     display: flex; align-items: center; justify-content: space-between;
@@ -38,57 +38,236 @@
   .brand { font-weight: 800; font-size: 17px; letter-spacing: -.01em; }
   .brand span { color: var(--teal); }
   header nav a {
-    color: var(--ink); font-size: 14.5px; font-weight: 500;
+    color: var(--ink); font-size: 14px;
     border: 1px solid var(--line); background: var(--panel);
-    padding: 9px 20px; border-radius: 999px;
+    padding: 8px 18px; border-radius: 999px; margin-left: 8px;
+    display: inline-block;
   }
   header nav a:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
 
   h1 {
-    font-size: clamp(38px, 7vw, 68px);
-    font-weight: 800;
-    letter-spacing: -.03em;
-    line-height: 1.05;
-    text-align: center;
-    color: var(--teal);
-    margin: 56px 0 14px;
+    font-size: clamp(34px, 6vw, 58px);
+    font-weight: 800; letter-spacing: -.03em; line-height: 1.05;
+    text-align: center; color: var(--teal); margin: 52px 0 14px;
   }
   h1 em {
     font-family: Georgia, "Times New Roman", serif;
-    font-style: italic;
-    font-weight: 400;
-    color: var(--accent);
+    font-style: italic; font-weight: 400; color: var(--accent);
   }
   .sub {
     text-align: center; color: var(--muted); font-size: 16px;
-    max-width: 540px; margin: 0 auto 44px;
+    max-width: 520px; margin: 0 auto 40px;
   }
 
-  footer {
-    margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line);
-    font-size: 13px; color: var(--muted);
-    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  /* ---- glasovni del ---- */
+  .mic {
+    display: block; margin: 0 auto 12px; width: 148px; height: 148px;
+    border-radius: 50%; border: 0; background: var(--accent); color: #fff;
+    font: inherit; font-weight: 600; font-size: 16px; cursor: pointer;
+    box-shadow: 0 10px 34px rgba(232,148,58,.35);
+    transition: transform .15s;
   }
+  .mic:hover { transform: scale(1.03); }
+  .mic.snema { background: #c0392b; animation: utrip 1.2s infinite; }
+  .mic[disabled] { opacity: .5; cursor: default; animation: none; transform: none; }
+  @keyframes utrip { 50% { box-shadow: 0 10px 46px rgba(192,57,43,.6); } }
+  .stanje { text-align: center; color: var(--muted); font-size: 14px; min-height: 24px; margin-bottom: 30px; }
+
+  .log {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 22px; padding: 24px; min-height: 140px;
+  }
+  .log:empty::after {
+    content: "Pritisnite gumb in govorite. Vprašajte o ponudbi, cenah ali rokih.";
+    color: var(--muted); font-size: 14px;
+  }
+  .msg { margin: 0 0 18px; }
+  .msg:last-child { margin-bottom: 0; }
+  .who {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--muted); margin: 0 0 4px; font-weight: 600;
+  }
+  .msg.bot .who { color: var(--teal); }
+  .msg.err .body { color: #c0392b; }
+  .body { margin: 0; white-space: pre-wrap; }
+  .meta {
+    font-size: 12px; color: var(--muted); margin: 5px 0 0;
+    font-family: ui-monospace, Consolas, monospace;
+  }
+
+  /* ---- portali ---- */
+  .portali { margin-top: 56px; padding-top: 30px; border-top: 1px solid var(--line); }
+  .portali h2 { font-size: 15px; font-weight: 600; color: var(--muted); margin: 0 0 18px; }
+  .kartice { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+  .kartica {
+    display: block; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 16px; padding: 20px 22px; color: var(--ink);
+  }
+  .kartica:hover { border-color: var(--accent); text-decoration: none; }
+  .kartica strong { display: block; font-size: 16px; margin-bottom: 4px; }
+  .kartica span { color: var(--muted); font-size: 13.5px; }
+
+  footer { margin-top: 40px; font-size: 13px; color: var(--muted); }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="brand">Kreativni <span>Splet</span></div>
-    <nav><a href="https://kreativnisplet.si/">Nazaj na stran</a></nav>
+    <nav>
+      <a href="admin/">Povpraševanja</a>
+      <a href="https://kreativnisplet.si/">Nazaj na stran</a>
+    </nav>
   </header>
 
   <h1>Te kaj <em>zanima?</em></h1>
-  <p class="sub">Vprašajte o ponudbi, cenah ali rokih izdelave. Za ponudbo pustite kontakt in oglasimo se vam.</p>
+  <p class="sub">Govorite z asistentko. Odgovori na vprašanja o ponudbi, cenah in rokih ter zabeleži povpraševanje.</p>
 
-  <div id="tatjana-chat"></div>
+  <button class="mic" id="mic">Govori</button>
+  <p class="stanje" id="stanje">Pripravljena</p>
+
+  <div class="log" id="log"></div>
+
+  <div class="portali">
+    <h2>Za ekipo</h2>
+    <div class="kartice">
+      <a class="kartica" href="admin/">
+        <strong>Povpraševanja</strong>
+        <span>Kdo je pisal, kaj potrebuje, kaj je že urejeno.</span>
+      </a>
+      <a class="kartica" href="admin/storitve.php">
+        <strong>Storitve in cene</strong>
+        <span>Kar je vpisano tu, asistentka pove strankam.</span>
+      </a>
+      <a class="kartica" href="data-view.php">
+        <strong>Stanje sistema</strong>
+        <span>Baza, poraba, preizkus pošiljanja. Zahteva ključ.</span>
+      </a>
+    </div>
+  </div>
 
   <footer>
-    <span>Testna stran asistenta. Ni povezana iz menija in ni indeksirana.</span>
-    <span>info@kreativnisplet.si &nbsp;·&nbsp; +386 31 455 881</span>
+    Interna stran. Ni povezana iz menija in ni indeksirana.
   </footer>
 </div>
 
-<script src="widget.js" defer></script>
+<script>
+const micEl = document.getElementById('mic');
+const stanjeEl = document.getElementById('stanje');
+const logEl = document.getElementById('log');
+
+let snemalnik = null;
+let kosi = [];
+let zgodovina = [];
+
+function zapis(vloga, besedilo, meta) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + vloga;
+
+  const kdo = document.createElement('p');
+  kdo.className = 'who';
+  kdo.textContent = vloga === 'user' ? 'Vi' : vloga === 'err' ? 'Napaka' : 'Tatjana';
+
+  const telo = document.createElement('p');
+  telo.className = 'body';
+  telo.textContent = besedilo;
+
+  el.append(kdo, telo);
+
+  if (meta) {
+    const m = document.createElement('p');
+    m.className = 'meta';
+    m.textContent = meta;
+    el.append(m);
+  }
+
+  logEl.append(el);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+micEl.addEventListener('click', async () => {
+  if (snemalnik && snemalnik.state === 'recording') {
+    snemalnik.stop();
+    return;
+  }
+
+  let tok;
+  try {
+    tok = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    zapis('err', 'Dostop do mikrofona ni bil dovoljen.');
+    return;
+  }
+
+  kosi = [];
+  snemalnik = new MediaRecorder(tok);
+  snemalnik.ondataavailable = (e) => { if (e.data.size) kosi.push(e.data); };
+  snemalnik.onstop = async () => {
+    tok.getTracks().forEach((t) => t.stop());
+    micEl.classList.remove('snema');
+    micEl.textContent = 'Govori';
+    await obdelaj(new Blob(kosi, { type: 'audio/webm' }));
+  };
+
+  snemalnik.start();
+  micEl.classList.add('snema');
+  micEl.textContent = 'Končaj';
+  stanjeEl.textContent = 'Poslušam…';
+});
+
+async function obdelaj(blob) {
+  micEl.disabled = true;
+  const zacetek = performance.now();
+
+  try {
+    stanjeEl.textContent = 'Prepisujem…';
+    const fd = new FormData();
+    fd.append('audio', blob, 'posnetek.webm');
+    const rSTT = await fetch('ai/transcribe.php', { method: 'POST', body: fd });
+    const pSTT = await rSTT.json();
+    if (!pSTT.success) { zapis('err', pSTT.error || 'Prepis ni uspel.'); return; }
+
+    const vprasanje = pSTT.data.text;
+    if (!vprasanje) { zapis('err', 'Ničesar nisem slišala. Poskusite znova.'); return; }
+    zapis('user', vprasanje);
+
+    stanjeEl.textContent = 'Razmišljam…';
+    zgodovina.push({ role: 'user', content: vprasanje });
+    const rChat = await fetch('ai/chat.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: zgodovina })
+    });
+    const pChat = await rChat.json();
+    if (!pChat.success) { zapis('err', pChat.error || 'Odgovor ni uspel.'); return; }
+
+    const odgovor = pChat.data.reply;
+    zgodovina.push({ role: 'assistant', content: odgovor });
+    const orodja = pChat.data.tools_used && pChat.data.tools_used.length
+      ? 'preverjeno: ' + pChat.data.tools_used.join(', ') : '';
+    zapis('bot', odgovor, orodja);
+
+    stanjeEl.textContent = 'Pripravljam odgovor…';
+    const rTTS = await fetch('ai/speak.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: odgovor })
+    });
+
+    if (!rTTS.ok || !(rTTS.headers.get('content-type') || '').includes('audio')) {
+      const p = await rTTS.json().catch(() => ({}));
+      zapis('err', p.error || 'Sinteza govora ni uspela.');
+      return;
+    }
+
+    new Audio(URL.createObjectURL(await rTTS.blob())).play();
+    stanjeEl.textContent = 'Odgovor v ' + (Math.round((performance.now() - zacetek) / 100) / 10) + ' s';
+  } catch (e) {
+    zapis('err', 'Napaka: ' + e.message);
+  } finally {
+    micEl.disabled = false;
+  }
+}
+</script>
 </body>
 </html>

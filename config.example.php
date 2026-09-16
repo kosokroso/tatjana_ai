@@ -93,7 +93,7 @@ define('OPENAI_MODEL', 'gpt-4o');
 define('OPENAI_TIMEOUT_SECONDS', 20);
 
 // ---------------------------------------------------------------
-// Govor (glasovni preizkus na voice-test.html)
+// Govor (glasovni asistent na index.html)
 // Imena modelov se pri OpenAI spreminjajo - preveri jih, preden krivis kodo.
 // ---------------------------------------------------------------
 define('STT_MODEL', 'gpt-4o-transcribe');

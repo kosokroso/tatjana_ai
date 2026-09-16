@@ -51,7 +51,7 @@ ponudbi, cenah in rokih ter zbira povpraševanja.
 - [x] Zapis v bazo je vir resnice — če pošta odpove, povpraševanje ostane
 
 ### Glas
-- [x] `voice-test.html` — mikrofon → prepis → odgovor → govor, na spletni strani
+- [x] Glasovni asistent na `index.html` — mikrofon → prepis → odgovor → govor
 - [x] **Azure slovenski glas** `sl-SI-PetraNeural`, regija `italynorth`
       (West Europe ne sprejema novih strank). Cene in telefonske številke
       izgovori pravilno; prejšnja napaka "329 namesto 399" je odpravljena.
@@ -96,8 +96,8 @@ ponudbi, cenah in rokih ter zbira povpraševanja.
 
 ### Pred javnim zagonom
 
-- [ ] **Odstrani `data-view.php` in `chat-test.html`** s strežnika. Prvi prikazuje
-      osebne podatke strank, oba sta zdaj na živi domeni.
+- [ ] **Odstrani `setup.php`** s strežnika po namestitvi — zna prepisati nastavitve.
+- [ ] **Odstrani `data-view.php`** pred predajo stranki; prikazuje osebne podatke.
 - [ ] Popravi delovni čas v tabeli `ai_business_hours` — vpisan je privzeti pon–pet 9–17,
       ne preverjen. Asistent ga stranki pove kot dejstvo.
 - [ ] Dopolni pogoje plačila v `data/business-info.json` (zdaj samo nevtralna formulacija).
@@ -114,7 +114,7 @@ ponudbi, cenah in rokih ter zbira povpraševanja.
 
 ### Glas — stanje
 
-- [x] Glasovni preizkus na `voice-test.html`: mikrofon → prepis → odgovor → govor
+- [x] Glasovni asistent na začetni strani, z gumbi do vseh portalov
 - [x] **Prepis slovenščine deluje**, tudi telefonske številke zapiše pravilno.
       To je bilo največje tveganje projekta in je odpravljeno.
 - [x] Normalizacija besedila pred govorom (cene, telefonske številke) — v kodi, ne v promptu

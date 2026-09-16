@@ -158,7 +158,7 @@ if ($authorised) {
 <div class="wrap">
   <header>
     <div class="brand">Pregled baze</div>
-    <nav><a href="chat-test.html">Nazaj na klepet</a></nav>
+    <nav><a href="./">Nazaj na asistenta</a></nav>
   </header>
 
 <?php if (!$authorised): ?>

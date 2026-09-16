@@ -1,10 +1,15 @@
 -- ============================================================
--- Baza za AI asistenta — Kreativni Splet
+-- Struktura baze za AI asistenta
 -- ============================================================
--- Uporaba v phpMyAdmin:
---   1. Levo izberi bazo. Na shared hostingu jo ustvaris v cPanelu, ne tukaj.
---   2. Zavihek "SQL" -> prilepi to datoteko -> Izvedi.
---   3. Skripta je idempotentna: lahko jo pozenes veckrat.
+-- Samo tabele, brez podatkov. Katalog storitev se vnese prek
+-- skrbniške strani (/admin/storitve.php), ne z urejanjem te datoteke.
+--
+-- Uporaba:
+--   Samodejno: setup.php to zažene sam ob postavitvi.
+--   Rocno:     phpMyAdmin -> izberi bazo -> zavihek SQL -> prilepi -> Izvedi.
+--
+-- Predpona ai_ locuje tabele asistenta od WordPressovih, kadar si delita bazo.
+-- Ce v config.php spremenis DB_PREFIX, preimenuj tudi tabele tukaj.
 --
 -- POZOR: skripta tabele najprej POBRISE. Ce so v bazi ze prava
 -- povprasevanja strank, jih prej izvozi.
@@ -22,10 +27,10 @@ DROP TABLE IF EXISTS ai_inquiries;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ------------------------------------------------------------
--- products — katalog storitev
+-- ai_products — katalog storitev oziroma izdelkov
 --
--- price_per_unit sme biti NULL: pri storitvah, ki nimajo objavljene
--- cene, asistent pove "cena po dogovoru" namesto da bi si jo izmislil.
+-- price_per_unit sme biti NULL: pri storitvah brez objavljene cene
+-- asistent pove "cena po dogovoru" namesto da bi si jo izmislil.
 --
 -- price_from pomeni izhodiscno ceno ("od 399 EUR"). Brez te oznake bi
 -- asistent stranki povedal izhodiscno ceno kot koncno.
@@ -33,20 +38,21 @@ SET FOREIGN_KEY_CHECKS = 1;
 CREATE TABLE ai_products (
   id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name            VARCHAR(160)   NOT NULL,
-  category        VARCHAR(40)    NOT NULL COMMENT 'spletne-strani | trzenje | oblikovanje | vzdrzevanje',
+  category        VARCHAR(40)    NOT NULL COMMENT 'mora se ujemati s kategorijami v ai/tool-definitions.json',
   unit            VARCHAR(20)    NOT NULL COMMENT 'paket | mesec | projekt | ura',
   price_per_unit  DECIMAL(10,2)  NULL COMMENT 'NULL = cena po dogovoru',
-  price_from      TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '1 = izhodiscna cena, koncna je odvisna od obsega',
-  stock_quantity  DECIMAL(10,2)  NOT NULL DEFAULT 1 COMMENT 'pri storitvah 1 = na voljo, 0 = trenutno ne sprejemamo',
+  price_from      TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '1 = izhodiscna cena',
+  stock_quantity  DECIMAL(10,2)  NOT NULL DEFAULT 1 COMMENT 'pri storitvah 1 = na voljo',
   description     VARCHAR(400)   NULL,
-  active          TINYINT(1)     NOT NULL DEFAULT 1,
+  active          TINYINT(1)     NOT NULL DEFAULT 1 COMMENT '0 = asistent je ne omenja',
   PRIMARY KEY (id),
   KEY idx_products_category (category),
   KEY idx_products_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- customers
+-- ai_customers — obstojece stranke, kadar naj asistent zna
+-- odgovoriti na vprasanje o stanju narocila ali projekta
 -- ------------------------------------------------------------
 CREATE TABLE ai_customers (
   id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -61,9 +67,9 @@ CREATE TABLE ai_customers (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- orders — projekti strank
--- Ena vrstica = en projekt. Stranka prek asistenta preveri, kako
--- napreduje, sele ko pove stevilko projekta IN svoj telefon/e-posto.
+-- ai_orders — narocila oziroma projekti
+-- Stranka prek asistenta preveri stanje sele, ko pove stevilko
+-- IN telefon ali e-posto, s katero je bilo narocilo oddano.
 -- ------------------------------------------------------------
 CREATE TABLE ai_orders (
   id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -71,7 +77,7 @@ CREATE TABLE ai_orders (
   product_id     INT UNSIGNED NOT NULL,
   quantity       DECIMAL(10,2) NOT NULL DEFAULT 1,
   order_date     DATE          NOT NULL,
-  delivery_date  DATE          NULL COMMENT 'predviden zakljucek; NULL dokler ni dogovorjen',
+  delivery_date  DATE          NULL COMMENT 'NULL dokler ni dogovorjen termin',
   status         ENUM('pending','scheduled','delivered','cancelled') NOT NULL DEFAULT 'pending',
   note           VARCHAR(300)  NULL,
   PRIMARY KEY (id),
@@ -82,10 +88,9 @@ CREATE TABLE ai_orders (
 ) ENGINE=InnoDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- inquiries — povprasevanja, ki jih zbere asistent
---
--- ime, telefon IN e-posta so obvezni: brez e-poste podjetje ne more
--- poslati ponudbe, brez telefona pa ne more poklicati nazaj.
+-- ai_inquiries — povprasevanja, ki jih zbere asistent
+-- Ime, telefon IN e-posta so obvezni: brez e-poste podjetje ne
+-- more poslati ponudbe, brez telefona ne more poklicati nazaj.
 -- ------------------------------------------------------------
 CREATE TABLE ai_inquiries (
   id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -104,12 +109,11 @@ CREATE TABLE ai_inquiries (
 ) ENGINE=InnoDB AUTO_INCREMENT=500 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- business_hours
+-- ai_business_hours
 -- day_of_week: 1 = ponedeljek ... 7 = nedelja (ISO-8601)
 --
--- POZOR: spodnje vrednosti so PRIVZETE, ne preverjene. Popravi jih na
--- pravi delovni cas, preden asistent zazivi na strani — stranki jih
--- bo povedal kot dejstvo.
+-- Privzeto pon-pet 9-17. Popravi na pravi delovni cas stranke,
+-- preden asistent zazivi - stranki ga pove kot dejstvo.
 -- ------------------------------------------------------------
 CREATE TABLE ai_business_hours (
   day_of_week  TINYINT UNSIGNED NOT NULL,
@@ -118,41 +122,6 @@ CREATE TABLE ai_business_hours (
   closed       TINYINT(1)   NOT NULL DEFAULT 0,
   PRIMARY KEY (day_of_week)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
--- KATALOG STORITEV
--- Cene so povzete po kreativnisplet.si. Kjer cena ni objavljena,
--- je NULL — asistent v tem primeru pove "cena po dogovoru".
--- ============================================================
-
-INSERT INTO ai_products (id, name, category, unit, price_per_unit, price_from, stock_quantity, description) VALUES
-(1,  'Enostavna spletna stran',              'spletne-strani', 'paket',   399.00, 1, 1, 'Enostranska predstavitvena stran ali stran z eno podstranjo. Vkljucuje osnovno SEO optimizacijo, kontaktni obrazec, SSL certifikat in prilagoditev mobilnim napravam. Izdelava priblizno dva tedna.'),
-(2,  'Napredna spletna stran',               'spletne-strani', 'paket',   899.00, 1, 1, 'Neomejeno stevilo podstrani, veckjezicnost, blog in Google Analytics 4. Primerno za podjetja, ki zelijo redno objavljati vsebine.'),
-(3,  'Spletna trgovina Shopify',             'spletne-strani', 'paket',  1100.00, 1, 1, 'Postavitev trgovine Shopify z urejanjem izdelkov, placilnimi sistemi, SEO za spletne trgovine in postavitvijo akcij.'),
-(4,  'Vzdrzevanje spletne strani',           'vzdrzevanje',    'mesec',    30.00, 1, 1, 'Od 30 do 120 EUR na mesec glede na obseg. Posodobitve, varnost, varnostne kopije in spremembe vsebine.'),
-(5,  'Meta oglasi (Facebook in Instagram)',  'trzenje',        'projekt',   NULL, 0, 1, 'Priprava in vodenje ciljanih oglasnih kampanj na Facebooku in Instagramu. Cena je odvisna od obsega in oglasnega proracuna.'),
-(6,  'SEO optimizacija',                     'trzenje',        'projekt',   NULL, 0, 1, 'Tehnicna in vsebinska optimizacija za iskalnike. Obseg dolocimo po pregledu obstojece strani.'),
-(7,  'Vodenje druzbenih omrezij',            'trzenje',        'mesec',     NULL, 0, 1, 'Strategija, priprava vsebin in vodenje profilov na TikToku, Facebooku in Instagramu.'),
-(8,  'Logotip in celostna graficna podoba',  'oblikovanje',    'projekt',   NULL, 0, 1, 'Oblikovanje logotipa in celostne graficne podobe znamke.'),
-(9,  'Fotografiranje',                       'oblikovanje',    'projekt',   NULL, 0, 1, 'Profesionalno fotografiranje izdelkov, prostorov in ekipe za uporabo na spletni strani in druzbenih omrezjih.'),
-(10, 'Video produkcija',                     'oblikovanje',    'projekt',   NULL, 0, 1, 'Snemanje in montaza video vsebin za splet in druzbena omrezja.');
-
--- ============================================================
--- TESTNI PODATKI
--- Spodnje stranke in projekti so IZMISLJENI, namenjeni preizkusu
--- poizvedbe po stanju projekta. Pred zagonom na pravi strani jih
--- pobrisi ali zamenjaj s pravimi:
---     DELETE FROM ai_orders; DELETE FROM ai_customers;
--- ============================================================
-
-INSERT INTO ai_customers (id, name, phone, email, address, created_date) VALUES
-(1, 'Testna stranka Ena',  '+38641234567', 'test1@example.com', 'Testni naslov 1', '2026-05-04'),
-(2, 'Testna stranka Dve',  '+38631876543', 'test2@example.com', 'Testni naslov 2', '2026-07-18');
-
-INSERT INTO ai_orders (id, customer_id, product_id, quantity, order_date, delivery_date, status, note) VALUES
-(10001, 1, 2, 1, '2026-08-10', '2026-09-20', 'scheduled', 'Napredna stran, ceka se gradivo stranke.'),
-(10002, 2, 3, 1, '2026-08-28', NULL,         'pending',   'Shopify trgovina, termin se ni dogovorjen.'),
-(10003, 1, 4, 1, '2026-06-01', '2026-06-05', 'delivered', 'Mesecno vzdrzevanje, aktivno.');
 
 INSERT INTO ai_business_hours (day_of_week, opens_at, closes_at, closed) VALUES
 (1, '09:00:00', '17:00:00', 0),
