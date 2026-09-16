@@ -57,4 +57,14 @@ final class VascoAdapter implements AdapterInterface
     {
         throw new AdapterException('VascoAdapter::updateInquiryStatus ni implementiran.');
     }
+
+    public function listProducts(): array
+    {
+        throw new AdapterException('VascoAdapter::listProducts ni implementiran.');
+    }
+
+    public function saveProduct(array $product): int
+    {
+        throw new AdapterException('VascoAdapter::saveProduct ni implementiran.');
+    }
 }

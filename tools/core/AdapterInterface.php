@@ -70,6 +70,27 @@ interface AdapterInterface
      * @throws AdapterException
      */
     public function updateInquiryStatus(int $id, string $status): bool;
+
+    /**
+     * Vse storitve za skrbniško urejanje, vključno z neaktivnimi.
+     *
+     * Ločeno od searchProducts(), ki vrača samo aktivne in samo zadetke iskanja —
+     * skrbnik mora videti tudi tisto, kar je umaknil iz ponudbe.
+     *
+     * @return array[]
+     * @throws AdapterException
+     */
+    public function listProducts(): array;
+
+    /**
+     * Shrani storitev. Brez 'id' doda novo, z 'id' posodobi obstoječo.
+     *
+     * @param array $product id, name, category, unit, price_per_unit (sme biti null),
+     *                       price_from, description, active
+     * @return int številka storitve
+     * @throws AdapterException
+     */
+    public function saveProduct(array $product): int;
 }
 
 /**

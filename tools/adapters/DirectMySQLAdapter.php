@@ -303,6 +303,69 @@ final class DirectMySQLAdapter implements AdapterInterface
         }
     }
 
+    public function listProducts(): array
+    {
+        try {
+            $stmt = $this->pdo()->query(
+                'SELECT id, name, category, unit, price_per_unit, price_from, stock_quantity,
+                        description, active
+                 FROM ' . $this->table('products') . '
+                 ORDER BY active DESC, category, name'
+            );
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::listProducts: ' . $e->getMessage());
+            throw new AdapterException('Branje storitev ni uspelo.');
+        }
+    }
+
+    public function saveProduct(array $product): int
+    {
+        // Cena sme biti prazna — takrat asistent pove "cena po dogovoru".
+        // Prazen niz ni isto kot nič: (float)'' bi dal 0 in asistent bi
+        // stranki povedal, da je storitev zastonj.
+        $cena = $product['price_per_unit'];
+        $cena = ($cena === null || $cena === '') ? null : (float) $cena;
+
+        $polja = [
+            ':name'        => trim((string) $product['name']),
+            ':category'    => (string) $product['category'],
+            ':unit'        => (string) $product['unit'],
+            ':price'       => $cena,
+            ':price_from'  => !empty($product['price_from']) ? 1 : 0,
+            ':description' => ($product['description'] ?? '') !== '' ? (string) $product['description'] : null,
+            ':active'      => !empty($product['active']) ? 1 : 0,
+        ];
+
+        try {
+            $id = (int) ($product['id'] ?? 0);
+
+            if ($id > 0) {
+                $stmt = $this->pdo()->prepare(
+                    'UPDATE ' . $this->table('products') . '
+                     SET name = :name, category = :category, unit = :unit,
+                         price_per_unit = :price, price_from = :price_from,
+                         description = :description, active = :active
+                     WHERE id = :id'
+                );
+                $stmt->execute($polja + [':id' => $id]);
+                return $id;
+            }
+
+            $stmt = $this->pdo()->prepare(
+                'INSERT INTO ' . $this->table('products') . '
+                 (name, category, unit, price_per_unit, price_from, description, active, stock_quantity)
+                 VALUES (:name, :category, :unit, :price, :price_from, :description, :active, 1)'
+            );
+            $stmt->execute($polja);
+
+            return (int) $this->pdo()->lastInsertId();
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::saveProduct: ' . $e->getMessage());
+            throw new AdapterException('Shranjevanje storitve ni uspelo.');
+        }
+    }
+
     // ----------------------------------------------------------------
 
     private function mapProduct(array $row): array

@@ -158,10 +158,16 @@ $naslov = defined('BUSINESS_NAME') ? BUSINESS_NAME : 'Asistent';
   <header>
     <div class="brand"><?= h($naslov) ?> <span>— povpraševanja</span></div>
     <?php if (adminPrijavljen()): ?>
-      <form method="post" style="margin:0">
-        <input type="hidden" name="dejanje" value="odjava">
-        <button type="submit" class="tiho">Odjava</button>
-      </form>
+      <div>
+        <nav style="display:inline">
+          <a href="./" style="margin-right:16px;color:var(--accent);font-weight:600">Povpraševanja</a>
+          <a href="storitve.php" style="margin-right:16px;color:var(--ink)">Storitve</a>
+        </nav>
+        <form method="post" style="display:inline">
+          <input type="hidden" name="dejanje" value="odjava">
+          <button type="submit" class="tiho">Odjava</button>
+        </form>
+      </div>
     <?php endif; ?>
   </header>
 
