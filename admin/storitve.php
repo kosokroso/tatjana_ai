@@ -212,6 +212,7 @@ function polje(?array $vir, string $kljuc, string $privzeto = ''): string
       <nav style="display:inline">
         <a href="./">Povpraševanja</a>
         <a href="storitve.php" class="aktiven">Storitve</a>
+        <a href="pogovori.php">Pogovori</a>
       </nav>
       <form method="post" style="display:inline">
         <input type="hidden" name="dejanje" value="odjava">
