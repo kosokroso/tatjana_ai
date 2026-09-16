@@ -98,10 +98,8 @@ $naslov = defined('BUSINESS_NAME') ? BUSINESS_NAME : 'Asistent';
 <meta name="robots" content="noindex, nofollow">
 <title>Povpraševanja — <?= h($naslov) ?></title>
 <style>
-  :root {
-    --bg:#fdf9f5; --panel:#fff; --ink:#23201d; --muted:#8a8079;
-    --line:#ece3d8; --accent:#e8943a; --teal:#3aaecf; --zebra:#faf7f3;
-  }
+  :root{--bg:#fdf9f4;--bg-2:#fbf4ea;--panel:#fff;--ink:#1f1c19;--muted:#8d8279;
+    --line:#ece2d6;--accent:#e8943a;--teal:#3aaecf;--zebra:#fbf6ef}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
     font:15px/1.6 "Segoe UI",-apple-system,Roboto,system-ui,sans-serif}
@@ -123,20 +121,29 @@ $naslov = defined('BUSINESS_NAME') ? BUSINESS_NAME : 'Asistent';
   input[type=password],input[type=search]{width:100%;padding:13px 18px;
     border:1px solid var(--line);border-radius:999px;font:inherit;color:var(--ink);background:var(--panel)}
   input:focus{outline:none;border-color:var(--accent)}
-  button{padding:12px 26px;border:0;border-radius:999px;background:var(--accent);
-    color:#fff;font:inherit;font-weight:600;cursor:pointer}
-  button:hover{opacity:.9}
+  button{padding:12px 26px;border:0;border-radius:999px;
+    background:linear-gradient(145deg,var(--accent),#d07f28);
+    color:#fff;font:inherit;font-weight:600;cursor:pointer;
+    box-shadow:0 6px 18px rgba(232,148,58,.3);transition:transform .18s,box-shadow .18s}
+  button:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(232,148,58,.38)}
+  button:active{transform:none}
   button.tiho{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:400;padding:7px 14px;font-size:13px}
-  button.tiho:hover{border-color:var(--accent);color:var(--accent);opacity:1}
+  button.tiho:hover{border-color:var(--accent);color:var(--accent);opacity:1;transform:none;box-shadow:none}
 
   .orodja{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 18px}
   .orodja input[type=search]{flex:1;min-width:200px}
   .zavihki{display:flex;gap:6px;flex-wrap:wrap}
   .zavihki a{padding:8px 16px;border:1px solid var(--line);border-radius:999px;
-    color:var(--ink);font-size:14px;background:var(--panel)}
+    color:var(--ink);font-size:14px;background:var(--panel);transition:border-color .2s,color .2s}
+  .zavihki a:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
   .zavihki a.aktiven{background:var(--ink);color:#fff;border-color:var(--ink)}
 
-  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;
+    background:var(--panel);box-shadow:0 6px 24px rgba(31,28,25,.04);
+    animation:vstop .5s ease both}
+  tbody tr{transition:background .15s}
+  tbody tr:hover{background:var(--zebra)}
+  @keyframes vstop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
   table{border-collapse:collapse;width:100%;font-size:14px}
   th,td{text-align:left;padding:12px 14px;vertical-align:top}
   th{background:var(--zebra);font-size:11px;text-transform:uppercase;
@@ -151,6 +158,10 @@ $naslov = defined('BUSINESS_NAME') ? BUSINESS_NAME : 'Asistent';
   .prazno{padding:40px;text-align:center;color:var(--muted)}
   .strani{display:flex;gap:10px;align-items:center;margin-top:18px;font-size:14px;color:var(--muted)}
   footer{margin-top:40px;font-size:13px;color:var(--muted)}
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+      transition-duration:.01ms !important}
+  }
 </style>
 </head>
 <body>

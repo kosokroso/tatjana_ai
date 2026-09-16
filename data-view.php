@@ -98,20 +98,14 @@ if ($authorised) {
 <meta name="robots" content="noindex, nofollow">
 <title>Pregled baze</title>
 <style>
-  :root {
-    --bg: #ffffff;
-    --ink: #111111;
-    --muted: #6f6f6f;
-    --line: #e6e6e6;
-    --accent: #bf6c2c;
-    --zebra: #faf9f8;
-  }
+  :root{--bg:#fdf9f4;--bg-2:#fbf4ea;--panel:#fff;--ink:#1f1c19;--muted:#8d8279;
+    --line:#ece2d6;--accent:#e8943a;--teal:#3aaecf;--zebra:#fbf6ef}
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font: 15px/1.6 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+    font: 15px/1.6 "Segoe UI", -apple-system, Roboto, system-ui, sans-serif;
   }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
@@ -120,12 +114,13 @@ if ($authorised) {
     display: flex; align-items: center; justify-content: space-between;
     padding: 26px 0; flex-wrap: wrap; gap: 12px;
   }
-  .brand { font-weight: 700; font-size: 17px; }
+  .brand { font-weight: 800; font-size: 17px; letter-spacing: -.02em; }
   h1 { font-size: clamp(28px, 5vw, 42px); font-weight: 300; letter-spacing: -.02em; margin: 32px 0 6px; }
   .sub { color: var(--muted); font-size: 14px; margin: 0 0 36px; }
   h2 { font-size: 18px; font-weight: 600; margin: 40px 0 4px; }
   .count { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
-  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px;
+    background: var(--panel); box-shadow: 0 6px 24px rgba(31,28,25,.04); }
   table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
   th, td { text-align: left; padding: 9px 14px; white-space: nowrap; }
   th {

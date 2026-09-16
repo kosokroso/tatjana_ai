@@ -137,8 +137,8 @@ function polje(?array $vir, string $kljuc, string $privzeto = ''): string
 <meta name="robots" content="noindex, nofollow">
 <title>Storitve — <?= h($naslov) ?></title>
 <style>
-  :root{--bg:#fdf9f5;--panel:#fff;--ink:#23201d;--muted:#8a8079;
-    --line:#ece3d8;--accent:#e8943a;--teal:#3aaecf;--zebra:#faf7f3}
+  :root{--bg:#fdf9f4;--bg-2:#fbf4ea;--panel:#fff;--ink:#1f1c19;--muted:#8d8279;
+    --line:#ece2d6;--accent:#e8943a;--teal:#3aaecf;--zebra:#fbf6ef}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
     font:15px/1.6 "Segoe UI",-apple-system,Roboto,system-ui,sans-serif}
@@ -159,7 +159,9 @@ function polje(?array $vir, string $kljuc, string $privzeto = ''): string
   .obvestilo.ok{background:#eef7ee;border:1px solid #cfe6cf}
   .obvestilo.err{background:#fdeeec;border:1px solid #f2cdc8;color:#a4302a}
 
-  .kartica{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px}
+  .kartica{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;
+    box-shadow:0 6px 24px rgba(31,28,25,.04);animation:vstop .5s ease both}
+  @keyframes vstop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
   .mreza{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
   label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
   input[type=text],input[type=number],select,textarea{width:100%;padding:11px 14px;
@@ -170,14 +172,22 @@ function polje(?array $vir, string $kljuc, string $privzeto = ''): string
   .potrdi{display:flex;align-items:center;gap:8px;margin-top:26px}
   .potrdi input{width:auto}
   .potrdi label{margin:0;color:var(--ink);font-size:14px}
-  button{padding:12px 26px;border:0;border-radius:999px;background:var(--accent);
-    color:#fff;font:inherit;font-weight:600;cursor:pointer}
-  button:hover{opacity:.9}
+  button{padding:12px 26px;border:0;border-radius:999px;
+    background:linear-gradient(145deg,var(--accent),#d07f28);
+    color:#fff;font:inherit;font-weight:600;cursor:pointer;
+    box-shadow:0 6px 18px rgba(232,148,58,.3);transition:transform .18s,box-shadow .18s}
+  button:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(232,148,58,.38)}
+  button:active{transform:none}
   .tiho{background:transparent;color:var(--muted);border:1px solid var(--line);
     font-weight:400;padding:7px 14px;font-size:13px;border-radius:999px;cursor:pointer}
-  .tiho:hover{border-color:var(--accent);color:var(--accent)}
+  .tiho:hover{border-color:var(--accent);color:var(--accent);transform:none;box-shadow:none}
 
-  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;
+    background:var(--panel);box-shadow:0 6px 24px rgba(31,28,25,.04);
+    animation:vstop .5s ease both}
+  tbody tr{transition:background .15s}
+  tbody tr:hover{background:var(--zebra)}
+  @keyframes vstop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
   table{border-collapse:collapse;width:100%;font-size:14px}
   th,td{text-align:left;padding:12px 14px;vertical-align:top}
   th{background:var(--zebra);font-size:11px;text-transform:uppercase;letter-spacing:.07em;
@@ -188,6 +198,10 @@ function polje(?array $vir, string $kljuc, string $privzeto = ''): string
   .znacka{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px}
   .znacka.da{background:#e9f4e9;color:#2f6b30}
   .znacka.ne{background:#f0eeec;color:#7a716a}
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+      transition-duration:.01ms !important}
+  }
 </style>
 </head>
 <body>
