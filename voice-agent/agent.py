@@ -215,6 +215,30 @@ class TelefonskiAsistent(Agent):
                 vsebina[kljuc] = vrednost
         return await poklici_orodje("submit-inquiry", vsebina)
 
+    @function_tool()
+    async def koncaj_pogovor(self, context: RunContext, pozdrav: str) -> str:
+        """Poslovi se in odloži slušalko. Uporabi, ko je pogovor končan: ko si
+        oddala povpraševanje in stranka nima več vprašanj, ali ko se stranka
+        sama poslovi. Ne uporabi je sredi pogovora ali kadar stranka še kaj
+        sprašuje.
+
+        Args:
+            pozdrav: Kratek poslovilni stavek, ki ga poveš, preden se klic konča.
+        """
+        try:
+            await context.session.say(pozdrav)
+        except Exception as e:  # noqa: BLE001
+            log.debug("poslovilnega stavka ni bilo mogoče izgovoriti: %s", e)
+
+        # Zvok do slušalke potuje z zamikom. Brez tega premora se zadnja beseda
+        # odreže in klic se konča sredi pozdrava.
+        await asyncio.sleep(ODLOZI_PO_SEKUNDAH)
+        await agents.get_job_context().delete_room()
+        return "Klic je končan."
+
+
+ODLOZI_PO_SEKUNDAH = 0.6
+
 
 def izberi_prepis():
     """Azure, kadar je ključ nastavljen; sicer OpenAI.
@@ -227,10 +251,13 @@ def izberi_prepis():
     if os.getenv("AZURE_SPEECH_KEY"):
         return azure.STT(
             language="sl-SI",
-            # Koliko tišine Azure šteje za konec povedi. Privzetih 500 ms je
-            # za telefon dobro izhodišče; nižje pomeni hitrejši odziv, a več
-            # prekinjanja sredi stavka.
-            segmentation_silence_timeout_ms=int(os.getenv("STT_TISINA_MS", "500")),
+            # Koliko tišine Azure šteje za konec povedi.
+            #
+            # Ta čas se sešteje z VAD_TISINA in KONEC_MIN — vsi trije čakajo na
+            # isto tišino, eden za drugim. Skupaj so pomenili skoraj sekundo in
+            # pol, preden je model sploh začel. Zato so vsi trije nižji kot
+            # posamič smiselno; popravljaj jih skupaj, ne enega samega.
+            segmentation_silence_timeout_ms=int(os.getenv("STT_TISINA_MS", "300")),
         )
 
     log.warning("AZURE_SPEECH_KEY ni nastavljen — uporabljam OpenAI prepis (pocasnejsi)")
@@ -296,9 +323,23 @@ async def stevilka_klicatelja(ctx: agents.JobContext) -> str:
         return ""
 
     stevilka = (udelezenec.attributes.get("sip.phoneNumber") or "").strip()
-    # Številke ne pišemo v dnevnik. Dnevniki se berejo, pošiljajo in hranijo
-    # dlje, kot kdo pričakuje, za štetje pa zadošča, ali je znana ali ne.
-    log.info("klic s %s številke", "znane" if stevilka else "skrite")
+
+    # Zasilna pot: LiveKit identiteto udeleženca SIP sestavi iz številke
+    # ("sip_+38641234567"). Kadar lastnosti ni, je številka pogosto še vedno tu.
+    if not stevilka:
+        identiteta = (udelezenec.identity or "").strip()
+        if identiteta.startswith("sip_"):
+            stevilka = identiteta[4:].strip()
+
+    # Imena lastnosti gredo v dnevnik, vrednosti ne. Iz imen se vidi, kaj je
+    # LiveKit sploh poslal, brez tega pa se manjkajoča številka išče na slepo.
+    # Vrednosti so telefonske številke in v dnevnik ne sodijo.
+    log.info(
+        "udeleženec %s, lastnosti SIP: %s, številka %s",
+        udelezenec.kind,
+        sorted(k for k in udelezenec.attributes if k.startswith("sip.")),
+        "znana" if stevilka else "SKRITA ALI NEZNANA",
+    )
     return stevilka
 
 
@@ -376,7 +417,7 @@ premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
         # pogosto premolknejo; prekratek premor pomeni, da asistentka skoči v
         # besedo, predolg pa neroden molk. Po nekaj klicih popravi v .env.
         vad=silero.VAD.load(
-            min_silence_duration=float(os.getenv("VAD_TISINA", "0.55")),
+            min_silence_duration=float(os.getenv("VAD_TISINA", "0.45")),
             min_speech_duration=float(os.getenv("VAD_GOVOR", "0.10")),
             activation_threshold=float(os.getenv("VAD_PRAG", "0.5")),
         ),
@@ -386,7 +427,7 @@ premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
         preemptive_generation=True,
         # Koliko tišine pomeni "sogovornik je končal". Prekratko pomeni, da
         # asistentka skoči v besedo, predolgo pa neroden molk.
-        min_endpointing_delay=float(os.getenv("KONEC_MIN", "0.4")),
+        min_endpointing_delay=float(os.getenv("KONEC_MIN", "0.25")),
         max_endpointing_delay=float(os.getenv("KONEC_MAX", "3.0")),
         # Telefonska linija šumi. Privzeto pol sekunde zvoka že velja za
         # prekinitev, zato asistentko sredi daljšega odgovora utiša vsak hrup
