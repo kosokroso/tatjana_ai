@@ -258,7 +258,7 @@ class TelefonskiAsistent(Agent):
         # Zvok do slušalke potuje z zamikom. Brez tega premora se zadnja beseda
         # odreže in klic se konča sredi pozdrava.
         await asyncio.sleep(ODLOZI_PO_SEKUNDAH)
-        await odlozi(agents.get_job_context(), context.session)
+        await odlozi(agents.get_job_context())
         return "Klic je končan."
 
 
@@ -389,7 +389,7 @@ async def straza(ctx: agents.JobContext, session: AgentSession, sekund_max: int,
     except Exception as e:  # noqa: BLE001
         log.debug("zaključka ni bilo mogoče izgovoriti: %s", e)
 
-    await odlozi(ctx, session)
+    await odlozi(ctx)
 
 
 def nastavljive_izboljsave() -> dict:
@@ -433,18 +433,17 @@ def nastavljive_izboljsave() -> dict:
     return izbrano
 
 
-async def odlozi(ctx: agents.JobContext, session: AgentSession) -> None:
+async def odlozi(ctx: agents.JobContext) -> None:
     """Konča klic.
 
-    Sejo zapremo pred sobo. V obratnem vrstnem redu seja še naprej pošilja
-    dogodke v sobo, ki je ni več, in v dnevnik nasuje "room session transport
-    is closed" — same napake, ki niso napake, med katerimi se prave
-    izgubijo.
+    Zapremo samo sobo. Seje tu ni mogoče zapreti: ta funkcija teče tudi znotraj
+    orodja koncaj_pogovor, seja pa čaka, da se orodje konča — in orodje bi
+    čakalo, da se zapre seja. Klic se zagozdi in nihče ne odloži.
+
+    Cena je pet opozoril "room session transport is closed" v dnevniku, ker seja
+    še nekaj trenutkov pošilja dogodke v sobo, ki je ni več. Napake to niso.
+    Delujoča prekinitev je vredna več od čistega dnevnika.
     """
-    try:
-        await session.aclose()
-    except Exception as e:  # noqa: BLE001
-        log.debug("seje ni bilo mogoče zapreti: %s", e)
     await ctx.delete_room()
 
 
@@ -518,7 +517,7 @@ premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
             "Oprostite, tega klica vam danes ne morem sprejeti. Pišite nam prosim "
             "po elektronski pošti, pa vam odgovorimo. Lep pozdrav."
         )
-        await odlozi(ctx, session)
+        await odlozi(ctx)
         return
 
     await session.say(nastavitve["greeting"])
