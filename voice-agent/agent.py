@@ -274,6 +274,15 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
         # asistentka skoči v besedo, predolgo pa neroden molk.
         min_endpointing_delay=float(os.getenv("KONEC_MIN", "0.4")),
         max_endpointing_delay=float(os.getenv("KONEC_MAX", "3.0")),
+        # Telefonska linija šumi. Privzeto pol sekunde zvoka že velja za
+        # prekinitev, zato asistentko sredi daljšega odgovora utiša vsak hrup
+        # v ozadju — v slušalki se to sliši kot sekanje in preskakovanje.
+        # Zato zahtevamo daljši in razumljen govor, preden jo utišamo.
+        min_interruption_duration=float(os.getenv("PREKIN_SEK", "0.7")),
+        min_interruption_words=int(os.getenv("PREKIN_BESEDE", "2")),
+        # Če prekinitev ni bila prava, naj pove stavek do konca.
+        resume_false_interruption=True,
+        false_interruption_timeout=float(os.getenv("PREKIN_LAZNA", "1.5")),
     )
 
     zacetek = time.perf_counter()
