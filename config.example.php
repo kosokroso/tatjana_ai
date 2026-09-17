@@ -92,6 +92,10 @@ define('OPENAI_API_KEY', '');
 define('OPENAI_MODEL', 'gpt-4o');
 define('OPENAI_TIMEOUT_SECONDS', 20);
 
+// Raznolikost ubeseditve. 0,3 zveni kot posnetek, 0,6 kot pogovor.
+// Visje od 0,8 ne priporocam - model zacne prosto ravnati s podatki.
+define('LLM_TEMPERATURE', 0.6);
+
 // ---------------------------------------------------------------
 // Govor (glasovni asistent na index.html)
 // Imena modelov se pri OpenAI spreminjajo - preveri jih, preden krivis kodo.

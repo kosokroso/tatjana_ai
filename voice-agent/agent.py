@@ -223,7 +223,14 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
         # Jezik je izrecno slovenščina. Brez tega model jezik ugiba in po
         # telefonu, kjer je zvok slabši, pogosto zgreši v hrvaščino.
         stt=openai.STT(model=os.getenv("STT_MODEL", "gpt-4o-transcribe"), language="sl"),
-        llm=openai.LLM(model=os.getenv("LLM_MODEL", "gpt-4o-mini"), temperature=0.3),
+        # 0,3 je zvenelo kot posnetek: model je vedno izbral najbolj pricakovano
+        # besedo. 0,6 da vec raznolikosti v ubeseditvi. Cene to ne ogrozi, ker
+        # jih model prepise iz orodja, ne sestavlja sam - a prav to preveri,
+        # ce vrednost se dvignes.
+        llm=openai.LLM(
+            model=os.getenv("LLM_MODEL", "gpt-4o-mini"),
+            temperature=float(os.getenv("LLM_TEMPERATURE", "0.6")),
+        ),
         tts=izberi_glas(),
         # Zazna, kdaj je sogovornik nehal govoriti. Brez tega agent skače v besedo.
         #

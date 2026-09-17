@@ -45,7 +45,10 @@ final class OpenAIClient
         $payload = [
             'model'       => $this->model,
             'messages'    => $messages,
-            'temperature' => 0.3, // Nizka: pri cenah in terminih ne želimo ustvarjalnosti.
+            // 0,3 je zvenelo kot posnetek — model je vedno izbral najbolj
+            // pričakovano besedo. 0,6 da več raznolikosti v ubeseditvi. Cen to
+            // ne ogroža, ker jih prepiše iz orodja in ne sestavlja sam.
+            'temperature' => defined('LLM_TEMPERATURE') ? (float) LLM_TEMPERATURE : 0.6,
         ];
 
         if ($tools) {
