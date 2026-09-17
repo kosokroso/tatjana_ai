@@ -175,22 +175,23 @@ class TelefonskiAsistent(Agent):
         self,
         context: RunContext,
         name: str,
+        phone: str,
         email: str,
-        phone: str | None = None,
         product: str | None = None,
         quantity: str | None = None,
         note: str | None = None,
     ) -> dict:
         """Odda povpraševanje, da podjetje stranki pripravi ponudbo. Uporabi
-        šele, ko imaš ime IN e-pošto, in ko je stranka potrdila, da naj
-        povpraševanje oddaš. Povpraševanje ni naročilo.
+        šele, ko imaš ime, telefonsko številko in e-pošto, in ko je stranka
+        potrdila, da naj povpraševanje oddaš. Povpraševanje ni naročilo.
 
         Args:
             name: Ime in priimek stranke ali naziv podjetja.
-            email: E-poštni naslov, na katerega gre ponudba.
-            phone: Telefonska številka za povratni klic. Pri klicu je ne navajaj —
-                pusti prazno in vzame se številka, s katere stranka kliče.
-                Izpolni jo samo, če stranka izrecno pove drugo številko.
+            phone: Telefonska številka za povratni klic. Med telefonskim klicem
+                vpiši prazen niz, če stranka ni izrecno povedala druge številke —
+                vzame se številka, s katere kliče.
+            email: E-poštni naslov, na katerega gre ponudba. Nikoli sem ne vpiši
+                telefonske številke; brez veljavnega naslova povpraševanja ni.
             product: Kaj stranka potrebuje, z njenimi besedami.
             quantity: Obseg, če ga je navedla.
             note: Vse, kar je povedala o projektu — rok, obstoječa stran, panoga, proračun.
@@ -209,11 +210,35 @@ class TelefonskiAsistent(Agent):
                 "error": "Manjka telefonska številka. Vprašaj stranko zanjo.",
             }
 
-        vsebina = {"name": name, "phone": telefon, "email": email}
+        # Po zvoku se "at" in "pika" pogosto izgubita, model pa je v to polje že
+        # vpisal telefonsko številko. Napako ujamemo tu, da dobi jasen popravek
+        # namesto splošne zavrnitve s strežnika.
+        naslov = (email or "").strip()
+        if "@" not in naslov or "." not in naslov.rsplit("@", 1)[-1]:
+            return {
+                "success": False,
+                "data": None,
+                "error": (
+                    "To ni e-poštni naslov. Vprašaj stranko za e-pošto in jo prosi, "
+                    "naj jo pove po črkah."
+                ),
+            }
+
+        vsebina = {"name": name, "phone": telefon, "email": naslov}
         for kljuc, vrednost in (("product", product), ("quantity", quantity), ("note", note)):
             if vrednost:
                 vsebina[kljuc] = vrednost
-        return await poklici_orodje("submit-inquiry", vsebina)
+        odgovor = await poklici_orodje("submit-inquiry", vsebina)
+
+        # Navodilo v odgovoru orodja model upošteva bolj zanesljivo kot pravilo,
+        # zakopano sredi sistemskega prompta. Brez tega je klic po oddanem
+        # povpraševanju obvisel v tišini, dokler ni odložila stranka.
+        if odgovor.get("success"):
+            odgovor["naslednji_korak"] = (
+                "Povej številko povpraševanja in da ponudbo pošljemo po e-pošti. "
+                "Če stranka nima več vprašanj, se poslovi in pokliči orodje koncaj_pogovor."
+            )
+        return odgovor
 
     @function_tool()
     async def koncaj_pogovor(self, context: RunContext, pozdrav: str) -> str:
