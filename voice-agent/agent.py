@@ -258,7 +258,7 @@ class TelefonskiAsistent(Agent):
         # Zvok do slušalke potuje z zamikom. Brez tega premora se zadnja beseda
         # odreže in klic se konča sredi pozdrava.
         await asyncio.sleep(ODLOZI_PO_SEKUNDAH)
-        await agents.get_job_context().delete_room()
+        await odlozi(agents.get_job_context(), context.session)
         return "Klic je končan."
 
 
@@ -389,7 +389,7 @@ async def straza(ctx: agents.JobContext, session: AgentSession, sekund_max: int,
     except Exception as e:  # noqa: BLE001
         log.debug("zaključka ni bilo mogoče izgovoriti: %s", e)
 
-    await ctx.delete_room()
+    await odlozi(ctx, session)
 
 
 def nastavljive_izboljsave() -> dict:
@@ -431,6 +431,21 @@ def nastavljive_izboljsave() -> dict:
     if izbrano:
         log.info("vklopljene izboljšave: %s", sorted(izbrano))
     return izbrano
+
+
+async def odlozi(ctx: agents.JobContext, session: AgentSession) -> None:
+    """Konča klic.
+
+    Sejo zapremo pred sobo. V obratnem vrstnem redu seja še naprej pošilja
+    dogodke v sobo, ki je ni več, in v dnevnik nasuje "room session transport
+    is closed" — same napake, ki niso napake, med katerimi se prave
+    izgubijo.
+    """
+    try:
+        await session.aclose()
+    except Exception as e:  # noqa: BLE001
+        log.debug("seje ni bilo mogoče zapreti: %s", e)
+    await ctx.delete_room()
 
 
 server = agents.AgentServer()
@@ -503,7 +518,7 @@ premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
             "Oprostite, tega klica vam danes ne morem sprejeti. Pišite nam prosim "
             "po elektronski pošti, pa vam odgovorimo. Lep pozdrav."
         )
-        await ctx.delete_room()
+        await odlozi(ctx, session)
         return
 
     await session.say(nastavitve["greeting"])
