@@ -73,6 +73,29 @@ define('DAILY_TOKEN_BUDGET', 200000);
 
 
 // ---------------------------------------------------------------
+// Meje za telefonske klice.
+//
+// Telefon ne gre skozi CHAT_RATE_LIMIT in DAILY_TOKEN_BUDGET - to velja samo
+// za klepet na strani. Ob vsakem klicu tecejo stevci LiveKit, OpenAI, Azure in
+// ponudnika stevilke hkrati, zato je brez teh mej strop tvoja kartica.
+//
+// 0 pomeni brez omejitve. Vrednosti so zacetne; popravi jih, ko vidis, koliko
+// klicev res prihaja.
+// ---------------------------------------------------------------
+
+// Najdaljsi posamezen klic. Asistentka pol minute prej opozori in nato zakljuci.
+// Resnicno povprasevanje se opravi v treh do petih minutah.
+define('CALL_MAX_SECONDS', 600);
+
+// Skupno stevilo minut klicev na dan, cez vse klicatelje skupaj.
+define('CALL_DAILY_MINUTES', 120);
+
+// Koliko klicev sme opraviti ista stevilka na dan. Klici s skrito stevilko se
+// stejejo skupaj pod eno oznako.
+define('CALL_MAX_PER_CALLER', 10);
+
+
+// ---------------------------------------------------------------
 // Skupna skrivnost za strežnik-na-strežnik klice (kasnejši glasovni sloj).
 // Klic z glavo "X-Tool-Secret: <vrednost>" preskoči rate limit.
 // Generiraj naključen niz, npr.: bin2hex(random_bytes(24))

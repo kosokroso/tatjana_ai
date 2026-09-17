@@ -16,6 +16,7 @@ Zagon:
     python agent.py dev         # poveže se na LiveKit, sprejema klice
 """
 
+import asyncio
 import logging
 import os
 import time
@@ -72,6 +73,29 @@ async def poklici_orodje(pot: str, vsebina: dict) -> dict:
         }
 
 
+async def vprasaj_vratarja(dejanje: str, klicatelj: str, sekund: int = 0) -> dict:
+    """Vpraša strežnik, ali sme klic naprej, in mu sporoči, koliko je trajal.
+
+    Števci morajo živeti na gostovanju in ne tukaj. Ta agent teče v LiveKit
+    Cloud, kjer se replika lahko kadar koli ustavi in zažene znova s praznim
+    diskom — števec v agentu bi se vrnil na nič ravno takrat, ko bi bil najbolj
+    potreben, in več replik hkrati bi štelo vsaka zase.
+    """
+    vsebina = {"action": dejanje, "caller": klicatelj}
+    if dejanje == "end":
+        vsebina["seconds"] = sekund
+
+    try:
+        r = await odjemalec().post(f"{TOOLS_BASE_URL}/ai/call-guard.php", json=vsebina)
+        return r.json()
+    except Exception as e:  # noqa: BLE001
+        # Če vratar ne odgovori, klic spustimo skozi. Nedosegljiv strežnik na
+        # gostovanju ne sme pomeniti, da telefon podjetja obmolkne — to bi bila
+        # večja škoda od ene prekoračene meje.
+        log.warning("vratar ni odgovoril (%s): %s", dejanje, e)
+        return {"allow": True}
+
+
 def meritev(kaj: str, zacetek: float) -> None:
     """Zapiše trajanje koraka.
 
@@ -96,8 +120,9 @@ async def mašilo(context: RunContext, besedilo: str) -> None:
 
 
 class TelefonskiAsistent(Agent):
-    def __init__(self, navodila: str) -> None:
+    def __init__(self, navodila: str, telefon_klicatelja: str = "") -> None:
         super().__init__(instructions=navodila)
+        self.telefon_klicatelja = telefon_klicatelja
 
     @function_tool()
     async def search_services(
@@ -150,26 +175,41 @@ class TelefonskiAsistent(Agent):
         self,
         context: RunContext,
         name: str,
-        phone: str,
         email: str,
+        phone: str | None = None,
         product: str | None = None,
         quantity: str | None = None,
         note: str | None = None,
     ) -> dict:
         """Odda povpraševanje, da podjetje stranki pripravi ponudbo. Uporabi
-        šele, ko imaš ime, telefonsko številko IN e-pošto, in ko je stranka
-        potrdila, da naj povpraševanje oddaš. Povpraševanje ni naročilo.
+        šele, ko imaš ime IN e-pošto, in ko je stranka potrdila, da naj
+        povpraševanje oddaš. Povpraševanje ni naročilo.
 
         Args:
             name: Ime in priimek stranke ali naziv podjetja.
-            phone: Telefonska številka za povratni klic.
             email: E-poštni naslov, na katerega gre ponudba.
+            phone: Telefonska številka za povratni klic. Pri klicu je ne navajaj —
+                pusti prazno in vzame se številka, s katere stranka kliče.
+                Izpolni jo samo, če stranka izrecno pove drugo številko.
             product: Kaj stranka potrebuje, z njenimi besedami.
             quantity: Obseg, če ga je navedla.
             note: Vse, kar je povedala o projektu — rok, obstoječa stran, panoga, proračun.
         """
         await mašilo(context, "Zabeležim.")
-        vsebina = {"name": name, "phone": phone, "email": email}
+
+        # Pri telefonskem klicu je številka že znana iz same povezave. Narekovanje
+        # po zvoku je najpogostejši vir napak — števke se zamenjajo in ponudba gre
+        # v prazno. Kar stranka izrecno pove, ima vseeno prednost: klicati zna s
+        # centrale in želeti povratni klic na mobilni.
+        telefon = (phone or self.telefon_klicatelja or "").strip()
+        if not telefon:
+            return {
+                "success": False,
+                "data": None,
+                "error": "Manjka telefonska številka. Vprašaj stranko zanjo.",
+            }
+
+        vsebina = {"name": name, "phone": telefon, "email": email}
         for kljuc, vrednost in (("product", product), ("quantity", quantity), ("note", note)):
             if vrednost:
                 vsebina[kljuc] = vrednost
@@ -237,12 +277,86 @@ def preberi_nastavitve() -> dict:
     return r.json()
 
 
+async def stevilka_klicatelja(ctx: agents.JobContext) -> str:
+    """Prebere številko, s katere kdo kliče, iz same telefonske povezave.
+
+    LiveKit jo zapiše kot lastnost udeleženca SIP, zato je znana, še preden
+    kdo spregovori. Stranki je tako ni treba narekovati — narekovanje po zvoku
+    je najpogostejši vir napak v povpraševanju, ker se števke zamenjajo in
+    ponudba odide v prazno.
+
+    Klicatelj sme številko skriti. Takrat je vrnjen prazen niz in stranko za
+    številko vseeno vprašamo.
+    """
+    try:
+        await ctx.connect()
+        udelezenec = await asyncio.wait_for(ctx.wait_for_participant(), timeout=10.0)
+    except Exception as e:  # noqa: BLE001
+        log.warning("udeleženca ni bilo mogoče prebrati: %s", e)
+        return ""
+
+    stevilka = (udelezenec.attributes.get("sip.phoneNumber") or "").strip()
+    # Številke ne pišemo v dnevnik. Dnevniki se berejo, pošiljajo in hranijo
+    # dlje, kot kdo pričakuje, za štetje pa zadošča, ali je znana ali ne.
+    log.info("klic s %s številke", "znane" if stevilka else "skrite")
+    return stevilka
+
+
+async def straza(ctx: agents.JobContext, session: AgentSession, sekund_max: int, zakljucek: str) -> None:
+    """Zaključi klic, ki traja predolgo.
+
+    Brez tega lahko ena sama odprta linija teče ure in vleče minute pri štirih
+    ponudnikih hkrati — namerno ali pa zato, ker je kdo odložil slušalko poleg
+    telefona. Pol minute prej pride opozorilo, da zaključek ne pride sredi
+    stavka nekoga, ki resno povprašuje.
+    """
+    if sekund_max <= 0:
+        return
+
+    opozori_ob = max(1, sekund_max - 30)
+    await asyncio.sleep(opozori_ob)
+    try:
+        await session.say("Oprostite, tale klic bom morala kmalu zaključiti.")
+    except Exception as e:  # noqa: BLE001
+        log.debug("opozorila ni bilo mogoče izgovoriti: %s", e)
+
+    await asyncio.sleep(sekund_max - opozori_ob)
+    try:
+        await session.say(zakljucek)
+    except Exception as e:  # noqa: BLE001
+        log.debug("zaključka ni bilo mogoče izgovoriti: %s", e)
+
+    await ctx.delete_room()
+
+
 server = agents.AgentServer()
 
 
 @server.rtc_session(agent_name="tatjana")
 async def vstopna_tocka(ctx: agents.JobContext) -> None:
     nastavitve = preberi_nastavitve()
+
+    zacetek_klica = time.perf_counter()
+    klicatelj = await stevilka_klicatelja(ctx)
+    vratar = await vprasaj_vratarja("start", klicatelj)
+
+    # Trajanje se sporoči ob koncu, ne ob začetku: klic, ki se prekine po treh
+    # sekundah, ne sme šteti enako kot desetminutni.
+    async def ob_koncu() -> None:
+        await vprasaj_vratarja("end", klicatelj, int(time.perf_counter() - zacetek_klica))
+
+    ctx.add_shutdown_callback(ob_koncu)
+
+    navodila = nastavitve["system_prompt"]
+    if klicatelj:
+        navodila += f"""
+
+## Številka, s katere kličejo
+Stranka kliče s številke {klicatelj}. Za to številko je ne sprašuj — že jo imaš.
+Ko zbiraš podatke za povpraševanje, jo samo potrdi, prebrano po skupinah s
+premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
+Če stranka pove drugo številko, zapiši tisto, ki jo pove.
+"""
 
     session = AgentSession(
         stt=izberi_prepis(),
@@ -286,10 +400,32 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
     )
 
     zacetek = time.perf_counter()
-    await session.start(room=ctx.room, agent=TelefonskiAsistent(nastavitve["system_prompt"]))
+    await session.start(room=ctx.room, agent=TelefonskiAsistent(navodila, klicatelj))
     meritev("zagon_seje", zacetek)
 
+    if not vratar.get("allow", True):
+        # Razloga ne povemo. Kdor mejo namerno preizkuša, iz vljudnega stavka
+        # ne izve, katera meja je bila dosežena in koliko je do nje.
+        await session.say(
+            "Oprostite, tega klica vam danes ne morem sprejeti. Pišite nam prosim "
+            "po elektronski pošti, pa vam odgovorimo. Lep pozdrav."
+        )
+        await ctx.delete_room()
+        return
+
     await session.say(nastavitve["greeting"])
+
+    # Če vratar ni odgovoril, mejo vseeno postavimo. Nedosegljiv strežnik na
+    # gostovanju ne sme pomeniti, da linija ostane odprta brez konca.
+    sekund_max = int(vratar.get("max_seconds") or os.getenv("KLIC_MAX_SEK", "600"))
+    nadzor = asyncio.create_task(
+        straza(ctx, session, sekund_max, "Hvala za klic in lep pozdrav.")
+    )
+
+    async def ustavi_strazo() -> None:
+        nadzor.cancel()
+
+    ctx.add_shutdown_callback(ustavi_strazo)
 
 
 if __name__ == "__main__":
