@@ -18,6 +18,7 @@ Zagon:
 
 import logging
 import os
+import time
 
 import httpx
 from dotenv import load_dotenv
@@ -37,24 +38,61 @@ TOOL_SECRET = os.environ["TOOL_SECRET"]
 TIMEOUT_SEKUND = 6.0
 
 
+# Povezava se odpre enkrat in ostane odprta. Nova povezava na vsak klic pomeni
+# novo rokovanje TLS, kar je po telefonu slišnih 100 do 300 milisekund.
+_odjemalec: httpx.AsyncClient | None = None
+
+
+def odjemalec() -> httpx.AsyncClient:
+    global _odjemalec
+    if _odjemalec is None:
+        _odjemalec = httpx.AsyncClient(
+            timeout=TIMEOUT_SEKUND,
+            headers={"X-Tool-Secret": TOOL_SECRET},
+            limits=httpx.Limits(max_keepalive_connections=4, keepalive_expiry=120.0),
+        )
+    return _odjemalec
+
+
 async def poklici_orodje(pot: str, vsebina: dict) -> dict:
-    """Pokliče PHP endpoint in vrne dekodiran odgovor."""
-    url = f"{TOOLS_BASE_URL}/tools/{pot}.php"
+    """Pokliče PHP endpoint in vrne dekodiran odgovor. Meri, koliko je trajalo."""
+    zacetek = time.perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=TIMEOUT_SEKUND) as client:
-            r = await client.post(
-                url,
-                json=vsebina,
-                headers={"X-Tool-Secret": TOOL_SECRET},
-            )
-            return r.json()
+        r = await odjemalec().post(f"{TOOLS_BASE_URL}/tools/{pot}.php", json=vsebina)
+        odgovor = r.json()
+        meritev("orodje:" + pot, zacetek)
+        return odgovor
     except Exception as e:  # noqa: BLE001 — karkoli gre narobe, klic mora teči naprej
+        meritev("orodje:" + pot + ":napaka", zacetek)
         log.warning("orodje %s ni odgovorilo: %s", pot, e)
         return {
             "success": False,
             "data": None,
             "error": "Sistem trenutno ne odgovori.",
         }
+
+
+def meritev(kaj: str, zacetek: float) -> None:
+    """Zapiše trajanje koraka.
+
+    Brez tega se optimizira po občutku. Po nekaj pravih klicih se iz dnevnika
+    vidi, ali čas požre prepis, model, orodje ali govor — in samo tisto je
+    vredno popravljati.
+    """
+    log.info("MERITEV %s %.0f ms", kaj, (time.perf_counter() - zacetek) * 1000)
+
+
+async def mašilo(context: RunContext, besedilo: str) -> None:
+    """Reče kratko potrdilo, medtem ko v ozadju teče klic orodja.
+
+    Brez tega je v slušalki ena do dve sekundi tišine in klic zveni pokvarjeno.
+    Klic s tem ni hitrejši, a sogovornik ve, da se nekaj dogaja — enako kot
+    človek reče "trenutek, preverim".
+    """
+    try:
+        context.session.say(besedilo, add_to_chat_ctx=False)
+    except Exception as e:  # noqa: BLE001 — mašilo ne sme nikoli podreti klica
+        log.debug("mašila ni bilo mogoče izgovoriti: %s", e)
 
 
 class TelefonskiAsistent(Agent):
@@ -78,6 +116,7 @@ class TelefonskiAsistent(Agent):
             action: 'search' za splošno ponudbo, 'get_price' za ceno, 'check_stock' za razpoložljivost.
             category: Neobvezno: 'spletne-strani', 'trzenje', 'oblikovanje', 'vzdrzevanje'.
         """
+        await mašilo(context, "Trenutek, preverim.")
         vsebina = {"query": query, "action": action}
         if category:
             vsebina["category"] = category
@@ -93,6 +132,7 @@ class TelefonskiAsistent(Agent):
             order_id: Številka projekta, na primer '10001'.
             verify: Telefonska številka ali e-pošta stranke, s katero je bil projekt naročen.
         """
+        await mašilo(context, "Samo trenutek, pogledam.")
         return await poklici_orodje("order-lookup", {"order_id": order_id, "verify": verify})
 
     @function_tool()
@@ -102,6 +142,7 @@ class TelefonskiAsistent(Agent):
         Args:
             info_type: 'hours' za delovni čas, 'delivery' za roke in potek dela, 'payments' za plačilo.
         """
+        await mašilo(context, "Trenutek.")
         return await poklici_orodje("business-info", {"info_type": info_type})
 
     @function_tool()
@@ -127,6 +168,7 @@ class TelefonskiAsistent(Agent):
             quantity: Obseg, če ga je navedla.
             note: Vse, kar je povedala o projektu — rok, obstoječa stran, panoga, proračun.
         """
+        await mašilo(context, "Zabeležim.")
         vsebina = {"name": name, "phone": phone, "email": email}
         for kljuc, vrednost in (("product", product), ("quantity", quantity), ("note", note)):
             if vrednost:
@@ -184,10 +226,22 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
         llm=openai.LLM(model=os.getenv("LLM_MODEL", "gpt-4o-mini"), temperature=0.3),
         tts=izberi_glas(),
         # Zazna, kdaj je sogovornik nehal govoriti. Brez tega agent skače v besedo.
-        vad=silero.VAD.load(),
+        #
+        # Te tri vrednosti so edine, ki jih ni mogoče nastaviti vnaprej — odvisne
+        # so od tega, kako hitro govorijo pravi klicatelji. Slovenci sredi stavka
+        # pogosto premolknejo; prekratek premor pomeni, da asistentka skoči v
+        # besedo, predolg pa neroden molk. Po nekaj klicih popravi v .env.
+        vad=silero.VAD.load(
+            min_silence_duration=float(os.getenv("VAD_TISINA", "0.55")),
+            min_speech_duration=float(os.getenv("VAD_GOVOR", "0.10")),
+            activation_threshold=float(os.getenv("VAD_PRAG", "0.5")),
+        ),
     )
 
+    zacetek = time.perf_counter()
     await session.start(room=ctx.room, agent=TelefonskiAsistent(nastavitve["system_prompt"]))
+    meritev("zagon_seje", zacetek)
+
     await session.say(nastavitve["greeting"])
 
 
