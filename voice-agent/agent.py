@@ -248,19 +248,16 @@ def izberi_prepis():
     in čaka na odgovor. To je na vsak obrat nekaj sekund tišine v slušalki —
     največji posamezen vir zamika v tem skladu.
     """
-    if os.getenv("AZURE_SPEECH_KEY"):
+    if os.getenv("STT_PONUDNIK", "openai").lower() == "azure" and os.getenv("AZURE_SPEECH_KEY"):
+        log.info("prepis: Azure sl-SI")
         return azure.STT(
             language="sl-SI",
-            # Koliko tišine Azure šteje za konec povedi.
-            #
             # Ta čas se sešteje z VAD_TISINA in KONEC_MIN — vsi trije čakajo na
-            # isto tišino, eden za drugim. Skupaj so pomenili skoraj sekundo in
-            # pol, preden je model sploh začel. Zato so vsi trije nižji kot
-            # posamič smiselno; popravljaj jih skupaj, ne enega samega.
-            segmentation_silence_timeout_ms=int(os.getenv("STT_TISINA_MS", "300")),
+            # isto tišino, eden za drugim. Popravljaj jih skupaj, ne enega samega.
+            segmentation_silence_timeout_ms=int(os.getenv("STT_TISINA_MS", "500")),
         )
 
-    log.warning("AZURE_SPEECH_KEY ni nastavljen — uporabljam OpenAI prepis (pocasnejsi)")
+    log.info("prepis: OpenAI %s", os.getenv("STT_MODEL", "gpt-4o-transcribe"))
     return openai.STT(model=os.getenv("STT_MODEL", "gpt-4o-transcribe"), language="sl")
 
 
@@ -276,10 +273,9 @@ def izberi_glas():
         return azure.TTS(
             voice=os.getenv("AZURE_TTS_VOICE", "sl-SI-PetraNeural"),
             language="sl-SI",
-            # Telefonska linija prenese 8 kHz. Privzetih 24 kHz pomeni trikrat
-            # več podatkov in dvojno prevzorčenje, kar se sliši kot praskanje
-            # in preskakovanje pri daljših odgovorih.
-            sample_rate=int(os.getenv("TTS_SAMPLE_RATE", "16000")),
+            # 24 kHz je privzetek pri Azure in zveni dobro. 16000 je vredno
+            # poskusiti, če se pri daljših odgovorih pojavi praskanje.
+            sample_rate=int(os.getenv("TTS_SAMPLE_RATE", "24000")),
         )
 
     log.warning("AZURE_SPEECH_KEY ni nastavljen — uporabljam OpenAI glas (slabsa slovenscina)")
@@ -293,13 +289,14 @@ def izberi_glas():
     )
 
 
-def preberi_nastavitve() -> dict:
-    """Prenese sistemski prompt s strežnika, da je enak kot pri besedilnem klepetu."""
-    r = httpx.post(
-        f"{TOOLS_BASE_URL}/ai/agent-config.php",
-        headers={"X-Tool-Secret": TOOL_SECRET},
-        timeout=10.0,
-    )
+async def preberi_nastavitve() -> dict:
+    """Prenese sistemski prompt s strežnika, da je enak kot pri besedilnem klepetu.
+
+    Mora biti asinhrono. Prej je bil tu navaden httpx.post, ki ustavi celotno
+    zanko dogodkov, dokler gostovanje ne odgovori — in ustavi jo za vse klice
+    hkrati, ne le za tega.
+    """
+    r = await odjemalec().post(f"{TOOLS_BASE_URL}/ai/agent-config.php")
     r.raise_for_status()
     return r.json()
 
@@ -370,16 +367,62 @@ async def straza(ctx: agents.JobContext, session: AgentSession, sekund_max: int,
     await ctx.delete_room()
 
 
+def nastavljive_izboljsave() -> dict:
+    """Izboljšave, ki jih je treba izmeriti, preden postanejo privzete.
+
+    Vsaka od njih lahko odziv pospeši ali pa poslabša razumevanje — kaj od tega
+    se zgodi, je odvisno od linije in od tega, kako govorijo pravi klicatelji.
+    Ko jih je bilo več vklopljenih hkrati, se ni dalo ugotoviti, katera je kaj
+    naredila. Zato so privzeto izklopljene: vklopi eno, opravi nekaj klicev,
+    primerjaj, šele nato naslednjo.
+
+    Vklop v .env, nato lk agent update-secrets.
+    """
+    izbrano: dict = {}
+
+    # Model začne sestavljati odgovor, še preden sogovornik utihne. Prihrani
+    # skoraj sekundo, a odgovori na nedokončano poved, če se ta konča drugače.
+    if os.getenv("PREDCASNO") == "1":
+        izbrano["preemptive_generation"] = True
+
+    for kljuc, spremenljivka in (
+        # Koliko tišine pomeni "sogovornik je končal".
+        ("min_endpointing_delay", "KONEC_MIN"),
+        ("max_endpointing_delay", "KONEC_MAX"),
+        # Koliko govora od sogovornika utiša asistentko sredi stavka. Višje
+        # pomeni manj sekanja od šuma na liniji, a počasnejši odziv na pravo
+        # prekinitev.
+        ("min_interruption_duration", "PREKIN_SEK"),
+        ("false_interruption_timeout", "PREKIN_LAZNA"),
+    ):
+        vrednost = os.getenv(spremenljivka)
+        if vrednost:
+            izbrano[kljuc] = float(vrednost)
+
+    besede = os.getenv("PREKIN_BESEDE")
+    if besede:
+        izbrano["min_interruption_words"] = int(besede)
+
+    if izbrano:
+        log.info("vklopljene izboljšave: %s", sorted(izbrano))
+    return izbrano
+
+
 server = agents.AgentServer()
 
 
 @server.rtc_session(agent_name="tatjana")
 async def vstopna_tocka(ctx: agents.JobContext) -> None:
-    nastavitve = preberi_nastavitve()
-
     zacetek_klica = time.perf_counter()
-    klicatelj = await stevilka_klicatelja(ctx)
+
+    # Oboje poteka hkrati. Zaporedno sta to dve čakanji na gostovanje, preden
+    # asistentka sploh spregovori — sogovornik pa medtem posluša tišino.
+    nastavitve, klicatelj = await asyncio.gather(
+        preberi_nastavitve(),
+        stevilka_klicatelja(ctx),
+    )
     vratar = await vprasaj_vratarja("start", klicatelj)
+    meritev("priprava_klica", zacetek_klica)
 
     # Trajanje se sporoči ob koncu, ne ob začetku: klic, ki se prekine po treh
     # sekundah, ne sme šteti enako kot desetminutni.
@@ -417,27 +460,11 @@ premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
         # pogosto premolknejo; prekratek premor pomeni, da asistentka skoči v
         # besedo, predolg pa neroden molk. Po nekaj klicih popravi v .env.
         vad=silero.VAD.load(
-            min_silence_duration=float(os.getenv("VAD_TISINA", "0.45")),
+            min_silence_duration=float(os.getenv("VAD_TISINA", "0.55")),
             min_speech_duration=float(os.getenv("VAD_GOVOR", "0.10")),
             activation_threshold=float(os.getenv("VAD_PRAG", "0.5")),
         ),
-        # Model začne sestavljati odgovor že med tem, ko sogovornik še govori.
-        # Če ta konča drugače, kot je model predvidel, se delo zavrže. V večini
-        # primerov pa je odgovor pripravljen, preden sogovornik utihne.
-        preemptive_generation=True,
-        # Koliko tišine pomeni "sogovornik je končal". Prekratko pomeni, da
-        # asistentka skoči v besedo, predolgo pa neroden molk.
-        min_endpointing_delay=float(os.getenv("KONEC_MIN", "0.25")),
-        max_endpointing_delay=float(os.getenv("KONEC_MAX", "3.0")),
-        # Telefonska linija šumi. Privzeto pol sekunde zvoka že velja za
-        # prekinitev, zato asistentko sredi daljšega odgovora utiša vsak hrup
-        # v ozadju — v slušalki se to sliši kot sekanje in preskakovanje.
-        # Zato zahtevamo daljši in razumljen govor, preden jo utišamo.
-        min_interruption_duration=float(os.getenv("PREKIN_SEK", "0.7")),
-        min_interruption_words=int(os.getenv("PREKIN_BESEDE", "2")),
-        # Če prekinitev ni bila prava, naj pove stavek do konca.
-        resume_false_interruption=True,
-        false_interruption_timeout=float(os.getenv("PREKIN_LAZNA", "1.5")),
+        **nastavljive_izboljsave(),
     )
 
     zacetek = time.perf_counter()
