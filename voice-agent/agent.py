@@ -61,10 +61,7 @@ async def poklici_orodje(pot: str, vsebina: dict) -> dict:
     try:
         r = await odjemalec().post(f"{TOOLS_BASE_URL}/tools/{pot}.php", json=vsebina)
         odgovor = r.json()
-        # Brez izida se iz dnevnika ne vidi, ali sta dva zaporedna klica istega
-        # orodja ponovni poskus po zavrnitvi ali podvojen zapis.
-        izid = "ok" if odgovor.get("success") else "zavrnjeno"
-        meritev(f"orodje:{pot}:{izid}", zacetek)
+        meritev("orodje:" + pot, zacetek)
         return odgovor
     except Exception as e:  # noqa: BLE001 — karkoli gre narobe, klic mora teči naprej
         meritev("orodje:" + pot + ":napaka", zacetek)
@@ -395,30 +392,6 @@ async def straza(ctx: agents.JobContext, session: AgentSession, sekund_max: int,
     await odlozi(ctx, session)
 
 
-_zaznavalnik = None
-
-
-def zaznavalnik_govora():
-    """Zazna, kdaj je sogovornik nehal govoriti. Naloži se enkrat na proces.
-
-    Nalaganje modela ONNX traja okoli 210 ms in poteka sinhrono. Ko je bilo
-    znotraj sprejema klica, je za ta čas ustavilo celotno zanko dogodkov, kar
-    LiveKit javi kot "event loop blocked ... delays audio and turn handling" —
-    in to prav med vzpostavljanjem klica, ko šteje vsaka desetinka.
-
-    Delovni procesi se med klici ponovno uporabijo, zato drugi klic v istem
-    procesu modela ne nalaga več.
-    """
-    global _zaznavalnik
-    if _zaznavalnik is None:
-        _zaznavalnik = silero.VAD.load(
-            min_silence_duration=float(os.getenv("VAD_TISINA", "0.55")),
-            min_speech_duration=float(os.getenv("VAD_GOVOR", "0.10")),
-            activation_threshold=float(os.getenv("VAD_PRAG", "0.5")),
-        )
-    return _zaznavalnik
-
-
 def nastavljive_izboljsave() -> dict:
     """Izboljšave, ki jih je treba izmeriti, preden postanejo privzete.
 
@@ -503,11 +476,10 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
         navodila += f"""
 
 ## Številka, s katere kličejo
-Telefonska številka stranke je že znana: {klicatelj}. Zanjo NE sprašuj in je
-NE potrjuj — samo uporabi jo. Pri oddaji povpraševanja pusti polje phone prazno.
-Ko povzemaš, kaj boš zabeležila, številke ne izgovarjaj po števkah; reci le, da
-pokličemo na številko, s katere kliče.
-Če stranka sama pove drugo številko za povratni klic, zapiši tisto.
+Stranka kliče s številke {klicatelj}. Za to številko je ne sprašuj — že jo imaš.
+Ko zbiraš podatke za povpraševanje, jo samo potrdi, prebrano po skupinah s
+premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
+Če stranka pove drugo številko, zapiši tisto, ki jo pove.
 """
 
     session = AgentSession(
@@ -527,7 +499,11 @@ pokličemo na številko, s katere kliče.
         # so od tega, kako hitro govorijo pravi klicatelji. Slovenci sredi stavka
         # pogosto premolknejo; prekratek premor pomeni, da asistentka skoči v
         # besedo, predolg pa neroden molk. Po nekaj klicih popravi v .env.
-        vad=zaznavalnik_govora(),
+        vad=silero.VAD.load(
+            min_silence_duration=float(os.getenv("VAD_TISINA", "0.55")),
+            min_speech_duration=float(os.getenv("VAD_GOVOR", "0.10")),
+            activation_threshold=float(os.getenv("VAD_PRAG", "0.5")),
+        ),
         **nastavljive_izboljsave(),
     )
 
