@@ -1,3 +1,6 @@
 .env
 __pycache__/
 venv/
+# Vezan na razvijalcev racunalnik in razkriva gostiteljsko ime projekta.
+# Ponovno ga naredi z: lk agent config --id <ID agenta>
+livekit.toml
