@@ -176,6 +176,27 @@ class TelefonskiAsistent(Agent):
         return await poklici_orodje("submit-inquiry", vsebina)
 
 
+def izberi_prepis():
+    """Azure, kadar je ključ nastavljen; sicer OpenAI.
+
+    Azure prepisuje sproti, med govorom, in strežnik stoji v Italiji. OpenAI
+    počaka, da sogovornik neha govoriti, nato pošlje ves posnetek čez Atlantik
+    in čaka na odgovor. To je na vsak obrat nekaj sekund tišine v slušalki —
+    največji posamezen vir zamika v tem skladu.
+    """
+    if os.getenv("AZURE_SPEECH_KEY"):
+        return azure.STT(
+            language="sl-SI",
+            # Koliko tišine Azure šteje za konec povedi. Privzetih 500 ms je
+            # za telefon dobro izhodišče; nižje pomeni hitrejši odziv, a več
+            # prekinjanja sredi stavka.
+            segmentation_silence_timeout_ms=int(os.getenv("STT_TISINA_MS", "500")),
+        )
+
+    log.warning("AZURE_SPEECH_KEY ni nastavljen — uporabljam OpenAI prepis (pocasnejsi)")
+    return openai.STT(model=os.getenv("STT_MODEL", "gpt-4o-transcribe"), language="sl")
+
+
 def izberi_glas():
     """Azure, kadar je ključ nastavljen; sicer OpenAI.
 
@@ -188,6 +209,10 @@ def izberi_glas():
         return azure.TTS(
             voice=os.getenv("AZURE_TTS_VOICE", "sl-SI-PetraNeural"),
             language="sl-SI",
+            # Telefonska linija prenese 8 kHz. Privzetih 24 kHz pomeni trikrat
+            # več podatkov in dvojno prevzorčenje, kar se sliši kot praskanje
+            # in preskakovanje pri daljših odgovorih.
+            sample_rate=int(os.getenv("TTS_SAMPLE_RATE", "16000")),
         )
 
     log.warning("AZURE_SPEECH_KEY ni nastavljen — uporabljam OpenAI glas (slabsa slovenscina)")
@@ -220,9 +245,7 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
     nastavitve = preberi_nastavitve()
 
     session = AgentSession(
-        # Jezik je izrecno slovenščina. Brez tega model jezik ugiba in po
-        # telefonu, kjer je zvok slabši, pogosto zgreši v hrvaščino.
-        stt=openai.STT(model=os.getenv("STT_MODEL", "gpt-4o-transcribe"), language="sl"),
+        stt=izberi_prepis(),
         # 0,3 je zvenelo kot posnetek: model je vedno izbral najbolj pricakovano
         # besedo. 0,6 da vec raznolikosti v ubeseditvi. Cene to ne ogrozi, ker
         # jih model prepise iz orodja, ne sestavlja sam - a prav to preveri,
@@ -243,6 +266,14 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
             min_speech_duration=float(os.getenv("VAD_GOVOR", "0.10")),
             activation_threshold=float(os.getenv("VAD_PRAG", "0.5")),
         ),
+        # Model začne sestavljati odgovor že med tem, ko sogovornik še govori.
+        # Če ta konča drugače, kot je model predvidel, se delo zavrže. V večini
+        # primerov pa je odgovor pripravljen, preden sogovornik utihne.
+        preemptive_generation=True,
+        # Koliko tišine pomeni "sogovornik je končal". Prekratko pomeni, da
+        # asistentka skoči v besedo, predolgo pa neroden molk.
+        min_endpointing_delay=float(os.getenv("KONEC_MIN", "0.4")),
+        max_endpointing_delay=float(os.getenv("KONEC_MAX", "3.0")),
     )
 
     zacetek = time.perf_counter()
