@@ -19,6 +19,7 @@ Zagon:
 import asyncio
 import logging
 import os
+import random
 import time
 
 import httpx
@@ -106,7 +107,29 @@ def meritev(kaj: str, zacetek: float) -> None:
     log.info("MERITEV %s %.0f ms", kaj, (time.perf_counter() - zacetek) * 1000)
 
 
-async def mašilo(context: RunContext, besedilo: str) -> None:
+# Mašila po sklopih. Ena sama stalna besedna zveza je sama po sebi znak, da
+# govoriš s strojem — človek vsakič reče nekaj malo drugače.
+MAŠILA = {
+    "isce": ["Trenutek, preverim.", "Samo hip, pogledam v ponudbo.", "Moment, pogledam."],
+    "projekt": ["Samo trenutek, pogledam.", "Trenutek, poiščem.", "Hip, preverim."],
+    "podatki": ["Trenutek.", "Samo hip.", "Moment."],
+    "zapis": ["Zabeležim.", "Dobro, zapišem.", "Zapišem."],
+    "premislek": ["Mhm.", "Aha.", "Ja...", "Hm.", "Tako."],
+}
+
+# Kar je bilo nazadnje izrečeno, tokrat ne pride na vrsto. Dve enaki besedi
+# zapored sta bolj opazni kot ena sama ponovljena čez pet stavkov.
+_zadnje: dict[str, str] = {}
+
+
+def izberi_masilo(sklop: str) -> str:
+    moznosti = MAŠILA[sklop]
+    izbira = [m for m in moznosti if m != _zadnje.get(sklop)] or moznosti
+    _zadnje[sklop] = random.choice(izbira)
+    return _zadnje[sklop]
+
+
+async def mašilo(context: RunContext, sklop: str) -> None:
     """Reče kratko potrdilo, medtem ko v ozadju teče klic orodja.
 
     Brez tega je v slušalki ena do dve sekundi tišine in klic zveni pokvarjeno.
@@ -114,7 +137,7 @@ async def mašilo(context: RunContext, besedilo: str) -> None:
     človek reče "trenutek, preverim".
     """
     try:
-        context.session.say(besedilo, add_to_chat_ctx=False)
+        context.session.say(izberi_masilo(sklop), add_to_chat_ctx=False)
     except Exception as e:  # noqa: BLE001 — mašilo ne sme nikoli podreti klica
         log.debug("mašila ni bilo mogoče izgovoriti: %s", e)
 
@@ -123,6 +146,40 @@ class TelefonskiAsistent(Agent):
     def __init__(self, navodila: str, telefon_klicatelja: str = "") -> None:
         super().__init__(instructions=navodila)
         self.telefon_klicatelja = telefon_klicatelja
+        self._premislek: asyncio.Task | None = None
+
+    def on_user_turn_completed(self, turn_ctx, new_message) -> None:
+        """Zapolni tišino, kadar odgovor ne pride dovolj hitro.
+
+        Po telefonu je tišina dvoumna: sogovornik ne ve, ali ga nisi slišala,
+        ali razmišljaš, ali je zveza padla. Človek v tem trenutku reče "mhm" ali
+        "hm" — ne zato, da bi kaj povedal, ampak da drugi ve, da je na liniji.
+
+        Oglasi se samo, kadar je premor res predolg. Mašilo na vsakem obratu je
+        prav tako znak stroja kot tišina, poleg tega pa odgovor zamakne, ker se
+        ta postavi za njim v vrsto.
+        """
+        prag = float(os.getenv("MASILO_PRAG", "0.8"))
+        if prag <= 0:
+            return
+
+        if self._premislek and not self._premislek.done():
+            self._premislek.cancel()
+
+        async def po_premoru() -> None:
+            try:
+                await asyncio.sleep(prag)
+                # "thinking" pomeni, da odgovor še nastaja. Če je stanje že
+                # "speaking", je asistentka spregovorila sama in mašilo bi jo
+                # samo prekinilo.
+                if self.session.agent_state == "thinking":
+                    self.session.say(izberi_masilo("premislek"), add_to_chat_ctx=False)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:  # noqa: BLE001 — mašilo ne sme podreti klica
+                log.debug("premora ni bilo mogoče zapolniti: %s", e)
+
+        self._premislek = asyncio.create_task(po_premoru())
 
     @function_tool()
     async def search_services(
@@ -141,7 +198,7 @@ class TelefonskiAsistent(Agent):
             action: 'search' za splošno ponudbo, 'get_price' za ceno, 'check_stock' za razpoložljivost.
             category: Neobvezno: 'spletne-strani', 'trzenje', 'oblikovanje', 'vzdrzevanje'.
         """
-        await mašilo(context, "Trenutek, preverim.")
+        await mašilo(context, "isce")
         vsebina = {"query": query, "action": action}
         if category:
             vsebina["category"] = category
@@ -157,7 +214,7 @@ class TelefonskiAsistent(Agent):
             order_id: Številka projekta, na primer '10001'.
             verify: Telefonska številka ali e-pošta stranke, s katero je bil projekt naročen.
         """
-        await mašilo(context, "Samo trenutek, pogledam.")
+        await mašilo(context, "projekt")
         return await poklici_orodje("order-lookup", {"order_id": order_id, "verify": verify})
 
     @function_tool()
@@ -167,7 +224,7 @@ class TelefonskiAsistent(Agent):
         Args:
             info_type: 'hours' za delovni čas, 'delivery' za roke in potek dela, 'payments' za plačilo.
         """
-        await mašilo(context, "Trenutek.")
+        await mašilo(context, "podatki")
         return await poklici_orodje("business-info", {"info_type": info_type})
 
     @function_tool()
@@ -196,7 +253,7 @@ class TelefonskiAsistent(Agent):
             quantity: Obseg, če ga je navedla.
             note: Vse, kar je povedala o projektu — rok, obstoječa stran, panoga, proračun.
         """
-        await mašilo(context, "Zabeležim.")
+        await mašilo(context, "zapis")
 
         # Pri telefonskem klicu je številka že znana iz same povezave. Narekovanje
         # po zvoku je najpogostejši vir napak — števke se zamenjajo in ponudba gre
