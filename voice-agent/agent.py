@@ -421,6 +421,40 @@ async def straza(ctx: agents.JobContext, session: AgentSession, sekund_max: int,
     await odlozi(ctx)
 
 
+def nastavitve_modela() -> dict:
+    """Sestavi nastavitve modela, ki odgovarja.
+
+    Zamenjava modela je ena vrstica v .env, ker je to edina odločitev, ki jo je
+    treba preizkusiti s pravimi klici in ne prebrati iz preglednice.
+
+    Novejše družine razmišljajo, preden odgovorijo. Po telefonu to slišiš kot
+    tišino, zato je razmislek privzeto na najnižji stopnji — sogovornik čaka v
+    živo in nekaj desetink je več vredno od malenkost boljše ubeseditve.
+    """
+    izbrano: dict = {"model": os.getenv("LLM_MODEL", "gpt-4o-mini")}
+
+    # "auto" ali prazno pomeni, da temperature ne pošljemo. Nekateri modeli je
+    # ne sprejmejo in klic pade — takrat vpiši auto namesto številke.
+    temperatura = os.getenv("LLM_TEMPERATURE", "0.6").strip().lower()
+    if temperatura not in ("", "auto"):
+        izbrano["temperature"] = float(temperatura)
+
+    for kljuc, spremenljivka in (
+        ("reasoning_effort", "LLM_NAPOR"),
+        ("verbosity", "LLM_OBSEZNOST"),
+    ):
+        vrednost = os.getenv(spremenljivka)
+        if vrednost:
+            izbrano[kljuc] = vrednost
+
+    # Sistemski prompt meri okrog 8 KB in gre v vsak obrat. S stalnim ključem ga
+    # ponudnik hrani predpomnjenega: nižji čas do prve besede in nižja cena.
+    izbrano["prompt_cache_key"] = os.getenv("LLM_PREDPOMNILNIK", "tatjana-telefon")
+
+    log.info("model: %s", izbrano["model"])
+    return izbrano
+
+
 def nastavljive_izboljsave() -> dict:
     """Izboljšave, ki jih je treba izmeriti, preden postanejo privzete.
 
@@ -516,10 +550,7 @@ premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
         # besedo. 0,6 da vec raznolikosti v ubeseditvi. Cene to ne ogrozi, ker
         # jih model prepise iz orodja, ne sestavlja sam - a prav to preveri,
         # ce vrednost se dvignes.
-        llm=openai.LLM(
-            model=os.getenv("LLM_MODEL", "gpt-4o-mini"),
-            temperature=float(os.getenv("LLM_TEMPERATURE", "0.6")),
-        ),
+        llm=openai.LLM(**nastavitve_modela()),
         tts=izberi_glas(),
         # Zazna, kdaj je sogovornik nehal govoriti. Brez tega agent skače v besedo.
         #
