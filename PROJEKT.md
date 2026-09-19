@@ -372,6 +372,8 @@ bila vrnjena na `b777fc8` in znova grajena po eni.
 - [ ] Vgradi klepet v `landing.html`
 
 ### Kasneje
+Večje nadgradnje so v razdelku 9, razvrščene po donosu.
+
 - [ ] `VascoAdapter`, ko bo znan pravi ERP stranke
 - [ ] Odhodni klici (agent pokliče, ko je ponudba poslana). Tehnično možno prek
       `ctx.add_sip_participant`, a potrebuje odhodni trunk pri DIDWW (*termination*,
@@ -384,7 +386,109 @@ bila vrnjena na `b777fc8` in znova grajena po eni.
 
 ---
 
-## 9. Strošek
+## 9. Nadgradnje, ki bi naredile razliko
+
+Razvrščeno po tem, koliko vsaka prinese glede na vloženo delo. Prve tri so
+temelj: brez njih je vsaka nadaljnja izboljšava ugibanje.
+
+### 9.1 Nabor preizkusnih pogovorov — brez tega ne gre naprej
+
+**Težava:** vsako spremembo prompta, modela ali prepisa zdaj presodi en ročni
+telefonski klic in občutek. Zato se je 17. 9. zgodilo, da je devet hkratnih
+sprememb poslabšalo klic in ugotoviti se ni dalo, katera je kriva.
+
+**Kaj:** 30 do 50 zapisanih slovenskih pogovorov s pričakovanim izidom —
+vprašanje o ceni mora sprožiti orodje, vprašanje o tujem projektu mora biti
+zavrnjeno, povpraševanje mora imeti vsa tri polja. Skripta jih požene skozi
+`ai/chat.php` in prešteje odstopanja.
+
+**Zakaj prvo:** šele s tem se da odgovoriti, ali je večji model vreden denarja,
+ali Azure prepis slovenščino res razume slabše, ali je nov prompt boljši. Brez
+tega ostaja vse to stvar mnenja.
+
+**Vloženo:** dan dela. `tests/test-tools.sh` je že predloga za obliko.
+
+### 9.2 Predaja človeku
+
+**Težava:** ko asistentka česa ne zna ali je klicatelj nejevoljen, klic konča v
+slepi ulici. Za podjetje je to izgubljena stranka, in prav ta klic si bo
+zapomnil.
+
+**Kaj:** orodje `predaj_cloveku`, ki klic preveže na pravo številko.
+`ctx.transfer_sip_participant(participant, transfer_to, play_dialtone)` je v
+SDK že na voljo. Sproži se, ko stranka izrecno zahteva človeka, ko dvakrat
+zapored ne dobi odgovora, ali ko gre za pritožbo.
+
+**Zakaj:** to je največji dejavnik zaupanja pri prodaji. "Če te ne razume, te
+preveže" odpravi glavni ugovor stranke.
+
+**Vloženo:** pol dneva. Potrebuje delovni čas — zunaj njega se ne preveže, ampak
+zabeleži povratni klic.
+
+### 9.3 Več strank na eni namestitvi
+
+**Težava:** vsaka stranka zdaj potrebuje svojo mapo, svoj `config.php` in svojo
+bazo. Pri desetih strankah je to deset posodobitev ob vsaki spremembi kode.
+
+**Kaj:** ena namestitev, ki stranko prepozna po klicani številki. Podatek je že
+tu — agent bere `sip.trunkPhoneNumber`, klepet pa pozna domeno izvora. Nastavitve
+se preselijo iz konstant v tabelo `ai_tenants`.
+
+**Zakaj:** to je razlika med "prodajam projekte" in "prodajam storitev". Brez
+tega mesečno vzdrževanje desetih strank pojé več, kot prinese.
+
+**Vloženo:** teden dni. Največji poseg v arhitekturi, zato pred prvo zunanjo
+stranko, ne po njej.
+
+---
+
+### 9.4 Znanje prek kataloga
+
+Zdaj zna odgovoriti samo iz `ai_products` in `business-info.json`. Vprašanja
+tipa "ali delate tudi za društva", "kako poteka prevzem strani" nimajo vira.
+
+Rešitev: tabela `ai_knowledge` z vprašanji in odgovori, ki jih stranka ureja
+sama v skrbniški strani, plus orodje za iskanje po njej. Polno indeksiranje
+spletne strani je naslednji korak, a preprosta tabela pokrije večino primerov.
+
+### 9.5 Naročanje terminov
+
+Za del slovenskih malih podjetij — frizer, zobozdravnik, servis — je rezervacija
+termina glavni razlog za klic, ne povpraševanje. Brez tega tem panogam nimaš kaj
+prodati.
+
+Potrebuje tabelo prostih terminov, orodje za rezervacijo in potrditev po e-pošti.
+Google Calendar naj pride kasneje; najprej lastna tabela.
+
+### 9.6 Opozorila, ko kaj odpove
+
+Zdaj se za izpad izve šele ob naslednjem ročnem klicu. Potrebno:
+obvestilo, ko je dnevni proračun dosežen, ko orodje večkrat zapored odpove, ko
+se agent v oblaku ustavi, in ko povpraševanje čaka več kot dva dni.
+
+### 9.7 Snemanje klicev in privolitev
+
+LiveKit klice že snema (`enable_recording: true` v zahtevi za posel). Posnetki so
+najboljše gradivo za točko 9.1 — pravi klicatelji, prava slovenščina, pravi šum.
+
+**Pred uporabo je treba klicatelja obvestiti.** Snemanje brez obvestila v EU ni
+dopustno. Pozdrav mora povedati, da se klic snema, in zakaj.
+
+### 9.8 SMS potrditev povpraševanja
+
+Po oddaji sporočilo s številko povpraševanja. Stranka ima dokaz, podjetje pa
+manj klicev tipa "ali ste kaj dobili". DIDWW to zna; strošek je nekaj centov.
+
+### 9.9 Krajši prompt in predpomnjenje
+
+Sistemski prompt meri okrog 6 KB in gre v vsak obrat. Krajši prompt pomeni nižji
+LLM TTFT (zdaj 889 ms) in nižji strošek. OpenAI predpomnjenje vhoda zniža ceno
+ponovljenega dela. Smiselno šele po 9.1 — brez merjenja je krajšanje prompta
+najhitrejši način, da se asistentka začne vesti slabše.
+
+---
+
+## 10. Strošek
 
 **Klepet in glas na strani:** delčki centa na pogovor pri `gpt-4o-mini`. Azure
 ima 500.000 znakov mesečno brezplačno.
@@ -407,7 +511,7 @@ in Azure. Prav zato obstajajo meje iz razdelka 6 — brez njih je strop kartica.
 
 ---
 
-## 10. Odločitve, ki jih ne razveljavljaj brez razloga
+## 11. Odločitve, ki jih ne razveljavljaj brez razloga
 
 **Cene se izpisujejo s številko, nikoli z besedami.** `gpt-4o-mini` je pri
 pretvorbi 78 € povedal kot "osemdeset evrov" — napačno ceno stranki. Za glas
@@ -432,7 +536,7 @@ bazi bi bila za asistenta nevidna.
 
 ---
 
-## 11. Česa ne poskušaj znova
+## 12. Česa ne poskušaj znova
 
 **WordPressov `wp_mail()` iz našega procesa.** `config.php` in `wp-config.php`
 definirata iste konstante (`DB_NAME`, `DB_USER`, `DB_HOST`), zato bi WordPress
@@ -446,7 +550,7 @@ s PAT v URL-ju.
 
 ---
 
-## 12. Pasti, ki so nas že ujele
+## 13. Pasti, ki so nas že ujele
 
 | Simptom | Vzrok |
 |---|---|
@@ -470,7 +574,7 @@ s PAT v URL-ju.
 
 ---
 
-## 13. Kako testiram
+## 14. Kako testiram
 
 ```bash
 BASE_URL=https://kreativnisplet.si/asistent bash tests/test-tools.sh
