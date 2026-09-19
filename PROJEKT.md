@@ -3,7 +3,7 @@
 Popoln pregled projekta. Ta datoteka je vir resnice o tem, kaj sistem je, kaj
 zna, kako je zgrajen in kje smo. **Posodobi jo ob vsaki večji spremembi.**
 
-Zadnja posodobitev: 16. 9. 2026
+Zadnja posodobitev: 19. 9. 2026
 
 ---
 
@@ -26,6 +26,11 @@ konfiguraciji in bazi, ne v kodi.
 | Baza | skupna z WordPressom, tabele s predpono `ai_` |
 | Model | `gpt-4o-mini` |
 | Glas | Azure `sl-SI-PetraNeural`, regija `italynorth` |
+| Telefon | `+386 5 7774124` (DIDWW, Nova Gorica) — **deluje** |
+| Telefonski agent | LiveKit Cloud, `CA_PiXjcGNWErxB`, regija `eu-central` |
+
+ID-ji trunka, dispatch pravila in postopek pri DIDWW so v
+[docs/telefon.md](docs/telefon.md).
 
 ---
 
@@ -57,8 +62,16 @@ o projektu zapiše v polje `note`, da lahko ekipa pripravi ponudbo brez klica.
 obsega; asistent, ki bi jo zavezujoče obljubil, bi podjetje lahko drago stal.
 
 ### Govori in posluša
-Na spletni strani: mikrofon → prepis → odgovor → govor. Za telefon je pripravljen
-ločen agent, ki teče zunaj gostovanja.
+Na spletni strani: mikrofon → prepis → odgovor → govor.
+
+Po telefonu enako, prek ločenega agenta, ki teče v LiveKit Cloud. Ta zna dvoje,
+česar klepet ne:
+
+- **Prebere številko, s katere kličejo**, iz same povezave (`sip.phoneNumber`),
+  zato je stranki ni treba narekovati. Narekovanje po zvoku je bil najpogostejši
+  vir napak — števke se zamenjajo in ponudba odide v prazno.
+- **Odloži slušalko**, ko je povpraševanje oddano in stranka nima več vprašanj
+  (orodje `koncaj_pogovor`). Brez tega klic obvisi v tišini.
 
 ---
 
@@ -129,6 +142,7 @@ stranko se spremenijo tri vrstice.
 | `speak.php` | Besedilo → mp3. Azure (SSML, slovenski glas) ali OpenAI. Normalizira cene in telefonske številke. |
 | `guard.php` | Preverjanje izvora, HTTPS, omejitve, dnevni proračun žetonov. Skupno za vse tri. |
 | `agent-config.php` | Telefonskemu agentu vrne sistemski prompt. Zaščiteno s `TOOL_SECRET`. |
+| `call-guard.php` | Vratar telefonskih klicev: pove, ali sme klic naprej, in prejme trajanje. Zaščiteno s `TOOL_SECRET`. |
 | `OpenAIClient.php` | Odjemalec za Chat Completions. Ponovi klic ob 429 in 5xx. Beleži porabo žetonov. |
 | `system-prompt.txt` | Pravila asistenta. Brez imena podjetja — to pride iz konfiguracije. |
 | `tool-definitions.json` | Opisi orodij za model, v slovenščini. |
@@ -143,6 +157,7 @@ stranko se spremenijo tri vrstice.
 | `core/Endpoint.php` | HTTP ovoj: metoda, HTTPS, omejitve, branje JSON. |
 | `core/RateLimiter.php` | Datotečni števec s poljubnim časovnim oknom. |
 | `core/Budget.php` | Dnevna poraba žetonov. Strošek so žetoni, ne klici. |
+| `core/CallLimits.php` | Dnevni števci telefonskih klicev. Številk ne shranjuje — za štetje zadošča zgoščena vrednost. |
 | `core/Logger.php` | Dnevnik klicev in pogovorov z maskiranjem osebnih podatkov. |
 | `core/Mailer.php` | Lasten odjemalec SMTP — `mail()` je na gostovanju izklopljen. |
 | `core/SlovenianDate.php` | Slovenska imena dni in mesecev, relativni datumi. |
@@ -164,6 +179,8 @@ stranko se spremenijo tri vrstice.
 
 ### Ostalo
 - `voice-agent/agent.py` — telefonski agent (LiveKit Agents, Python)
+- `voice-agent/Dockerfile` — slika za LiveKit Cloud; `download-files` teče ob gradnji, da se Silero ne prenaša ob vsakem hladnem zagonu
+- `voice-agent/livekit.toml` — veže mapo na oblačnega agenta. **Ni v gitu** (vezan na računalnik, razkriva gostiteljsko ime projekta). Ustvari ga `lk agent config --id CA_PiXjcGNWErxB`
 - `sql/schema.sql` — samo struktura, brez podatkov
 - `data/business-info.json` — roki in pogoji plačila
 - `tests/test-tools.sh` — 26 testov orodij prek HTTP
@@ -200,6 +217,27 @@ Vse tabele s predpono iz `DB_PREFIX` (privzeto `ai_`).
 Štetje klicev denarnice ne varuje: en klic z dolgo zgodovino stane toliko kot
 deset kratkih. Zato dnevni proračun **žetonov**.
 
+### Telefon ima svoje meje
+
+Zgornja tabela velja **samo za klepet na strani**. Telefon gre mimo nje: agent
+kliče OpenAI in Azure neposredno, `tools/*.php` pa ga spusti skozi že na podlagi
+`TOOL_SECRET`. Zato `ai/call-guard.php`:
+
+| Konstanta v `config.php` | Privzeto | Kaj ustavi |
+|---|---|---|
+| `CALL_MAX_SECONDS` | 600 | posamezen klic; pol minute prej opozori, nato zaključi |
+| `CALL_DAILY_MINUTES` | 120 | skupne minute na dan, čez vse klicatelje |
+| `CALL_MAX_PER_CALLER` | 10 | klicev iste številke na dan |
+
+Števci živijo na gostovanju, ne v agentu. Agent teče v oblaku, kjer se replika
+lahko kadar koli zažene znova s praznim diskom — števec v njem bi se vrnil na
+nič ravno takrat, ko bi bil najbolj potreben.
+
+Klici s skrito številko se štejejo skupaj pod eno oznako, sicer bi bila skrita
+številka luknja mimo zadnje meje. Če `call-guard.php` ni dosegljiv, klic spustimo
+skozi, a časovna meja vseeno velja: nedosegljiv strežnik ne sme pomeniti nemega
+telefona niti linije brez konca.
+
 **Osebni podatki:** dnevniki maskirajo telefone, e-pošto, imena in zadnji oktet
 IP. Hranijo se 14 dni. Mapa `logs/` je zaprta z `.htaccess`.
 
@@ -228,6 +266,23 @@ Tehnična plast: tuj izvor → 403, `curl` brez izvora → 403, neveljaven konta
 `config.php` ni v gitu, zato ga deploy ne povozi. Ob spremembi nastavitev ga
 naloži ročno prek File Managerja.
 
+### Telefonski agent je drugi deploy
+
+Kodo poganjata dve različni mesti in `git push` ne zažene nobenega:
+
+| Kaj se je spremenilo | Kje teče | Kako pride v uporabo |
+|---|---|---|
+| `ai/`, `tools/`, `admin/`, prompt | cPanel | Update from Remote → Deploy HEAD Commit |
+| `voice-agent/agent.py` | LiveKit Cloud | `lk agent deploy` |
+| `voice-agent/.env` | LiveKit Cloud | `lk agent update-secrets --secrets-file .env --overwrite` |
+
+**Najprej cPanel, nato agent.** Agent ob zagonu prenese prompt in kliče
+`call-guard.php`; v obratnem vrstnem redu prvi klic zadene 404.
+
+Sprememba `.env` ne potrebuje `deploy` — agent se po `update-secrets` sam zažene
+znova. Sprememba `agent.py` potrebuje `deploy`, ker v oblaku teče posnetek kode
+izpred zadnjega deploya, ne tvoja mapa.
+
 ---
 
 ## 8. Kje smo
@@ -235,35 +290,79 @@ naloži ročno prek File Managerja.
 ### Deluje
 - [x] Besedilni klepet in glasovni asistent na spletni strani
 - [x] Vsa štiri orodja, 26/26 testov
-- [x] Povpraševanja v bazo + obvestilo na `kreativnisplet2025@gmail.com` prek SMTP
+- [x] Povpraševanja v bazo + obvestilo prek SMTP
 - [x] Azure slovenski glas — cene in telefonske številke izgovori pravilno
-- [x] Telefonski agent preverjen prek mikrofona (`python agent.py console`)
+- [x] **Telefon deluje.** Številka registrirana, klic pride skozi, agent se javi
+- [x] **Agent teče v LiveKit Cloud** — ni več odvisen od razvijalčevega računalnika
+- [x] Agent prebere številko klicatelja iz povezave (`sip.phoneNumber`)
+- [x] Meje telefonskih klicev (trajanje, dnevne minute, klici na klicatelja)
 - [x] Skrbniška stran: povpraševanja, storitve, pogovori
 - [x] Namestitveni čarovnik za nove stranke
 - [x] Zaščita preverjena proti 14 vrstam napada
 
-### Čaka na eno odobritev
-Telefon je **v celoti nastavljen**. Številka `+386 5 7774124` (DIDWW, Nova Gorica,
-~7 €/mesec), LiveKit trunk `ST_NZJF2z65DiLj`, dispatch `SDR_tpMPgUorXQhT` → agent
-`tatjana`, DIDWW trunk dodeljen.
+### Glasovna pot — izmerjeno (17. 9. 2026)
 
-Klici ne delujejo, ker je številka v stanju *Awaiting Registration*. Klic se ne
-pojavi niti v dnevniku DIDWW — Slovenija zahteva registracijo naročnika.
-**Rok 30 dni, sicer se številka izgubi.**
+Iz nadzorne plošče LiveKit, `Response Latency → Tails by stage`:
 
-Postopek: DIDWW → Identities & Addresses → nova identiteta tipa **Business**
-(naziv iz Poslovnega registra, matična številka, Preserje 16, 5295 Branik, izpis
-AJPES, dokazilo o naslovu) → My Numbers → Manage DID → Identity.
+| Korak | mediana | p99 |
+|---|---|---|
+| **E2E** | **3198 ms** | 5379 ms |
+| STT delay | 963 ms | 1280 ms |
+| LLM TTFT | 889 ms | 2001 ms |
+| TTS TTFB | 529 ms | 1353 ms |
+| EOT | 15 ms | 2101 ms |
+| Klici orodij | 172 ms | 215 ms |
 
-Ko bo odobreno: `python agent.py dev` in pokliči. Nič več nastavljanja.
-ID-ji in podrobnosti so v [docs/telefon.md](docs/telefon.md).
+Prej je bila mediana 6065 ms.
+
+**Gostovanje ni ozko grlo.** Orodja odgovarjajo v 98–208 ms. Optimiziranje PHP
+strani bi bilo zapravljen čas; preostanek je v prepisu, modelu in govoru.
+
+### Stikala za glas
+
+Vse izboljšave glasovne poti so v `voice-agent/.env` in **privzeto izklopljene**.
+Privzetki so stanje `b777fc8`, za katero je potrjeno, da zveni dobro.
+
+| Stikalo | Cilja na | Tveganje |
+|---|---|---|
+| `PREDCASNO=1` | LLM TTFT (889 ms) | odgovori na nedokončano poved |
+| `STT_PONUDNIK=azure` | STT delay (963 ms) | slabše razumevanje slovenščine |
+| `KONEC_MIN`, `KONEC_MAX` | čakanje po koncu govora | prekinjanje sredi stavka |
+| `PREKIN_SEK`, `PREKIN_BESEDE` | sekanje od šuma na liniji | počasnejši odziv na pravo prekinitev |
+| `TTS_SAMPLE_RATE=16000` | praskanje pri dolgih odgovorih | — |
+
+Trenutno vklopljeno: **`PREDCASNO=1`**. Ob zagonu agent zapiše
+`vklopljene izboljšave: [...]`.
+
+**Vklapljaj po eno.** To pravilo je plačano: devet hkratnih sprememb glasovne
+poti je klic poslabšalo in ugotoviti se ni dalo, katera je kriva. Celotna pot je
+bila vrnjena na `b777fc8` in znova grajena po eni.
+
+### Odprto
+- [ ] **Prekinitev klica ni potrjena.** `koncaj_pogovor` je delovalo v `613c8c1`,
+      `1777a7a` ga je podrl (zagozditev), `3b2a8a2` naj bi ga popravil — a po tem
+      deployu ni bilo preverjeno z dnevnikom
+- [ ] **Asistentka še vedno vpraša za telefonsko številko**, čeprav jo ima.
+      Popravek je bil v `9b1e3c4`, ta pa je bil na zahtevo vrnjen (`f9b64d1`).
+      Vrne se z `git revert f9b64d1`
+- [ ] V enem klicu sta bila **dva zaporedna `submit-inquiry`**. Ni znano, ali je
+      bil drugi ponovni poskus po zavrnjeni e-pošti ali podvojen zapis.
+      Diagnostika (izid v meritvi) je bila prav tako vrnjena z `f9b64d1`
+- [ ] LiveKit opozarja `transcript arrives after turn has been committed` —
+      prepis pride, ko je obrat že zaključen, zato lahko model spregleda zadnji
+      del povedanega. Vzrok je počasen prepis; pravi popravek je `STT_PONUDNIK=azure`
+- [ ] `event loop blocked for 211ms` ob vsakem klicu — `silero.VAD.load()` se
+      nalaga znotraj sprejema klica. Popravek je bil v `9b1e3c4` (vrnjen)
+- [ ] `preemptive_generation` je opuščen v korist `turn_handling=TurnHandlingOptions(...)`,
+      odstranjen bo v v2.0
 
 ### Nujno, brez roka a pomembno
 - [ ] Zamenjaj geslo baze in WordPressove varnostne ključe — `wp-config.php` je bil prilepljen v pogovor z asistentom
 - [ ] Zamenjaj OpenAI ključ in GitHub žeton — prav tako razkrita
-- [ ] Mesečna omejitev porabe v OpenAI (Billing → Limits) — zadnja obramba, če ključ uide
+- [ ] Mesečna omejitev porabe v OpenAI **in Azure** — zadnja obramba, če ključ uide
 - [ ] Dnevna kopija `ai_` tabel v cron — povpraševanja so posel
 - [ ] Omeji LiveKit trunk na signalne naslove DIDWW — zdaj sprejema od koderkoli
+- [ ] Zakleni `~/.livekit/cli-config.yaml` — vsebuje API ključe, `lk` javlja, da je preširoko berljiv
 
 ### Pred javnim zagonom
 - [ ] Odstrani `setup.php` in `data-view.php` s strežnika
@@ -273,12 +372,15 @@ ID-ji in podrobnosti so v [docs/telefon.md](docs/telefon.md).
 - [ ] Vgradi klepet v `landing.html`
 
 ### Kasneje
-- [ ] Objava telefonskega agenta na LiveKit Cloud ali VPS, da teče brez tvojega računalnika
 - [ ] `VascoAdapter`, ko bo znan pravi ERP stranke
+- [ ] Odhodni klici (agent pokliče, ko je ponudba poslana). Tehnično možno prek
+      `ctx.add_sip_participant`, a potrebuje odhodni trunk pri DIDWW (*termination*,
+      naroči se posebej), podpis JWT v PHP in odhodni način v agentu
 
 ### Odprta vprašanja
-- Javni ali zasebni repozitorij. Zdaj javen, ker cPanel Git zasebnega ni zmogel klonirati. Skrivnosti v njem ni (preverjena celotna zgodovina), a kodo, ki jo nameravaš prodajati, lahko kdorkoli prekopira. Za zasebnega je treba prej urediti deploy: GitHub Actions prek FTP ali SSH ključa.
+- Javni ali zasebni repozitorij. Zdaj javen, ker cPanel Git zasebnega ni zmogel klonirati. Skrivnosti v njem ni (preverjena celotna zgodovina), a kodo, ki jo nameravaš prodajati, lahko kdorkoli prekopira. V zgodovini je gostiteljsko ime projekta LiveKit (commit `2ef41d6`); skrivnost ni, a olajša iskanje trunka, ki sprejema od koderkoli.
 - Ali je `gpt-4o-mini` dovolj dober za slovenščino, ali je vreden večji model.
+- Ali je Azure prepis vreden menjave: hitrejši je, a `gpt-4o-transcribe` slovenščino verjetno razume bolje.
 
 ---
 
@@ -296,8 +398,12 @@ ima 500.000 znakov mesečno brezplačno.
 | Prepis govora | ~0,017 € | ~1,70 € |
 | Model | ~0,005 € | ~0,50 € |
 | Govor (Azure F0) | — | 0 € |
-| LiveKit | — | 0 € do 1.000 minut |
+| LiveKit (SIP + minute agenta) | — | 0 € do 1.000 minut |
 | **Skupaj** | **~0,09 €** | **~14 €** |
+
+Agent v oblaku med klici miruje (`Replicas 0 / 1 / 1`), zato mirovanje ne stane
+skoraj nič. Ob klicu pa tečejo **štirje števci hkrati**: LiveKit, DIDWW, OpenAI
+in Azure. Prav zato obstajajo meje iz razdelka 6 — brez njih je strop kartica.
 
 ---
 
@@ -355,6 +461,12 @@ s PAT v URL-ju.
 | Povpraševanje vrne napako, čeprav je zapis v bazi | Obvestilo po pošti je padlo in podrlo cel klic. Pošiljanje mora biti v `try/catch`. |
 | `proto: syntax error` pri `lk` CLI | JSON shranjen z BOM. Uporabi `[System.IO.File]::WriteAllText` z `UTF8Encoding($false)`. |
 | Azure: "region not accepting new customers" | West Europe je poln. |
+| Asistentka se ne javi, telefon samo zvoni | Agent ne teče. V oblaku teče posnetek izpred zadnjega `lk agent deploy`, ne tvoja mapa. |
+| Klica ne prekine, čeprav orodje obstaja | `session.aclose()` znotraj orodja `koncaj_pogovor`: seja čaka na orodje, orodje na sejo. Zapri samo sobo. |
+| `unable to create agent: maximum number of agents reached (1/1)` | Mesto zaseda Builder agent iz nadzorne plošče. Izbriši ga; `lk agent deploy` nanj ne dela. |
+| Klic prevzame star agent | Lokalni `python agent.py dev` in oblačni agent sta oba prijavljena kot `tatjana` in si klice delita. |
+| Odziv počasnejši, čeprav si zniževal zamike | `STT_TISINA_MS`, `VAD_TISINA` in `KONEC_MIN` čakajo vsi na isto tišino, eden za drugim. Popravljaj jih skupaj. |
+| Heredoc v Bashu požre `\` in PHP ali Python ne prevede | Pisanje datotek s `cat > f <<'EOF'` odstrani eno poševnico. Izogni se dvojnim poševnicam ali piši po vrsticah. |
 
 ---
 
