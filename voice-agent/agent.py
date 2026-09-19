@@ -283,19 +283,24 @@ def izberi_prepis(kljucne: list[str] | None = None):
             segmentation_silence_timeout_ms=int(os.getenv("STT_TISINA_MS", "500")),
         )
 
-    log.info("prepis: OpenAI %s, %d ključnih besed", os.getenv("STT_MODEL", "gpt-4o-transcribe"), len(kljucne or []))
+    model = os.getenv("STT_MODEL", "gpt-4o-transcribe")
 
     dodatno: dict = {}
     if kljucne:
         # Po telefonu je zvok 8 kHz. Imena storitev in blagovne znamke so prav
         # tiste besede, ki jih prepis najpogosteje zgreši — in hkrati edine, od
         # katerih je odvisen odgovor. Seznam pride iz kataloga na strežniku.
-        dodatno["keywords"] = kljucne
         dodatno["prompt"] = (
             "Pogovor v slovenščini s podjetjem. Pogoste besede: "
             + ", ".join(kljucne[:30])
             + "."
         )
+
+        # keywords sprejmeta samo gpt-transcribe in gpt-live-transcribe. Drugim
+        # modelom jih vtakniti pomeni ValueError ob vsakem klicu in nem telefon,
+        # zato jih raje izpustimo — prompt zgoraj usmerja prepis tudi brez njih.
+        if model.startswith(("gpt-transcribe", "gpt-live-transcribe")):
+            dodatno["keywords"] = kljucne
 
     # Telefonska linija šumi. near_field je za slušalko ob ušesu; far_field bi
     # bil za mikrofon v prostoru.
@@ -308,11 +313,13 @@ def izberi_prepis(kljucne: list[str] | None = None):
     if os.getenv("STT_SPROTNO") == "1":
         dodatno["use_realtime"] = True
 
-    return openai.STT(
-        model=os.getenv("STT_MODEL", "gpt-4o-transcribe"),
-        language="sl",
-        **dodatno,
+    log.info(
+        "prepis: OpenAI %s, %d ključnih besed, %s",
+        model,
+        len(kljucne or []),
+        "keywords vklopljen" if "keywords" in dodatno else "keywords ni podprt",
     )
+    return openai.STT(model=model, language="sl", **dodatno)
 
 
 def izberi_glas():
