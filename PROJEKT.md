@@ -3,7 +3,7 @@
 Popoln pregled projekta. Ta datoteka je vir resnice o tem, kaj sistem je, kaj
 zna, kako je zgrajen in kje smo. **Posodobi jo ob vsaki večji spremembi.**
 
-Zadnja posodobitev: 19. 9. 2026
+Zadnja posodobitev: 19. 9. 2026 (zvecer)
 
 ---
 
@@ -24,7 +24,7 @@ konfiguraciji in bazi, ne v kodi.
 | Repozitorij | `https://github.com/kosokroso/tatjana_ai` (javen) |
 | Gostovanje | cPanel, `public_html/asistent/`, uporabnik `kreati02` |
 | Baza | skupna z WordPressom, tabele s predpono `ai_` |
-| Model | `gpt-4o-mini` |
+| Model | `gpt-5.4-mini` (telefon), `OPENAI_MODEL` iz `config.php` (splet) |
 | Glas | Azure `sl-SI-PetraNeural`, regija `italynorth` |
 | Telefon | `+386 5 7774124` (DIDWW, Nova Gorica) — **deluje** |
 | Telefonski agent | LiveKit Cloud, `CA_PiXjcGNWErxB`, regija `eu-central` |
@@ -300,43 +300,48 @@ izpred zadnjega deploya, ne tvoja mapa.
 - [x] Namestitveni čarovnik za nove stranke
 - [x] Zaščita preverjena proti 14 vrstam napada
 
-### Glasovna pot — izmerjeno (17. 9. 2026)
+### Glasovna pot — izmerjeno
 
-Iz nadzorne plošče LiveKit, `Response Latency → Tails by stage`:
+Iz nadzorne plošče LiveKit, `Response Latency → Tails by stage`.
 
-| Korak | mediana | p99 |
-|---|---|---|
-| **E2E** | **3198 ms** | 5379 ms |
-| STT delay | 963 ms | 1280 ms |
-| LLM TTFT | 889 ms | 2001 ms |
-| TTS TTFB | 529 ms | 1353 ms |
-| EOT | 15 ms | 2101 ms |
-| Klici orodij | 172 ms | 215 ms |
-
-Prej je bila mediana 6065 ms.
+| Korak | 17. 9. mediana |
+|---|---|
+| **E2E** | **3198 ms** (prej 6065 ms) |
+| STT delay | 963 ms |
+| LLM TTFT | 889 ms |
+| TTS TTFB | 529 ms |
+| EOT | 15 ms |
+| Klici orodij | 172 ms |
 
 **Gostovanje ni ozko grlo.** Orodja odgovarjajo v 98–208 ms. Optimiziranje PHP
 strani bi bilo zapravljen čas; preostanek je v prepisu, modelu in govoru.
 
+19. 9. je razvijalec po zamenjavi modela in vklopu sprotnega prepisa ocenil
+odziv na **eno do dve sekundi** in kakovost na "skoraj odlično". Nova meritev iz
+nadzorne plošče še ni odčitana — to je prvo opravilo prihodnjič.
+
 ### Stikala za glas
 
-Vse izboljšave glasovne poti so v `voice-agent/.env` in **privzeto izklopljene**.
-Privzetki so stanje `b777fc8`, za katero je potrjeno, da zveni dobro.
+Izboljšave glasovne poti so v `voice-agent/.env`. Privzetki v kodi so stanje
+`b777fc8`, za katero je potrjeno, da zveni dobro; vsako stikalo je bilo
+vklopljeno posebej in preizkušeno s klici.
 
-| Stikalo | Cilja na | Tveganje |
+| Stikalo | Stanje | Cilja na |
 |---|---|---|
-| `PREDCASNO=1` | LLM TTFT (889 ms) | odgovori na nedokončano poved |
-| `STT_PONUDNIK=azure` | STT delay (963 ms) | slabše razumevanje slovenščine |
-| `KONEC_MIN`, `KONEC_MAX` | čakanje po koncu govora | prekinjanje sredi stavka |
-| `PREKIN_SEK`, `PREKIN_BESEDE` | sekanje od šuma na liniji | počasnejši odziv na pravo prekinitev |
-| `TTS_SAMPLE_RATE=16000` | praskanje pri dolgih odgovorih | — |
-
-Trenutno vklopljeno: **`PREDCASNO=1`**. Ob zagonu agent zapiše
-`vklopljene izboljšave: [...]`.
+| `LLM_MODEL=gpt-5.4-mini` | **vklopljeno** | razumevanje in slovenščina |
+| `LLM_TEMPERATURE=auto` | **vklopljeno** | model temperature ne sprejme |
+| `LLM_NAPOR=minimal` | **vklopljeno** | razmislek pred odgovorom je slišna tišina |
+| `PREDCASNO=1` | **vklopljeno** | LLM TTFT |
+| `STT_SPROTNO=1` | **vklopljeno** | STT delay; prepis teče med govorom |
+| `STT_MODEL=gpt-transcribe` | izklopljeno | novejši; edini odklene `keywords` iz kataloga |
+| `STT_PONUDNIK=azure` | izklopljeno | hitrejši prepis, slabša slovenščina |
+| `KONEC_MIN`, `PREKIN_SEK` | izklopljeno | čakanje in prekinjanje |
+| `TTS_SAMPLE_RATE=16000` | izklopljeno | praskanje pri dolgih odgovorih |
 
 **Vklapljaj po eno.** To pravilo je plačano: devet hkratnih sprememb glasovne
 poti je klic poslabšalo in ugotoviti se ni dalo, katera je kriva. Celotna pot je
-bila vrnjena na `b777fc8` in znova grajena po eni.
+bila vrnjena na `b777fc8` in znova grajena po eni — tako je nastala zgornja
+tabela.
 
 ### Kaj je odprto
 
@@ -539,6 +544,10 @@ s PAT v URL-ju.
 | `unable to create agent: maximum number of agents reached (1/1)` | Mesto zaseda Builder agent iz nadzorne plošče. Izbriši ga; `lk agent deploy` nanj ne dela. |
 | Klic prevzame star agent | Lokalni `python agent.py dev` in oblačni agent sta oba prijavljena kot `tatjana` in si klice delita. |
 | Odziv počasnejši, čeprav si zniževal zamike | `STT_TISINA_MS`, `VAD_TISINA` in `KONEC_MIN` čakajo vsi na isto tišino, eden za drugim. Popravljaj jih skupaj. |
+| Agent se javi, nato na vsako poved molči | Povožena metoda `Agent`, ki je `async def`, z navadno. `await None` vrže `TypeError` in obrat umre. `inspect.signature` izpiše `-> None` tudi pri korutinah — preveri z `inspect.iscoroutinefunction`. |
+| `ValueError: keywords are only supported by...` | `keywords` sprejmeta samo `gpt-transcribe` in `gpt-live-transcribe`. Drugim modelom jih podati pomeni sesut posel ob vsakem klicu. |
+| Asistentka zveni sekano, čeprav je hitra | Samostojen medmet ("mhm") v premoru pogovor razseka na tri kose. Mašilo mora biti prva beseda odgovora, ne ločeno predvajanje pred njim. |
+| "iz Kreativni Splet" | Ime podjetja ni sklanjano. Nastavi `BUSINESS_NAME_RODILNIK` in `BUSINESS_NAME_MESTNIK`; samodejno sklanjanje slovenščine ni zanesljivo. |
 | Heredoc v Bashu požre `\` in PHP ali Python ne prevede | Pisanje datotek s `cat > f <<'EOF'` odstrani eno poševnico. Izogni se dvojnim poševnicam ali piši po vrsticah. |
 
 ---

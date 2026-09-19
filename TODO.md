@@ -6,11 +6,29 @@ nadgradnja vredna dela, je v **[PROJEKT.md](PROJEKT.md)**.
 Delitev je namerna: tu kljukice, tam razlogi. Nobena točka ni na obeh mestih,
 ker se dva seznama opravil razideta in nobenemu ne zaupaš več.
 
-Zadnja posodobitev: 19. 9. 2026
+Zadnja posodobitev: 19. 9. 2026 (zvecer)
 
 ---
 
 ## Zdaj — nepotrjeno ali odprto
+
+- [ ] **Dodaj sklanjatev v `config.php` na strežniku** (File Manager, ni v gitu):
+      `define('BUSINESS_NAME_RODILNIK', 'Kreativnega spleta');`
+      `define('BUSINESS_NAME_MESTNIK',  'Kreativnem spletu');`
+      Brez tega pozdrav ostane "iz Kreativni Splet".
+- [ ] **Deployaj `b67f72c` na cPanel** — Update from Remote, nato Deploy HEAD Commit
+- [ ] **Odčitaj novo `E2E median`** na nadzorni plošči LiveKit. Zadnja meritev je
+      3198 ms, izpred zamenjave modela in vklopa sprotnega prepisa. Brez nove
+      številke ne veva, kje smo.
+- [ ] **Poskusi `STT_MODEL=gpt-transcribe`.** Novejši od `gpt-4o-transcribe` in
+      edini razen realtime različice sprejme `keywords` — šele z njim usmerjanje
+      prepisa na imena tvojih storitev zares deluje.
+- [ ] **Poenoti opise orodij.** `ai/tool-definitions.json` (splet) in docstringi v
+      `agent.py` (telefon) opisujejo ista orodja pod drugimi imeni:
+      `search_products` proti `search_services`, `lookup_order` proti
+      `lookup_project`. Vsaka sprememba parametrov je zdaj dve spremembi.
+- [ ] **Odloči o modelu za spletni klepet.** Telefon teče na `gpt-5.4-mini`,
+      splet na `OPENAI_MODEL` iz `config.php`. Razhajata se.
 
 - [ ] **Potrdi, da asistentka odloži slušalko.** `3b2a8a2` je v oblaku, a z
       dnevnikom ni preverjen. Pusti odprt `lk agent logs`, pokliči, oddaj
@@ -85,8 +103,13 @@ primerjaj `E2E median` na nadzorni plošči LiveKit.
 
 | Stikalo | Stanje | Cilja na |
 |---|---|---|
+| `LLM_MODEL=gpt-5.4-mini` | **vklopljeno** | razumevanje, slovenščina |
+| `LLM_TEMPERATURE=auto` | **vklopljeno** | model temperature ne sprejme |
+| `LLM_NAPOR=minimal` | **vklopljeno** | razmislek je slišna tišina |
 | `PREDCASNO=1` | **vklopljeno** | LLM TTFT, 889 ms |
-| `STT_PONUDNIK=azure` | izklopljeno | STT delay, 963 ms |
+| `STT_SPROTNO=1` | **vklopljeno** | STT delay, 963 ms |
+| `STT_MODEL=gpt-transcribe` | izklopljeno | novejši; odklene `keywords` |
+| `STT_PONUDNIK=azure` | izklopljeno | hitrejši prepis, slabša slovenščina |
 | `KONEC_MIN`, `KONEC_MAX` | izklopljeno | čakanje po koncu govora |
 | `PREKIN_SEK`, `PREKIN_BESEDE` | izklopljeno | sekanje od šuma na liniji |
 | `TTS_SAMPLE_RATE=16000` | izklopljeno | praskanje pri dolgih odgovorih |
