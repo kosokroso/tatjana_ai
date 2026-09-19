@@ -107,14 +107,17 @@ def meritev(kaj: str, zacetek: float) -> None:
     log.info("MERITEV %s %.0f ms", kaj, (time.perf_counter() - zacetek) * 1000)
 
 
-# Mašila po sklopih. Ena sama stalna besedna zveza je sama po sebi znak, da
-# govoriš s strojem — človek vsakič reče nekaj malo drugače.
+# Mašila pred klicem orodja. Povedo nekaj — "preverim", "zapišem" — in
+# zapolnijo čas, ko res nekaj teče. Prazni medmeti sem ne sodijo: "mhm" v
+# tišini pogovor razseka, namesto da bi tekel.
+#
+# Ena sama stalna besedna zveza je sama po sebi znak, da govoriš s strojem —
+# človek vsakič reče nekaj malo drugače.
 MAŠILA = {
     "isce": ["Trenutek, preverim.", "Samo hip, pogledam v ponudbo.", "Moment, pogledam."],
     "projekt": ["Samo trenutek, pogledam.", "Trenutek, poiščem.", "Hip, preverim."],
     "podatki": ["Trenutek.", "Samo hip.", "Moment."],
     "zapis": ["Zabeležim.", "Dobro, zapišem.", "Zapišem."],
-    "premislek": ["Mhm.", "Aha.", "Ja...", "Hm.", "Tako."],
 }
 
 # Kar je bilo nazadnje izrečeno, tokrat ne pride na vrsto. Dve enaki besedi
@@ -146,42 +149,6 @@ class TelefonskiAsistent(Agent):
     def __init__(self, navodila: str, telefon_klicatelja: str = "") -> None:
         super().__init__(instructions=navodila)
         self.telefon_klicatelja = telefon_klicatelja
-        self._premislek: asyncio.Task | None = None
-
-    async def on_user_turn_completed(
-        self, turn_ctx: "llm.ChatContext", new_message: "llm.ChatMessage"
-    ) -> None:
-        """Zapolni tišino, kadar odgovor ne pride dovolj hitro.
-
-        Po telefonu je tišina dvoumna: sogovornik ne ve, ali ga nisi slišala,
-        ali razmišljaš, ali je zveza padla. Človek v tem trenutku reče "mhm" ali
-        "hm" — ne zato, da bi kaj povedal, ampak da drugi ve, da je na liniji.
-
-        Oglasi se samo, kadar je premor res predolg. Mašilo na vsakem obratu je
-        prav tako znak stroja kot tišina, poleg tega pa odgovor zamakne, ker se
-        ta postavi za njim v vrsto.
-        """
-        prag = float(os.getenv("MASILO_PRAG", "0.8"))
-        if prag <= 0:
-            return
-
-        if self._premislek and not self._premislek.done():
-            self._premislek.cancel()
-
-        async def po_premoru() -> None:
-            try:
-                await asyncio.sleep(prag)
-                # "thinking" pomeni, da odgovor še nastaja. Če je stanje že
-                # "speaking", je asistentka spregovorila sama in mašilo bi jo
-                # samo prekinilo.
-                if self.session.agent_state == "thinking":
-                    self.session.say(izberi_masilo("premislek"), add_to_chat_ctx=False)
-            except asyncio.CancelledError:
-                raise
-            except Exception as e:  # noqa: BLE001 — mašilo ne sme podreti klica
-                log.debug("premora ni bilo mogoče zapolniti: %s", e)
-
-        self._premislek = asyncio.create_task(po_premoru())
 
     @function_tool()
     async def search_services(
