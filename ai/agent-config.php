@@ -11,7 +11,7 @@
  * je zato koristen vsakomur, ki bi ga hotel pretentati.
  */
 
-require __DIR__ . '/../bootstrap.php';
+$registry = require __DIR__ . '/../bootstrap.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
@@ -55,8 +55,38 @@ $now = new DateTimeImmutable('now');
 $prompt .= "\n## Trenutni čas\nDanes je " . SlovenianDate::longDate($now) . ' ' . $now->format('Y')
     . ', ura je ' . $now->format('H:i') . ".\n";
 
+// Besede, na katere naj prepis pazi.
+//
+// Po telefonu je zvok 8 kHz in imena storitev ter blagovne znamke so prav tiste
+// besede, ki jih prepis najpogosteje zgreši - in hkrati edine, na katerih je
+// odvisen odgovor. Seznam pride iz kataloga, ne iz kode, da velja za vsako
+// stranko brez posega v agenta.
+$kljucne = [];
+if (defined('BUSINESS_NAME') && BUSINESS_NAME !== '') {
+    $kljucne[] = BUSINESS_NAME;
+}
+try {
+    foreach ($registry->adapter()->listProducts() as $storitev) {
+        if (!empty($storitev['active'])) {
+            $kljucne[] = (string) $storitev['name'];
+            if (!empty($storitev['category'])) {
+                $kljucne[] = (string) $storitev['category'];
+            }
+        }
+    }
+} catch (Throwable $e) {
+    // Prepis brez seznama deluje, le malo slabse. Katalog, ki ne odgovori, ne
+    // sme pomeniti, da se agent ne zazene.
+    error_log('agent-config: kljucnih besed ni bilo mogoce prebrati: ' . $e->getMessage());
+}
+
+// Ponovitve stanejo prostor v pozivu in ne prinesejo nic. Meja je pri 60, ker
+// predolg seznam prepis zacne vleci k tem besedam tudi tam, kjer jih ni.
+$kljucne = array_slice(array_values(array_unique(array_filter($kljucne))), 0, 60);
+
 odgovori(200, [
     'assistant_name' => defined('ASSISTANT_NAME') ? ASSISTANT_NAME : 'asistent',
+    'stt_keywords'   => $kljucne,
     'business_name'  => defined('BUSINESS_NAME')  ? BUSINESS_NAME  : '',
     'business_phone' => defined('BUSINESS_PHONE') ? BUSINESS_PHONE : '',
     'business_email' => defined('BUSINESS_EMAIL') ? BUSINESS_EMAIL : '',

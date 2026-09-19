@@ -265,7 +265,7 @@ class TelefonskiAsistent(Agent):
 ODLOZI_PO_SEKUNDAH = 0.6
 
 
-def izberi_prepis():
+def izberi_prepis(kljucne: list[str] | None = None):
     """Azure, kadar je ključ nastavljen; sicer OpenAI.
 
     Azure prepisuje sproti, med govorom, in strežnik stoji v Italiji. OpenAI
@@ -277,13 +277,42 @@ def izberi_prepis():
         log.info("prepis: Azure sl-SI")
         return azure.STT(
             language="sl-SI",
+            phrase_list=kljucne or None,
             # Ta čas se sešteje z VAD_TISINA in KONEC_MIN — vsi trije čakajo na
             # isto tišino, eden za drugim. Popravljaj jih skupaj, ne enega samega.
             segmentation_silence_timeout_ms=int(os.getenv("STT_TISINA_MS", "500")),
         )
 
-    log.info("prepis: OpenAI %s", os.getenv("STT_MODEL", "gpt-4o-transcribe"))
-    return openai.STT(model=os.getenv("STT_MODEL", "gpt-4o-transcribe"), language="sl")
+    log.info("prepis: OpenAI %s, %d ključnih besed", os.getenv("STT_MODEL", "gpt-4o-transcribe"), len(kljucne or []))
+
+    dodatno: dict = {}
+    if kljucne:
+        # Po telefonu je zvok 8 kHz. Imena storitev in blagovne znamke so prav
+        # tiste besede, ki jih prepis najpogosteje zgreši — in hkrati edine, od
+        # katerih je odvisen odgovor. Seznam pride iz kataloga na strežniku.
+        dodatno["keywords"] = kljucne
+        dodatno["prompt"] = (
+            "Pogovor v slovenščini s podjetjem. Pogoste besede: "
+            + ", ".join(kljucne[:30])
+            + "."
+        )
+
+    # Telefonska linija šumi. near_field je za slušalko ob ušesu; far_field bi
+    # bil za mikrofon v prostoru.
+    zmanjsanje_suma = os.getenv("STT_SUM")
+    if zmanjsanje_suma:
+        dodatno["noise_reduction_type"] = zmanjsanje_suma
+
+    # Sproten prepis prek websocketa namesto čakanja na konec povedi. Obdrži
+    # isti model, a odreže velik del tistih 963 ms — brez menjave na Azure.
+    if os.getenv("STT_SPROTNO") == "1":
+        dodatno["use_realtime"] = True
+
+    return openai.STT(
+        model=os.getenv("STT_MODEL", "gpt-4o-transcribe"),
+        language="sl",
+        **dodatno,
+    )
 
 
 def izberi_glas():
@@ -482,7 +511,7 @@ premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
 """
 
     session = AgentSession(
-        stt=izberi_prepis(),
+        stt=izberi_prepis(nastavitve.get("stt_keywords") or []),
         # 0,3 je zvenelo kot posnetek: model je vedno izbral najbolj pricakovano
         # besedo. 0,6 da vec raznolikosti v ubeseditvi. Cene to ne ogrozi, ker
         # jih model prepise iz orodja, ne sestavlja sam - a prav to preveri,
