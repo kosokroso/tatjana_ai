@@ -25,7 +25,7 @@ import time
 import httpx
 from dotenv import load_dotenv
 from livekit import agents
-from livekit.agents import Agent, AgentSession, RunContext, function_tool
+from livekit.agents import Agent, AgentSession, RunContext, function_tool, llm
 from livekit.plugins import azure, openai, silero
 
 load_dotenv()
@@ -148,7 +148,9 @@ class TelefonskiAsistent(Agent):
         self.telefon_klicatelja = telefon_klicatelja
         self._premislek: asyncio.Task | None = None
 
-    def on_user_turn_completed(self, turn_ctx, new_message) -> None:
+    async def on_user_turn_completed(
+        self, turn_ctx: "llm.ChatContext", new_message: "llm.ChatMessage"
+    ) -> None:
         """Zapolni tišino, kadar odgovor ne pride dovolj hitro.
 
         Po telefonu je tišina dvoumna: sogovornik ne ve, ali ga nisi slišala,
