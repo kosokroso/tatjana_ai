@@ -49,9 +49,10 @@ samopostrežno urejanje. Gradi tako, da je uvedba nove stranke hitra.
   ga opozori, naj jih zamenja, in jih nikoli ne zapiši v datoteko v repozitoriju.
 - Sporočila commitov končaj z `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
 - Ne dodajaj emojijev, razen če jih zahteva.
-- **Ob vsaki večji spremembi posodobi `PROJEKT.md`.** To je vir resnice o stanju
-  projekta. `TODO.md` je starejši in se ukinja — kar je v njem še aktualno, se
-  seli v `PROJEKT.md`.
+- **Ob vsaki večji spremembi posodobi `PROJEKT.md` in `TODO.md`.** Delitev je
+  namerna: `PROJEKT.md` pove, kaj sistem je in **zakaj** je nekaj vredno dela;
+  `TODO.md` ima kljukice. Iste točke ne piši na obe mesti — dva seznama opravil
+  se razideta in nobenemu ne zaupaš več.
 
 ## 3. Arhitektura
 

@@ -338,46 +338,15 @@ Trenutno vklopljeno: **`PREDCASNO=1`**. Ob zagonu agent zapiše
 poti je klic poslabšalo in ugotoviti se ni dalo, katera je kriva. Celotna pot je
 bila vrnjena na `b777fc8` in znova grajena po eni.
 
-### Odprto
-- [ ] **Prekinitev klica ni potrjena.** `koncaj_pogovor` je delovalo v `613c8c1`,
-      `1777a7a` ga je podrl (zagozditev), `3b2a8a2` naj bi ga popravil — a po tem
-      deployu ni bilo preverjeno z dnevnikom
-- [ ] **Asistentka še vedno vpraša za telefonsko številko**, čeprav jo ima.
-      Popravek je bil v `9b1e3c4`, ta pa je bil na zahtevo vrnjen (`f9b64d1`).
-      Vrne se z `git revert f9b64d1`
-- [ ] V enem klicu sta bila **dva zaporedna `submit-inquiry`**. Ni znano, ali je
-      bil drugi ponovni poskus po zavrnjeni e-pošti ali podvojen zapis.
-      Diagnostika (izid v meritvi) je bila prav tako vrnjena z `f9b64d1`
-- [ ] LiveKit opozarja `transcript arrives after turn has been committed` —
-      prepis pride, ko je obrat že zaključen, zato lahko model spregleda zadnji
-      del povedanega. Vzrok je počasen prepis; pravi popravek je `STT_PONUDNIK=azure`
-- [ ] `event loop blocked for 211ms` ob vsakem klicu — `silero.VAD.load()` se
-      nalaga znotraj sprejema klica. Popravek je bil v `9b1e3c4` (vrnjen)
-- [ ] `preemptive_generation` je opuščen v korist `turn_handling=TurnHandlingOptions(...)`,
-      odstranjen bo v v2.0
+### Kaj je odprto
 
-### Nujno, brez roka a pomembno
-- [ ] Zamenjaj geslo baze in WordPressove varnostne ključe — `wp-config.php` je bil prilepljen v pogovor z asistentom
-- [ ] Zamenjaj OpenAI ključ in GitHub žeton — prav tako razkrita
-- [ ] Mesečna omejitev porabe v OpenAI **in Azure** — zadnja obramba, če ključ uide
-- [ ] Dnevna kopija `ai_` tabel v cron — povpraševanja so posel
-- [ ] Omeji LiveKit trunk na signalne naslove DIDWW — zdaj sprejema od koderkoli
-- [ ] Zakleni `~/.livekit/cli-config.yaml` — vsebuje API ključe, `lk` javlja, da je preširoko berljiv
+Seznam opravil — odprto, varnost, pred zagonom, nadgradnje — je v
+**[TODO.md](TODO.md)**. Tam so kljukice, tu razlogi. Nobena točka ni na obeh
+mestih, ker se dva seznama opravil razideta in nobenemu ne zaupaš več.
 
-### Pred javnim zagonom
-- [ ] Odstrani `setup.php` in `data-view.php` s strežnika
-- [ ] Popravi delovni čas v `ai_business_hours` — vpisan je privzeti pon–pet 9–17
-- [ ] Dopolni pogoje plačila v `data/business-info.json`
-- [ ] Pobriši testne stranke: `DELETE FROM ai_orders; DELETE FROM ai_customers;`
-- [ ] Vgradi klepet v `landing.html`
-
-### Kasneje
-Večje nadgradnje so v razdelku 9, razvrščene po donosu.
-
-- [ ] `VascoAdapter`, ko bo znan pravi ERP stranke
-- [ ] Odhodni klici (agent pokliče, ko je ponudba poslana). Tehnično možno prek
-      `ctx.add_sip_participant`, a potrebuje odhodni trunk pri DIDWW (*termination*,
-      naroči se posebej), podpis JWT v PHP in odhodni način v agentu
+Trenutno najbolj pereče: prekinitev klica po `3b2a8a2` ni potrjena z dnevnikom,
+asistentka pa za telefonsko številko še vedno sprašuje, čeprav jo ima — popravek
+je napisan in vrnjen, vrne se z `git revert f9b64d1`.
 
 ### Odprta vprašanja
 - Javni ali zasebni repozitorij. Zdaj javen, ker cPanel Git zasebnega ni zmogel klonirati. Skrivnosti v njem ni (preverjena celotna zgodovina), a kodo, ki jo nameravaš prodajati, lahko kdorkoli prekopira. V zgodovini je gostiteljsko ime projekta LiveKit (commit `2ef41d6`); skrivnost ni, a olajša iskanje trunka, ki sprejema od koderkoli.
