@@ -163,6 +163,18 @@ define('BUSINESS_INFO_FILE', __DIR__ . '/data/business-info.json');
 define('ASSISTANT_NAME', 'Tatjana');
 
 define('BUSINESS_NAME',  'Kreativni Splet');
+
+// Sklanjatev imena podjetja. Slovenscine ni mogoce zanesljivo sklanjati iz
+// imena - "Kreativni Splet" gre v "Kreativnega spleta", "Mizarstvo Novak" pa
+// ostane "Mizarstva Novak". Zato oblike vpises rocno.
+//
+// Brez teh dveh vrstic asistent uporabi imenovalnik povsod in rece
+// "iz Kreativni Splet", kar je prvo, kar sogovornik slisi in opazi.
+//
+// RODILNIK  - za "iz", "od", "do":   iz Kreativnega spleta
+// MESTNIK   - za "pri", "v", "o":    pri Kreativnem spletu
+define('BUSINESS_NAME_RODILNIK', 'Kreativnega spleta');
+define('BUSINESS_NAME_MESTNIK',  'Kreativnem spletu');
 define('BUSINESS_PHONE', '+386 31 455 881');
 define('BUSINESS_EMAIL', 'info@kreativnisplet.si');
 

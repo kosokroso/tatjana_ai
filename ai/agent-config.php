@@ -34,10 +34,20 @@ if ($prompt === false) {
     odgovori(500, ['error' => 'Sistemskega prompta ni mogoče prebrati.']);
 }
 
+$ime      = defined('BUSINESS_NAME') ? BUSINESS_NAME : '';
+$rodilnik = defined('BUSINESS_NAME_RODILNIK') && BUSINESS_NAME_RODILNIK !== ''
+    ? BUSINESS_NAME_RODILNIK
+    : $ime;
+$mestnik  = defined('BUSINESS_NAME_MESTNIK') && BUSINESS_NAME_MESTNIK !== ''
+    ? BUSINESS_NAME_MESTNIK
+    : $ime;
+
 $prompt = strtr($prompt, [
     '{BUSINESS_PHONE}'       => defined('BUSINESS_PHONE')       ? BUSINESS_PHONE       : '',
     '{BUSINESS_EMAIL}'       => defined('BUSINESS_EMAIL')       ? BUSINESS_EMAIL       : '',
-    '{BUSINESS_NAME}'        => defined('BUSINESS_NAME')        ? BUSINESS_NAME        : '',
+    '{BUSINESS_NAME}'        => $ime,
+    '{BUSINESS_NAME_RODILNIK}' => $rodilnik,
+    '{BUSINESS_NAME_MESTNIK}'  => $mestnik,
     '{BUSINESS_DESCRIPTION}' => defined('BUSINESS_DESCRIPTION') ? BUSINESS_DESCRIPTION : '',
     '{ASSISTANT_NAME}'       => defined('ASSISTANT_NAME')       ? ASSISTANT_NAME       : 'asistent',
 ]);
@@ -92,7 +102,7 @@ odgovori(200, [
     'business_email' => defined('BUSINESS_EMAIL') ? BUSINESS_EMAIL : '',
     'system_prompt'  => $prompt,
     'greeting'       => 'Pozdravljeni, tukaj ' . (defined('ASSISTANT_NAME') ? ASSISTANT_NAME : 'asistent')
-        . ' iz ' . (defined('BUSINESS_NAME') ? BUSINESS_NAME : 'podjetja') . '. Kako vam lahko pomagam?',
+        . ' iz ' . ($rodilnik !== '' ? $rodilnik : 'podjetja') . '. Kako vam lahko pomagam?',
 ]);
 
 function odgovori(int $status, array $podatki): void

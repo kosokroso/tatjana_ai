@@ -220,6 +220,12 @@ function buildSystemPrompt(): string
         '{BUSINESS_PHONE}'       => defined('BUSINESS_PHONE')       ? BUSINESS_PHONE       : '',
         '{BUSINESS_EMAIL}'       => defined('BUSINESS_EMAIL')       ? BUSINESS_EMAIL       : '',
         '{BUSINESS_NAME}'        => defined('BUSINESS_NAME')        ? BUSINESS_NAME        : '',
+        '{BUSINESS_NAME_RODILNIK}' => defined('BUSINESS_NAME_RODILNIK') && BUSINESS_NAME_RODILNIK !== ''
+            ? BUSINESS_NAME_RODILNIK
+            : (defined('BUSINESS_NAME') ? BUSINESS_NAME : ''),
+        '{BUSINESS_NAME_MESTNIK}'  => defined('BUSINESS_NAME_MESTNIK') && BUSINESS_NAME_MESTNIK !== ''
+            ? BUSINESS_NAME_MESTNIK
+            : (defined('BUSINESS_NAME') ? BUSINESS_NAME : ''),
         '{BUSINESS_DESCRIPTION}' => defined('BUSINESS_DESCRIPTION') ? BUSINESS_DESCRIPTION : '',
         '{ASSISTANT_NAME}'       => defined('ASSISTANT_NAME')       ? ASSISTANT_NAME       : 'asistent',
     ]);
