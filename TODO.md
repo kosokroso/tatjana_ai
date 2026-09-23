@@ -74,8 +74,23 @@ Razlogi in ocene dela: [PROJEKT.md, razdelek 9](PROJEKT.md#9-nadgradnje-ki-bi-na
 ### Temelj — brez tega je vse ostalo ugibanje
 - [ ] **9.1** Nabor 30–50 preizkusnih pogovorov s pričakovanim izidom *(dan dela)*
 - [x] **9.2** Predaja človeku prek `ctx.transfer_sip_participant` — koda napisana, **preizkušena ni**
-- [ ] **Vklopi prevezovanje pri DIDWW.** Brez tega LiveKit zahtevo pošlje, ponudnik pa jo zavrne
-      in klicatelj obvisi. Glej <https://docs.livekit.io/sip/transfer-cold/>
+- [ ] **Vklopi prevezovanje pri DIDWW** — brez tega LiveKit zahtevo pošlje, DIDWW jo
+      zavrne in klicatelj obvisi. Po vrsti:
+      1. Ustvari **odhodni** SIP trunk z overjanjem *Credentials & IP-Based*.
+         Doslej imaš samo dohodnega. DIDWW ob prevezi sam sproži nov odhodni
+         klic — zato je odhodni trunk obvezen, čeprav LiveKit pravi, da ni.
+      2. Na odhodnem trunku dovoli dohodne signalne naslove DIDWW:
+         `46.19.209.14`, `46.19.210.14`, `46.19.212.14`, `46.19.213.14`,
+         `46.19.214.14`, `46.19.215.14`, `185.238.173.14`
+      3. Kopiraj *Username* in *Password* odhodnega trunka in ju prilepi v
+         zavihek **Authorization** dohodnega trunka.
+      4. Dohodni trunk → zavihek **Signalling** → **Max Transfers** na `1` ali več.
+         Pri `0` so zahteve SIP REFER zavrnjene.
+      5. *Network Protocol* dohodnega trunka se mora ujemati z različico IP
+         naslovov, dovoljenih na odhodnem. Neujemanje je najpogostejša napaka.
+
+      Odhodne minute se plačajo posebej. Isti odhodni trunk je pogoj tudi za
+      samodejne odhodne klice iz razdelka *Kasneje*.
 - [ ] **Vpiši `TRANSFER_PHONE` v `config.php` na strežniku.** Prazno = prevezovanje izklopljeno
 - [ ] **Preizkusi prevezo z resničnim klicem** — v konzolnem načinu je to prazen ukaz z opozorilom
 - [ ] **9.3** Več strank na eni namestitvi, po `sip.trunkPhoneNumber` *(teden; pred prvo zunanjo stranko)*
