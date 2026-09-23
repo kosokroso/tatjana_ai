@@ -73,7 +73,11 @@ Razlogi in ocene dela: [PROJEKT.md, razdelek 9](PROJEKT.md#9-nadgradnje-ki-bi-na
 
 ### Temelj — brez tega je vse ostalo ugibanje
 - [ ] **9.1** Nabor 30–50 preizkusnih pogovorov s pričakovanim izidom *(dan dela)*
-- [ ] **9.2** Predaja človeku prek `ctx.transfer_sip_participant` *(pol dneva)*
+- [x] **9.2** Predaja človeku prek `ctx.transfer_sip_participant` — koda napisana, **preizkušena ni**
+- [ ] **Vklopi prevezovanje pri DIDWW.** Brez tega LiveKit zahtevo pošlje, ponudnik pa jo zavrne
+      in klicatelj obvisi. Glej <https://docs.livekit.io/sip/transfer-cold/>
+- [ ] **Vpiši `TRANSFER_PHONE` v `config.php` na strežniku.** Prazno = prevezovanje izklopljeno
+- [ ] **Preizkusi prevezo z resničnim klicem** — v konzolnem načinu je to prazen ukaz z opozorilom
 - [ ] **9.3** Več strank na eni namestitvi, po `sip.trunkPhoneNumber` *(teden; pred prvo zunanjo stranko)*
 
 ### Nato

@@ -94,7 +94,28 @@ try {
 // predolg seznam prepis zacne vleci k tem besedam tudi tam, kjer jih ni.
 $kljucne = array_slice(array_values(array_unique(array_filter($kljucne))), 0, 60);
 
+// Prevezovanje na cloveka.
+//
+// Stevilko posljemo samo, kadar je podjetje odprto. Zunaj delovnega casa bi
+// klicatelj pristal na zvonjenju v prazni pisarni - to je slabse od tega, da
+// asistent zabelezi povprasevanje in obljubi povratni klic.
+$prevezi = defined('TRANSFER_PHONE') ? trim((string) TRANSFER_PHONE) : '';
+if ($prevezi !== '') {
+    try {
+        $ure = $registry->call('business-info', ['info_type' => 'hours'], 'internal')->toArray();
+        if (empty($ure['data']['open_now'])) {
+            $prevezi = '';
+        }
+    } catch (Throwable $e) {
+        // Ce delovnega casa ne moremo prebrati, rajsi ne prevezujemo. Napacna
+        // preveza konca s klicateljem, ki posluca zvonjenje in odlozi.
+        error_log('agent-config: delovnega casa ni bilo mogoce prebrati: ' . $e->getMessage());
+        $prevezi = '';
+    }
+}
+
 odgovori(200, [
+    'transfer_phone' => $prevezi,
     'assistant_name' => defined('ASSISTANT_NAME') ? ASSISTANT_NAME : 'asistent',
     'stt_keywords'   => $kljucne,
     'business_name'  => defined('BUSINESS_NAME')  ? BUSINESS_NAME  : '',

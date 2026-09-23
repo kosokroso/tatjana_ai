@@ -146,9 +146,17 @@ async def mašilo(context: RunContext, sklop: str) -> None:
 
 
 class TelefonskiAsistent(Agent):
-    def __init__(self, navodila: str, telefon_klicatelja: str = "") -> None:
+    def __init__(
+        self,
+        navodila: str,
+        telefon_klicatelja: str = "",
+        identiteta: str = "",
+        prevezi_na: str = "",
+    ) -> None:
         super().__init__(instructions=navodila)
         self.telefon_klicatelja = telefon_klicatelja
+        self.identiteta = identiteta
+        self.prevezi_na = prevezi_na
 
     @function_tool()
     async def search_services(
@@ -265,6 +273,52 @@ class TelefonskiAsistent(Agent):
                 "Če stranka nima več vprašanj, se poslovi in pokliči orodje koncaj_pogovor."
             )
         return odgovor
+
+    @function_tool()
+    async def predaj_cloveku(self, context: RunContext, razlog: str) -> dict:
+        """Preveže klic sodelavcu. Uporabi, ko stranka izrecno želi govoriti s
+        človekom, ko se pritožuje, ali ko ji dvakrat zapored nisi znala
+        odgovoriti. Preden orodje pokličeš, stranki povej, da jo prevezuješ.
+
+        Args:
+            razlog: Zakaj prevezuješ, z nekaj besedami. Gre v dnevnik, ne stranki.
+        """
+        if not self.prevezi_na:
+            # Zunaj delovnega časa ali brez nastavljene številke. Zvonjenje v
+            # prazno je slabše od zabeležke, zato model dobi navodilo namesto
+            # napake — sicer se opraviči in pogovor obvisi.
+            return {
+                "success": False,
+                "data": None,
+                "error": "Prevezovanje zdaj ni mogoče.",
+                "naslednji_korak": (
+                    "Povej, da sodelavca zdaj ni na voljo, in ponudi, da zabeležiš "
+                    "povpraševanje ter da vas pokličejo nazaj."
+                ),
+            }
+
+        log.info("preveza na sodelavca, razlog: %s", razlog)
+        try:
+            await agents.get_job_context().transfer_sip_participant(
+                self.identiteta,
+                self.prevezi_na,
+                play_dialtone=True,
+            )
+        except Exception as e:  # noqa: BLE001
+            # Preveza lahko odpove pri ponudniku SIP. Klicatelj je takrat še
+            # vedno na liniji in mora nekaj slišati.
+            log.warning("preveza ni uspela: %s", e)
+            return {
+                "success": False,
+                "data": None,
+                "error": "Prevezovanje ni uspelo.",
+                "naslednji_korak": (
+                    "Povej, da te prevezovanje ni uspelo, in ponudi, da zabeležiš "
+                    "povpraševanje ter da vas pokličejo nazaj."
+                ),
+            }
+
+        return {"success": True, "data": {"transferred": True}, "error": None}
 
     @function_tool()
     async def koncaj_pogovor(self, context: RunContext, pozdrav: str) -> str:
@@ -388,7 +442,7 @@ async def preberi_nastavitve() -> dict:
     return r.json()
 
 
-async def stevilka_klicatelja(ctx: agents.JobContext) -> str:
+async def stevilka_klicatelja(ctx: agents.JobContext) -> tuple[str, str]:
     """Prebere številko, s katere kdo kliče, iz same telefonske povezave.
 
     LiveKit jo zapiše kot lastnost udeleženca SIP, zato je znana, še preden
@@ -404,16 +458,15 @@ async def stevilka_klicatelja(ctx: agents.JobContext) -> str:
         udelezenec = await asyncio.wait_for(ctx.wait_for_participant(), timeout=10.0)
     except Exception as e:  # noqa: BLE001
         log.warning("udeleženca ni bilo mogoče prebrati: %s", e)
-        return ""
+        return "", ""
 
+    identiteta_udelezenca = (udelezenec.identity or "").strip()
     stevilka = (udelezenec.attributes.get("sip.phoneNumber") or "").strip()
 
     # Zasilna pot: LiveKit identiteto udeleženca SIP sestavi iz številke
     # ("sip_+38641234567"). Kadar lastnosti ni, je številka pogosto še vedno tu.
-    if not stevilka:
-        identiteta = (udelezenec.identity or "").strip()
-        if identiteta.startswith("sip_"):
-            stevilka = identiteta[4:].strip()
+    if not stevilka and identiteta_udelezenca.startswith("sip_"):
+        stevilka = identiteta_udelezenca[4:].strip()
 
     # Imena lastnosti gredo v dnevnik, vrednosti ne. Iz imen se vidi, kaj je
     # LiveKit sploh poslal, brez tega pa se manjkajoča številka išče na slepo.
@@ -424,7 +477,7 @@ async def stevilka_klicatelja(ctx: agents.JobContext) -> str:
         sorted(k for k in udelezenec.attributes if k.startswith("sip.")),
         "znana" if stevilka else "SKRITA ALI NEZNANA",
     )
-    return stevilka
+    return stevilka, identiteta_udelezenca
 
 
 async def straza(ctx: agents.JobContext, session: AgentSession, sekund_max: int, zakljucek: str) -> None:
@@ -552,10 +605,11 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
 
     # Oboje poteka hkrati. Zaporedno sta to dve čakanji na gostovanje, preden
     # asistentka sploh spregovori — sogovornik pa medtem posluša tišino.
-    nastavitve, klicatelj = await asyncio.gather(
+    nastavitve, podatki_klicatelja = await asyncio.gather(
         preberi_nastavitve(),
         stevilka_klicatelja(ctx),
     )
+    klicatelj, identiteta = podatki_klicatelja
     vratar = await vprasaj_vratarja("start", klicatelj)
     meritev("priprava_klica", zacetek_klica)
 
@@ -600,7 +654,15 @@ premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
     )
 
     zacetek = time.perf_counter()
-    await session.start(room=ctx.room, agent=TelefonskiAsistent(navodila, klicatelj))
+    await session.start(
+        room=ctx.room,
+        agent=TelefonskiAsistent(
+            navodila,
+            klicatelj,
+            identiteta,
+            nastavitve.get("transfer_phone") or "",
+        ),
+    )
     meritev("zagon_seje", zacetek)
 
     if not vratar.get("allow", True):

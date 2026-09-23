@@ -175,6 +175,16 @@ define('BUSINESS_NAME',  'Kreativni Splet');
 // MESTNIK   - za "pri", "v", "o":    pri Kreativnem spletu
 define('BUSINESS_NAME_RODILNIK', 'Kreativnega spleta');
 define('BUSINESS_NAME_MESTNIK',  'Kreativnem spletu');
+
+// Stevilka, na katero asistent preveze klicatelja, ki zahteva cloveka.
+// Prazno = prevezovanje izklopljeno; asistent takrat ponudi povratni klic.
+//
+// Preveze samo znotraj delovnega casa iz ai_business_hours. Zunaj njega bi
+// klicatelj pristal na zvonjenju v prazni pisarni, kar je slabse od zabelezke.
+//
+// POZOR: prevezovanje mora biti vklopljeno tudi pri ponudniku SIP (DIDWW).
+// Brez tega LiveKit zahtevo poslje, ponudnik pa jo zavrne.
+define('TRANSFER_PHONE', '');
 define('BUSINESS_PHONE', '+386 31 455 881');
 define('BUSINESS_EMAIL', 'info@kreativnisplet.si');
 
