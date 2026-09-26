@@ -374,7 +374,10 @@ class TelefonskiAsistent(Agent):
 
         Args:
             order_id: Številka projekta, na primer '10001'.
-            verify: Telefonska številka ali e-pošta stranke, s katero je bil projekt naročen.
+            verify: Telefonska številka ali e-pošta stranke, s katero je bil projekt
+                naročen. Če je stranka ne pove ali reče, da se je ne spomni, tega
+                orodja NE kliči in vanj ne vpiši izmišljene vrednosti — odgovor mora
+                biti za vsako številko projekta enak.
         """
         # "Ne spomnim se" ni kontakt. Brez te preverbe gre tak klic v orodje,
         # to vrne "ni najdeno", in pogovor zveni, kot da je preverjanje opravljeno.
