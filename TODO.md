@@ -46,6 +46,12 @@ Zadnja posodobitev: 26. 9. 2026
 
 ## Varnost — brez roka, a pomembno
 
+- [ ] **Premisli o meji za skrite številke.** Vsi klicatelji s skrito številko se
+      štejejo pod eno oznako, zato jih `CALL_MAX_PER_CALLER` (10 na dan) omeji
+      skupaj. Enajsti pošten klic s skrito številko bo zavrnjen. Namerno je —
+      sicer bi bila skrita številka luknja mimo meje — a če bo takih klicev
+      veliko, rabi svojo, višjo mejo.
+
 - [ ] Zamenjaj geslo baze in WordPressove varnostne ključe (`wp-config.php` je
       bil prilepljen v pogovor z asistentom)
 - [ ] Zamenjaj OpenAI ključ in GitHub žeton — prav tako razkrita

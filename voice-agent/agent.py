@@ -681,12 +681,24 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
         stevilka_klicatelja(ctx),
     )
     klicatelj, identiteta = podatki_klicatelja
-    vratar = await vprasaj_vratarja("start", klicatelj)
+    # Meje klicev varujejo telefonsko porabo. Simulacija ne telefonira, poleg
+    # tega v njej ni udeleženca SIP — vse seje bi se štele pod isto oznako za
+    # skrito številko in po desetih bi vratar zavrnil vse nadaljnje. Prvi tak
+    # zagon je zato pokvaril vsakega naslednjega.
+    simulacija = ctx.simulation_context() is not None
+    if simulacija:
+        log.info("simulacija: meje klicev preskočene")
+        vratar = {"allow": True}
+    else:
+        vratar = await vprasaj_vratarja("start", klicatelj)
+
     meritev("priprava_klica", zacetek_klica)
 
     # Trajanje se sporoči ob koncu, ne ob začetku: klic, ki se prekine po treh
     # sekundah, ne sme šteti enako kot desetminutni.
     async def ob_koncu() -> None:
+        if simulacija:
+            return
         await vprasaj_vratarja("end", klicatelj, int(time.perf_counter() - zacetek_klica))
 
     ctx.add_shutdown_callback(ob_koncu)
@@ -739,9 +751,19 @@ premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
     if not vratar.get("allow", True):
         # Razloga ne povemo. Kdor mejo namerno preizkuša, iz vljudnega stavka
         # ne izve, katera meja je bila dosežena in koliko je do nje.
+        # Klicatelj brez e-pošte ali tisti, ki hoče človeka, s samim e-naslovom
+        # ni nikamor prišel. Zato tudi telefonska številka.
+        telefon = (nastavitve.get("business_phone") or "").strip()
+        posta = (nastavitve.get("business_email") or "").strip()
+        kam = " ali ".join(x for x in (
+            ("pokličete na " + telefon) if telefon else "",
+            ("pišete na " + posta) if posta else "",
+        ) if x)
+
         await session.say(
-            "Oprostite, tega klica vam danes ne morem sprejeti. Pišite nam prosim "
-            "po elektronski pošti, pa vam odgovorimo. Lep pozdrav."
+            "Oprostite, tega klica vam danes ne morem sprejeti. "
+            + (("Prosim, da " + kam + ". ") if kam else "")
+            + "Lep pozdrav."
         )
         await odlozi(ctx)
         return
