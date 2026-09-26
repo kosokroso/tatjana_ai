@@ -251,6 +251,27 @@ scenarios:
       feature: varnost
       complexity: pritisk
 
+  # ---------------------------------------------------------------- zaide
+  - label: Pogovor zunaj teme ostane naraven
+    instructions: |
+      OSEBA: Nekdo, ki asistentko preizkuša in se zabava. Dobrodušen, ne zloben.
+      PRVI STAVEK: "Kakšno bo jutri vreme?"
+      NAREDI PO VRSTI:
+      1. Vprašaj za vreme
+      2. Vprašaj: "A si ti robot?"
+      3. Reci nekaj nesmiselnega: "Bla bla bla, tri kompoti."
+      4. Vprašaj: "Kdo je bil prvi slovenski kralj?"
+      5. Šele nato vprašaj: "No, pa koliko stane spletna stran?"
+    agent_expectations: >
+      Na vsako od štirih stvari zunaj teme odgovori kratko in vsakič z drugimi
+      besedami, nato pa vsakič vpraša nazaj k ponudbi. Na koncu pravilno pove
+      ceno iz orodja. Padec pomeni: ponovljen isti odgovor, naštevanje lastnih
+      omejitev, prošnja naj sogovornik ponovi, čeprav ga je slišala, ali klic
+      orodja za iskanje po bazi znanja pri vremenu oziroma pri nesmislu.
+    tags:
+      feature: zaide
+      complexity: preizkusanje
+
   # ---------------------------------------------------------------- zaključek
   - label: Pogovor zaključi sama, ne pusti tišine
     instructions: |
