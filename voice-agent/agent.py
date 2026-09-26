@@ -879,6 +879,36 @@ async def stevilka_klicatelja(ctx: agents.JobContext) -> tuple[str, str]:
     return stevilka, identiteta_udelezenca
 
 
+async def ob_tisini(ctx: agents.JobContext, session: AgentSession) -> None:
+    """Vpraša, ali je sogovornik še tam, in po dodatni tišini konča klic.
+
+    LiveKit po user_away_timeout sekundah tišine razglasi sogovornika za
+    odsotnega, klica pa ne konča. Brez tega odložena slušalka poleg telefona
+    teče do najdaljšega dovoljenega trajanja — deset minut, v katerih tečejo
+    števci LiveKita, DIDWW, OpenAI in Azure, sogovornika pa ni.
+
+    Vprašanje pride prvo, ker tišina ni vedno odsotnost: sogovornik lahko išče
+    številko projekta ali se posvetuje z nekom v sobi.
+    """
+    cakaj = float(os.getenv("TISINA_KONEC", "20"))
+    try:
+        await session.say("Ste še tam?", add_to_chat_ctx=True)
+    except Exception as e:  # noqa: BLE001
+        log.debug("vprašanja o tišini ni bilo mogoče izgovoriti: %s", e)
+
+    await asyncio.sleep(cakaj)
+
+    # Če se je medtem oglasil, je nalogo preklical poslušalec dogodkov.
+    log.info("klic končan zaradi tišine")
+    try:
+        await session.say("Videti je, da vas ni več. Hvala za klic in lep pozdrav.")
+    except Exception as e:  # noqa: BLE001
+        log.debug("poslovilnega stavka ni bilo mogoče izgovoriti: %s", e)
+
+    await asyncio.sleep(ODLOZI_PO_SEKUNDAH)
+    await odlozi(ctx)
+
+
 async def straza(ctx: agents.JobContext, session: AgentSession, sekund_max: int, zakljucek: str) -> None:
     """Zaključi klic, ki traja predolgo.
 
@@ -1105,6 +1135,9 @@ prek zvoka pogosto zamenjajo.
         # pogosto premolknejo; prekratek premor pomeni, da asistentka skoči v
         # besedo, predolg pa neroden molk. Po nekaj klicih popravi v .env.
         vad=zaznavalnik_govora(),
+        # Po tolikšni tišini velja sogovornik za odsotnega in ga vprašamo,
+        # ali je še tam.
+        user_away_timeout=float(os.getenv("TISINA_VPRASAJ", "15")),
         **nastavljive_izboljsave(),
     )
 
@@ -1153,6 +1186,29 @@ prek zvoka pogosto zamenjajo.
         nadzor.cancel()
 
     ctx.add_shutdown_callback(ustavi_strazo)
+
+    # Tišina: vprašaj, nato konec. Naloga se prekliče, brž ko se sogovornik oglasi.
+    tisina: dict = {"naloga": None}
+
+    def ob_spremembi_stanja(dogodek) -> None:
+        novo_stanje = getattr(dogodek, "new_state", None)
+        tekoca = tisina["naloga"]
+
+        if novo_stanje == "away":
+            if tekoca is None or tekoca.done():
+                tisina["naloga"] = asyncio.create_task(ob_tisini(ctx, session))
+        elif tekoca is not None and not tekoca.done():
+            tekoca.cancel()
+            tisina["naloga"] = None
+
+    session.on("user_state_changed", ob_spremembi_stanja)
+
+    async def ustavi_nadzor_tisine() -> None:
+        tekoca = tisina["naloga"]
+        if tekoca is not None and not tekoca.done():
+            tekoca.cancel()
+
+    ctx.add_shutdown_callback(ustavi_nadzor_tisine)
 
     async def zapisi_ob_koncu() -> None:
         if simulacija:
