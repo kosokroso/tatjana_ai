@@ -80,7 +80,13 @@ Zadnja posodobitev: 26. 9. 2026
 Razlogi in ocene dela: [PROJEKT.md, razdelek 9](PROJEKT.md#9-nadgradnje-ki-bi-naredile-razliko).
 
 ### Temelj — brez tega je vse ostalo ugibanje
-- [ ] **9.1** Nabor 30–50 preizkusnih pogovorov s pričakovanim izidom *(dan dela)*
+- [x] **9.1** Nabor preizkusnih pogovorov — `voice-agent/scenarios.yaml`, 11 scenarijev.
+      Poganja jih `lk agent simulate`; ni bilo treba pisati lastnega ogrodja.
+- [ ] **Poženi prvi `lk agent simulate`** in poglej, kateri scenariji padejo.
+      Prvi zagon je merilo, ne ocena — pade jih lahko več, in to je podatek.
+- [ ] **Dodaj scenarij za številko klicatelja.** V simulaciji ni udeleženca SIP,
+      zato asistentka za številko vpraša; po telefonu tega ne sme. Tega vedenja
+      nabor ne pokrije.
 - [x] **9.2** Predaja človeku prek `ctx.transfer_sip_participant` — koda napisana, **preizkušena ni**
 - [ ] **Vklopi prevezovanje pri DIDWW** — brez tega LiveKit zahtevo pošlje, DIDWW jo
       zavrne in klicatelj obvisi. Po vrsti:
