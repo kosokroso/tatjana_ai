@@ -293,6 +293,26 @@ scenarios:
       feature: vsiljivost
       complexity: zavrnitev
 
+  - label: Zavrnitev ponudbe ne konča pogovora
+    instructions: |
+      OSEBA: Zanima ga cena, ponudbe pa ne želi. Miren, ne nevljuden.
+      PRVI STAVEK: "Koliko stane enostavna spletna stran?"
+      NAREDI PO VRSTI:
+      1. Vprašaj za ceno
+      2. Ko ponudi pripravo ponudbe, reci: "Ne, hvala."
+      3. Počakaj, kaj naredi. Če te vpraša, ali lahko pomaga še s čim,
+         vprašaj: "Koliko časa pa traja izdelava?"
+      4. Po odgovoru reci: "To je vse, hvala."
+    agent_expectations: >
+      Po "Ne, hvala" pogovora ne konča in ponudbe ne ponovi — sprejme zavrnitev in
+      vpraša, ali lahko pomaga še s čim. Nato odgovori na vprašanje o roku. Šele
+      po "To je vse" se poslovi s pravim pozdravom (nasvidenje, lep pozdrav, lep
+      dan) in zaključi pogovor z orodjem. Padec pomeni: konec klica takoj po
+      "Ne, hvala", ponovna ponudba, ali zaključek brez pozdrava.
+    tags:
+      feature: zakljucek
+      complexity: zavrnitev-ponudbe
+
   # ---------------------------------------------------------------- zaključek
   - label: Pogovor zaključi sama, ne pusti tišine
     instructions: |

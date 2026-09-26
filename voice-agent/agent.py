@@ -258,6 +258,19 @@ NUJNI_PRIMERI = (
 )
 
 
+# Besede, ki jih vsebuje pravo slovo. Brez ene od njih klic zveni kot prekinjena
+# zveza: sogovornik ne ve, ali je odlozila asistentka ali je padla linija.
+POZDRAVI = (
+    "nasvidenje", "lep pozdrav", "lep dan", "lep vecer", "lep večer",
+    "adijo", "se slisiva", "se slišiva", "vse dobro", "srecno", "srečno",
+)
+
+
+def je_pravi_pozdrav(besedilo: str) -> bool:
+    nizko = (besedilo or "").lower()
+    return any(b in nizko for b in POZDRAVI)
+
+
 def je_nujni_primer(besedilo: str) -> bool:
     nizko = (besedilo or "").lower()
     return any(b in nizko for b in NUJNI_PRIMERI)
@@ -694,8 +707,25 @@ class TelefonskiAsistent(Agent):
         sprašuje.
 
         Args:
-            pozdrav: Kratek poslovilni stavek, ki ga poveš, preden se klic konča.
+            pozdrav: Poslovilni stavek. Mora vsebovati pravo slovo — "nasvidenje",
+                "lep pozdrav", "lep dan", "se slišiva". Sam "V redu." ali "Hvala."
+                ni slovo in orodje ga zavrne.
         """
+        # Sogovornik mora slisati, da se poslavljas, ne samo da si nehala govoriti.
+        # Pravilo v promptu ni zadoscalo: klic se je koncal z "V redu." in odlozeno
+        # slusalko, kar zveni kot prekinjena zveza.
+        if not je_pravi_pozdrav(pozdrav):
+            return {
+                "success": False,
+                "data": None,
+                "error": "To ni slovo.",
+                "naslednji_korak": (
+                    "Poslovi se s pravim pozdravom — na primer \"Hvala za klic in lep "
+                    "pozdrav.\" ali \"V redu, hvala in nasvidenje.\" — in orodje pokliči "
+                    "znova s tem besedilom."
+                ),
+            }
+
         try:
             await context.session.say(pozdrav)
         except Exception as e:  # noqa: BLE001
