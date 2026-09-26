@@ -283,8 +283,15 @@ def kljuc_vprasanja(besedilo: str) -> str:
     """
     import re
 
-    besede = re.split(r"[^\w]+", (besedilo or "").lower(), flags=re.UNICODE)
+    besede = [b for b in re.split(r"[^\w]+", (besedilo or "").lower(), flags=re.UNICODE) if b]
     pomembne = sorted({b for b in besede if len(b) >= 4 and b not in MASILA_ISKANJA})
+
+    # Kratke povedi nimajo nobene take besede: "Kako si" je sama mašila. Brez
+    # zasilne poti se tako vprašanje ne bi štelo nikoli in bi ga bilo mogoče
+    # ponavljati brez konca — prav to se je zgodilo.
+    if not pomembne:
+        pomembne = sorted(set(besede))
+
     return " ".join(pomembne)
 
 
@@ -344,6 +351,63 @@ class TelefonskiAsistent(Agent):
         # model na štetje ne da zanesti: pravilo v promptu je bilo že zapisano,
         # pa je ceno ob četrtem vprašanju vseeno ponovil.
         self._ponovitve: dict[str, int] = {}
+        self._konec_zaradi_ponavljanja = False
+        # Obrati, v katerih ni bilo nobenega klica orodja. Pogovor, ki jih
+        # nakopiči, se ne premakne nikamor: vljudnostna vprašanja, splošno
+        # znanje, ponavljanje z drugimi besedami. Števec se ob vsakem orodju
+        # postavi nazaj na nič, zato zbiranje podatkov za povpraševanje — kjer
+        # je več obratov brez orodja — ne zadene ob mejo.
+        self._brez_orodja = 0
+        self.telefon_podjetja = ""
+        self.eposta_podjetja = ""
+
+    async def on_user_turn_completed(
+        self, turn_ctx: "llm.ChatContext", new_message: "llm.ChatMessage"
+    ) -> None:
+        """Šteje ponovitve na vsakem obratu, tudi kadar ni klica orodja.
+
+        Prej je štel samo klic orodja, zato se "Kako si" ni štelo nikoli —
+        vljudnostna vprašanja in vprašanja iz splošnega znanja ne gredo skozi
+        nobeno orodje. Deset ponovitev je tako teklo brez omejitve.
+
+        Ob preseženi meji klic konča ta koda, ne model: navodilo v pogovoru bi
+        model lahko prebral na glas, poleg tega pa se ravno pri ponavljanju
+        pokaže, da se na njegovo upoštevanje pravil ni mogoče zanesti.
+        """
+        besedilo = besedilo_sporocila(new_message)
+        kljuc = kljuc_vprasanja(besedilo)
+        if not kljuc:
+            return
+
+        self._ponovitve[kljuc] = self._ponovitve.get(kljuc, 0) + 1
+        self._brez_orodja += 1
+
+        dovolj = (
+            self._ponovitve[kljuc] >= int(os.getenv("PONOVITVE_MEJA", "4"))
+            or self._brez_orodja >= int(os.getenv("OBRATI_BREZ_ORODJA", "10"))
+        )
+        if not dovolj or self._konec_zaradi_ponavljanja:
+            return
+
+        koliko = self._ponovitve[kljuc]
+
+        self._konec_zaradi_ponavljanja = True
+        log.info(
+            "konec klica: %d. ponovitev %r, %d obratov brez orodja",
+            koliko, kljuc, self._brez_orodja,
+        )
+        asyncio.create_task(self._koncaj_zaradi_ponavljanja())
+
+    async def _koncaj_zaradi_ponavljanja(self) -> None:
+        """Pove, zakaj konča, in odloži."""
+        kontakt = " ali ".join(x for x in (self.telefon_podjetja, self.eposta_podjetja) if x)
+        sporocilo = "Temu ne morem dodati nič novega."
+        if kontakt:
+            sporocilo += f" Če želite izvedeti več, pokličite ali pišite na {kontakt}."
+        sporocilo += " Hvala za klic in lep pozdrav."
+
+        await povej_do_konca(self.session, sporocilo)
+        await odlozi(agents.get_job_context())
 
     async def tts_node(self, text, model_settings):
         """Besedilo gre skozi filter, preden postane zvok.
@@ -390,11 +454,16 @@ class TelefonskiAsistent(Agent):
         if odgovor_na_ponavljanje is not None:
             return odgovor_na_ponavljanje
 
+        self._zabelezi_orodje()
         await mašilo(context, "isce", self._masilo_stanje)
         vsebina = {"query": query, "action": action}
         if category:
             vsebina["category"] = category
         return await poklici_orodje("product-lookup", vsebina)
+
+    def _zabelezi_orodje(self) -> None:
+        """Klic orodja pomeni, da se pogovor premika. Števec se postavi nazaj."""
+        self._brez_orodja = 0
 
     def _preveri_ponovitve(self, vprasanje: str) -> dict | None:
         """Vrne navodilo, kadar je isto vprašanje postavljeno prevečkrat.
@@ -457,6 +526,7 @@ class TelefonskiAsistent(Agent):
                 ),
             }
 
+        self._zabelezi_orodje()
         await mašilo(context, "projekt", self._masilo_stanje)
         return await poklici_orodje("order-lookup", {"order_id": order_id, "verify": kontakt})
 
@@ -467,6 +537,7 @@ class TelefonskiAsistent(Agent):
         Args:
             info_type: 'hours' za delovni čas, 'delivery' za roke in potek dela, 'payments' za plačilo.
         """
+        self._zabelezi_orodje()
         await mašilo(context, "podatki", self._masilo_stanje)
         return await poklici_orodje("business-info", {"info_type": info_type})
 
@@ -486,6 +557,7 @@ class TelefonskiAsistent(Agent):
             query: Vprašanje stranke z njenimi besedami, na primer
                 'ali delate tudi za društva'.
         """
+        self._zabelezi_orodje()
         await mašilo(context, "podatki", self._masilo_stanje)
         return await poklici_orodje("knowledge-lookup", {"query": query})
 
@@ -496,6 +568,7 @@ class TelefonskiAsistent(Agent):
         dva ali tri naenkrat — po telefonu si četrtega nihče ne zapomni.
         Termina si nikoli ne izmisli.
         """
+        self._zabelezi_orodje()
         await mašilo(context, "isce", self._masilo_stanje)
         return await poklici_orodje("appointment", {"action": "find"})
 
@@ -525,6 +598,7 @@ class TelefonskiAsistent(Agent):
             email: Neobvezno, za potrditev po e-pošti.
             note: Kaj želi stranka na sestanku.
         """
+        self._zabelezi_orodje()
         await mašilo(context, "zapis", self._masilo_stanje)
 
         telefon = (phone or self.telefon_klicatelja or "").strip()
@@ -614,6 +688,7 @@ class TelefonskiAsistent(Agent):
                 "naslednji_korak": "Vprašaj stranko za to in ne vpisuj nadomestkov.",
             }
 
+        self._zabelezi_orodje()
         await mašilo(context, "zapis", self._masilo_stanje)
 
         # Pri telefonskem klicu je številka že znana iz same povezave. Narekovanje
@@ -791,19 +866,31 @@ class TelefonskiAsistent(Agent):
                 ),
             }
 
-        try:
-            await context.session.say(pozdrav)
-        except Exception as e:  # noqa: BLE001
-            log.debug("poslovilnega stavka ni bilo mogoče izgovoriti: %s", e)
-
-        # Zvok do slušalke potuje z zamikom. Brez tega premora se zadnja beseda
-        # odreže in klic se konča sredi pozdrava.
-        await asyncio.sleep(ODLOZI_PO_SEKUNDAH)
+        await povej_do_konca(context.session, pozdrav)
         await odlozi(agents.get_job_context())
         return "Klic je končan."
 
 
+# Zvok do slusalke potuje z zamikom in ga je treba pustiti odzveneti, sicer se
+# zadnja beseda odreze. Ta premor pride PO tem, ko je predvajanje ze koncano.
 ODLOZI_PO_SEKUNDAH = 0.6
+
+
+async def povej_do_konca(session: AgentSession, besedilo: str) -> None:
+    """Izgovori in počaka, da je res izgovorjeno.
+
+    "await session.say(...)" ne zadošča: vrne se, ko je govor pripravljen, ne ko
+    ga je sogovornik slišal. Klic se je zato končal sredi pozdrava.
+    """
+    try:
+        rocica = session.say(besedilo, add_to_chat_ctx=True)
+        await rocica.wait_for_playout()
+    except Exception as e:  # noqa: BLE001 — konec klica ne sme pasti zaradi govora
+        log.debug("stavka ni bilo mogoče izgovoriti do konca: %s", e)
+        return
+
+    # Se malo cez, ker med agentom in slusalko stoji se jitter buffer SIP.
+    await asyncio.sleep(ODLOZI_PO_SEKUNDAH)
 
 
 def izberi_prepis(kljucne: list[str] | None = None):
@@ -962,12 +1049,7 @@ async def ob_tisini(ctx: agents.JobContext, session: AgentSession) -> None:
 
     # Če se je medtem oglasil, je nalogo preklical poslušalec dogodkov.
     log.info("klic končan zaradi tišine")
-    try:
-        await session.say("Videti je, da vas ni več. Hvala za klic in lep pozdrav.")
-    except Exception as e:  # noqa: BLE001
-        log.debug("poslovilnega stavka ni bilo mogoče izgovoriti: %s", e)
-
-    await asyncio.sleep(ODLOZI_PO_SEKUNDAH)
+    await povej_do_konca(session, "Videti je, da vas ni več. Hvala za klic in lep pozdrav.")
     await odlozi(ctx)
 
 
@@ -990,11 +1072,7 @@ async def straza(ctx: agents.JobContext, session: AgentSession, sekund_max: int,
         log.debug("opozorila ni bilo mogoče izgovoriti: %s", e)
 
     await asyncio.sleep(sekund_max - opozori_ob)
-    try:
-        await session.say(zakljucek)
-    except Exception as e:  # noqa: BLE001
-        log.debug("zaključka ni bilo mogoče izgovoriti: %s", e)
-
+    await povej_do_konca(session, zakljucek)
     await odlozi(ctx)
 
 
@@ -1203,15 +1281,20 @@ prek zvoka pogosto zamenjajo.
         **nastavljive_izboljsave(),
     )
 
+    asistent = TelefonskiAsistent(
+        navodila,
+        klicatelj,
+        identiteta,
+        nastavitve.get("transfer_phone") or "",
+    )
+    # Kontakt podjetja rabi agent sam, kadar klic konča brez modela.
+    asistent.telefon_podjetja = (nastavitve.get("business_phone") or "").strip()
+    asistent.eposta_podjetja = (nastavitve.get("business_email") or "").strip()
+
     zacetek = time.perf_counter()
     await session.start(
         room=ctx.room,
-        agent=TelefonskiAsistent(
-            navodila,
-            klicatelj,
-            identiteta,
-            nastavitve.get("transfer_phone") or "",
-        ),
+        agent=asistent,
     )
     meritev("zagon_seje", zacetek)
 
@@ -1227,10 +1310,11 @@ prek zvoka pogosto zamenjajo.
             ("pišete na " + posta) if posta else "",
         ) if x)
 
-        await session.say(
+        await povej_do_konca(
+            session,
             "Oprostite, tega klica vam danes ne morem sprejeti. "
             + (("Prosim, da " + kam + ". ") if kam else "")
-            + "Lep pozdrav."
+            + "Lep pozdrav.",
         )
         await odlozi(ctx)
         return
