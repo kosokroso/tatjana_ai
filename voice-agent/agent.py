@@ -251,6 +251,33 @@ def _je_nadomestek(vrednost: str) -> bool:
     return (vrednost or "").strip().lower() in NADOMESTKI
 
 
+# Znaki zunaj latinice, ki jih vseeno pustimo: valute, narekovaji, pomišljaji.
+DOVOLJENI_POSEBNI = set("€£$—–…„“”‘’«»\u00a0")
+
+
+def samo_latinica(besedilo: str) -> str:
+    """Odstrani znake iz tujih pisav.
+
+    Model je v enem odgovoru izpustil armenski "Եթե" sredi slovenskega stavka.
+    Sogovornik tega ni videl — slišal je, kako je glas poskusil to prebrati.
+    Napaka je redka in je z navodilom v promptu ni mogoče zanesljivo preprečiti,
+    ker ne nastane iz razumevanja, ampak iz izbire žetona.
+
+    Latinica sega do U+024F; slovenski č, š in ž so znotraj tega. Vse nad tem
+    razen naštetih ločil in valut je tuja pisava.
+    """
+    ocisceno = [
+        z for z in besedilo
+        if ord(z) <= 0x024F or z in DOVOLJENI_POSEBNI
+    ]
+    izid = "".join(ocisceno)
+
+    # Odstranjena beseda pusti dvojni presledek; ta se sliši kot zatikanje.
+    while "  " in izid:
+        izid = izid.replace("  ", " ")
+    return izid
+
+
 class TelefonskiAsistent(Agent):
     def __init__(
         self,
@@ -262,6 +289,23 @@ class TelefonskiAsistent(Agent):
         super().__init__(instructions=navodila)
         self.telefon_klicatelja = telefon_klicatelja
         self._masilo_stanje: dict = {}
+
+    async def tts_node(self, text, model_settings):
+        """Besedilo gre skozi filter, preden postane zvok.
+
+        To je zadnje mesto, kjer je mogoče ujeti tuj znak. Navodilo v promptu
+        tega ne zanesljivo prepreči — napaka ne nastane iz razumevanja, ampak iz
+        izbire žetona, in se zgodi redko.
+        """
+        async def ocisceno():
+            async for kos in text:
+                popravljen = samo_latinica(kos)
+                if popravljen != kos:
+                    log.warning("iz govora odstranjena tuja pisava: %r", kos)
+                if popravljen:
+                    yield popravljen
+
+        return super().tts_node(ocisceno(), model_settings)
         self.identiteta = identiteta
         self.prevezi_na = prevezi_na
 
@@ -482,8 +526,12 @@ class TelefonskiAsistent(Agent):
         # povpraševanju obvisel v tišini, dokler ni odložila stranka.
         if odgovor.get("success"):
             odgovor["naslednji_korak"] = (
-                "Povej številko povpraševanja in da ponudbo pošljemo po e-pošti. "
-                "Če stranka nima več vprašanj, se poslovi in pokliči orodje koncaj_pogovor."
+                "Po vrsti in ne vse naenkrat: "
+                "1) povej številko povpraševanja in da ponudbo pošljemo po e-pošti, "
+                "nato v istem odgovoru vprašaj, ali potrebuje še kaj; "
+                "2) orodje koncaj_pogovor pokliči SAMO potem, ko je stranka odgovorila, "
+                "da ne potrebuje nič več. Nikoli ga ne pokliči v istem odgovoru, v "
+                "katerem poveš številko — sogovornik še ni imel priložnosti odgovoriti."
             )
         return odgovor
 
