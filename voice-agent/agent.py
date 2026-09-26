@@ -266,6 +266,28 @@ POZDRAVI = (
 )
 
 
+# Masilne besede pri primerjavi vprasanj. "Koliko stane spletna stran" in
+# "In koliko bi stala ena spletna stran" sta isto vprasanje.
+MASILA_ISKANJA = {
+    "ali", "kaj", "kako", "koliko", "kje", "kdaj", "in", "za", "na", "se", "je",
+    "bi", "pa", "to", "ta", "ena", "en", "mi", "vi", "vas", "tudi", "samo",
+    "stane", "stala", "stalo", "velja", "pri", "od", "do",
+}
+
+
+def kljuc_vprasanja(besedilo: str) -> str:
+    """Isto vprašanje z drugimi besedami da isti ključ.
+
+    Brez tega bi se ponovitve štele samo ob dobesedno enakem nizu, sogovornik
+    pa vsakič vpraša malo drugače.
+    """
+    import re
+
+    besede = re.split(r"[^\w]+", (besedilo or "").lower(), flags=re.UNICODE)
+    pomembne = sorted({b for b in besede if len(b) >= 4 and b not in MASILA_ISKANJA})
+    return " ".join(pomembne)
+
+
 def je_pravi_pozdrav(besedilo: str) -> bool:
     nizko = (besedilo or "").lower()
     return any(b in nizko for b in POZDRAVI)
@@ -318,6 +340,10 @@ class TelefonskiAsistent(Agent):
         super().__init__(instructions=navodila)
         self.telefon_klicatelja = telefon_klicatelja
         self._masilo_stanje: dict = {}
+        # Koliko krat je bilo isto vprašanje že postavljeno. Šteje koda, ker se
+        # model na štetje ne da zanesti: pravilo v promptu je bilo že zapisano,
+        # pa je ceno ob četrtem vprašanju vseeno ponovil.
+        self._ponovitve: dict[str, int] = {}
 
     async def tts_node(self, text, model_settings):
         """Besedilo gre skozi filter, preden postane zvok.
@@ -360,11 +386,47 @@ class TelefonskiAsistent(Agent):
             action: 'search' za splošno ponudbo, 'get_price' za ceno, 'check_stock' za razpoložljivost.
             category: Neobvezno: 'spletne-strani', 'trzenje', 'oblikovanje', 'vzdrzevanje'.
         """
+        odgovor_na_ponavljanje = self._preveri_ponovitve(query)
+        if odgovor_na_ponavljanje is not None:
+            return odgovor_na_ponavljanje
+
         await mašilo(context, "isce", self._masilo_stanje)
         vsebina = {"query": query, "action": action}
         if category:
             vsebina["category"] = category
         return await poklici_orodje("product-lookup", vsebina)
+
+    def _preveri_ponovitve(self, vprasanje: str) -> dict | None:
+        """Vrne navodilo, kadar je isto vprašanje postavljeno prevečkrat.
+
+        Cene in roki se s ponavljanjem ne spremenijo. Kdor sprašuje petič, ne
+        išče odgovora — pogovor pa medtem teče in stane pri štirih ponudnikih.
+        """
+        kljuc = kljuc_vprasanja(vprasanje)
+        if not kljuc:
+            return None
+
+        self._ponovitve[kljuc] = self._ponovitve.get(kljuc, 0) + 1
+        koliko = self._ponovitve[kljuc]
+
+        if koliko == 3:
+            log.info("tretja ponovitev vprašanja: %s", kljuc)
+            return None  # odgovori še enkrat, a z opozorilom iz prompta
+
+        if koliko >= 4:
+            log.info("četrta ponovitev vprašanja, končujem: %s", kljuc)
+            return {
+                "success": False,
+                "data": None,
+                "error": "Na to vprašanje si odgovorila že trikrat.",
+                "naslednji_korak": (
+                    "Ne ponovi odgovora. Povej, da temu ne moreš dodati nič novega, "
+                    "naštej telefon in e-pošto podjetja, poslovi se s pravim pozdravom "
+                    "in uporabi orodje za konec pogovora."
+                ),
+            }
+
+        return None
 
     @function_tool()
     async def lookup_project(self, context: RunContext, order_id: str, verify: str) -> dict:
