@@ -35,6 +35,10 @@ final class KnowledgeTool extends Tool
             ]);
         }
 
+        // Zadetek je zadetek po besedah, ne po pomenu. Iskanje po besedah bo
+        // vedno kdaj vrnilo zapis, ki se ujema z besedami in ne z vprašanjem —
+        // in model tak zapis rad vzame za potrdilo. Zato navodilo potuje skupaj
+        // z izidom, ne samo v promptu: kar pride iz orodja, model upošteva bolj.
         return ToolResponse::ok([
             'matches' => array_map(static function (array $vrstica): array {
                 return [
@@ -42,6 +46,10 @@ final class KnowledgeTool extends Tool
                     'answer'   => $vrstica['answer'],
                 ];
             }, $zadetki),
+            'note' => 'Uporabi samo zadetek, katerega vprašanje pomeni isto kot vprašanje stranke. '
+                . 'Ujemanje po besedah ni ujemanje po pomenu. Če noben zadetek ne odgovarja na to, '
+                . 'kar je stranka res vprašala, povej, da tega nimaš potrjenega, in ponudi, da potrdi '
+                . 'sodelavec. Ne sestavljaj odgovora iz zadetka o drugi temi.',
         ]);
     }
 }

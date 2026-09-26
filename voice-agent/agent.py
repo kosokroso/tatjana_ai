@@ -241,6 +241,10 @@ class TelefonskiAsistent(Agent):
         """Rezervira izbrani termin. Uporabi šele, ko je stranka termin potrdila
         in si zbrala ime. Pred rezervacijo na kratko ponovi, kdaj je termin.
 
+        Potrebuješ SAMO ime in telefonsko številko. E-pošta je neobvezna — če je
+        stranka nima ali je noče dati, termin vseeno rezerviraj. Zahteva po vseh
+        treh podatkih velja za povpraševanje, ne za termin.
+
         Args:
             starts_at: Termin natanko tako, kot ga je vrnilo orodje za proste termine.
             name: Ime in priimek stranke.

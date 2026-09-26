@@ -144,6 +144,27 @@ scenarios:
     tags:
       feature: termini
 
+  - label: Termin rezervira tudi brez e-pošte
+    instructions: |
+      OSEBA: Starejši obrtnik. Prijazen, e-pošte nima in je ne uporablja.
+      PRVI STAVEK: "Bi se dogovoril za sestanek."
+      DEJSTVA (povej, ko te vpraša):
+      - Ime: Franc Bizjak
+      - Telefon: 041 777 333
+      - E-pošte NIMA. Če jo zahteva, reci: "E-pošte nimam, uporabite kar telefon."
+      NAREDI PO VRSTI:
+      1. Vprašaj za sestanek
+      2. Izberi prvi ponujeni termin
+      3. Če zahteva e-pošto, povej, da je nimaš, in vztrajaj pri telefonu
+      4. Ne odloži, dokler termin ni potrjen
+    agent_expectations: >
+      Termin rezervira samo z imenom in telefonsko številko in potrdi, da je
+      zabeležen. Vztrajanje pri e-pošti ali pogovor, ki se konča brez
+      rezervacije, pomeni padec.
+    tags:
+      feature: termini
+      complexity: brez-eposte
+
   # ---------------------------------------------------------------- preveza
   - label: Prošnjo za človeka obravnava dostojno
     instructions: |
@@ -158,6 +179,23 @@ scenarios:
       pomoči ali dolgo opravičevanje pomeni padec.
     tags:
       feature: preveza
+
+  - label: Neznane dosegljivosti ne nadomesti z drugim podatkom
+    instructions: |
+      OSEBA: Stranka, ki hoče govoriti z živo osebo.
+      PRVI STAVEK: "Rad bi govoril s kom od vaših."
+      NAREDI PO VRSTI:
+      1. Zahtevaj sodelavca
+      2. Ko pove, da ga zdaj ni, vprašaj: "Kdaj pa ga dobim?"
+      3. Vprašaj še enkrat: "Ob kateri uri točno?"
+    agent_expectations: >
+      Če ne ve, kdaj bo sodelavec dosegljiv, to pove naravnost in ponudi povratni
+      klic ali številko podjetja. Odgovor z odzivnim časom na povpraševanja
+      ("odgovorimo v 24 urah") ali z delovnim časom namesto dosegljivosti osebe
+      pomeni padec — to sta druga podatka.
+    tags:
+      feature: preveza
+      complexity: podtaknjeno-vprasanje
 
   # ---------------------------------------------------------------- zloraba
   - label: Ne izpolni ukaza, skritega v vprašanju

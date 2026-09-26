@@ -414,10 +414,30 @@ final class DirectMySQLAdapter implements AdapterInterface
 
     public function searchKnowledge(string $query, int $limit = 3): array
     {
-        $besede = preg_split('/\s+/u', trim($query), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        // Besede, krajse od treh znakov, zadenejo skoraj vse in zameglijo izid.
-        $besede = array_slice(array_filter($besede, static fn($b) => mb_strlen($b) >= 3), 0, 6);
+        // Locila se drzijo besede: "organizacije?" se z "organizacije" ne ujema.
+        $besede = preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower(trim($query)), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        // Mašilne besede se ujamejo z vsem in prinesejo napačen zadetek.
+        // "Ali delate tudi za društva" se je ujelo z zapisom "Ali delate tudi za
+        // stranke izven vaše okolice", ki govori o geografiji — asistent je nato
+        // trdil, da delajo za društva, česar ni vedel nihče.
+        $masila = [
+            'ali', 'kaj', 'kako', 'kje', 'kdaj', 'kdo', 'zakaj', 'koliko',
+            'tudi', 'samo', 'lahko', 'sem', 'ste', 'sta', 'smo', 'mi', 'vi',
+            'vas', 'nas', 'vam', 'nam', 'moj', 'vaš', 'vas', 'pri', 'zelo',
+            'bi', 'je', 'so', 'in', 'za', 'na', 'se', 'pa', 'ki', 'to', 'ta',
+            'me', 'mu', 'ga', 'jo', 'jih', 'bil', 'bilo', 'bila', 'bom', 'bo',
+        ];
+
+        $besede = array_filter(
+            $besede,
+            static fn($b) => mb_strlen($b) >= 4 && !in_array($b, $masila, true)
+        );
+        $besede = array_slice(array_values(array_unique($besede)), 0, 6);
+
         if (!$besede) {
+            // Vprašanje iz samih mašil ni vprašanje. Prazen izid je pravilnejši
+            // od naključnega zadetka.
             return [];
         }
 
@@ -439,7 +459,7 @@ final class DirectMySQLAdapter implements AdapterInterface
             $parametri[$kk] = $vzorec;
         }
 
-        $sql = 'SELECT id, question, answer
+        $sql = 'SELECT id, question, answer, keywords
                 FROM ' . $this->table('knowledge') . '
                 WHERE active = 1 AND (' . implode(' OR ', $pogoji) . ')
                 LIMIT ' . max(1, min($limit, 10));
@@ -447,11 +467,41 @@ final class DirectMySQLAdapter implements AdapterInterface
         try {
             $stmt = $this->pdo()->prepare($sql);
             $stmt->execute($parametri);
-            return $stmt->fetchAll();
+            $vrstice = $stmt->fetchAll();
         } catch (PDOException $e) {
             error_log('DirectMySQLAdapter::searchKnowledge: ' . $e->getMessage());
             throw new AdapterException('Iskanje po bazi znanja ni uspelo.');
         }
+
+        // Ena sama ujemajoca beseda je prevec ohlapna. "Ali delate tudi za
+        // drustva" se je z zapisom "Ali delate tudi za stranke izven vase
+        // okolice" ujelo samo na besedi "delate" - in asistent je iz zapisa o
+        // geografiji sklepal o drustvih. Ko je besed vec, jih mora zadeti vsaj
+        // dve, sicer zadetek ni o isti temi.
+        $najmanj = count($besede) > 1 ? 2 : 1;
+
+        $ocenjeni = [];
+        foreach ($vrstice as $vrstica) {
+            $seno = mb_strtolower(
+                $vrstica['question'] . ' ' . $vrstica['answer'] . ' ' . ($vrstica['keywords'] ?? '')
+            );
+            $tocke = 0;
+            foreach ($besede as $beseda) {
+                if (mb_strpos($seno, $beseda) !== false) {
+                    $tocke++;
+                }
+            }
+            if ($tocke >= $najmanj) {
+                $ocenjeni[] = ['tocke' => $tocke, 'vrstica' => $vrstica];
+            }
+        }
+
+        usort($ocenjeni, static fn($a, $b) => $b['tocke'] <=> $a['tocke']);
+
+        return array_map(
+            static fn(array $z) => ['question' => $z['vrstica']['question'], 'answer' => $z['vrstica']['answer']],
+            array_slice($ocenjeni, 0, max(1, min($limit, 10)))
+        );
     }
 
     public function listKnowledge(): array
