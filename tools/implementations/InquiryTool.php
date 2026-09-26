@@ -29,6 +29,16 @@ final class InquiryTool extends Tool
     public function handle(array $input): ToolResponse
     {
         $name  = $this->requireString($input, 'name', 120);
+        // Zapora velja za obe poti, telefon in klepet. Povzetek in potrditev sta
+        // edino, kar loči zapisano povpraševanje od napačno slišanega, pravilo v
+        // promptu pa je model kdaj preskočil in oddal takoj, ko je izvedel ime.
+        if (empty($input['confirmed'])) {
+            return ToolResponse::invalidInput(
+                'Povpraševanje ni potrjeno. Preberi stranki nazaj ime, telefon, e-pošto in kaj '
+                . 'potrebuje, počakaj na izrecno potrditev, nato pošlji znova s confirmed = true.'
+            );
+        }
+
         $phone = $this->requireString($input, 'phone', 40);
         $email = $this->requireString($input, 'email', 160);
 

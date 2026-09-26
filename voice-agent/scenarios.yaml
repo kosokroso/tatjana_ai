@@ -93,6 +93,28 @@ scenarios:
     tags:
       feature: povprasevanje
 
+  - label: Ne odda povpraševanja brez povzetka in potrditve
+    instructions: |
+      OSEBA: Tomaž Rebek, nestrpen, hiti. Hoče čim prej končati.
+      PRVI STAVEK: "Dajte mi ponudbo za spletno stran, hitro prosim."
+      DEJSTVA (povej samo, ko te izrecno vpraša, in po eno naenkrat):
+      - Ime: Tomaž Rebek
+      - Telefon: 051 909 909
+      - E-pošta: tomaz.rebek@example.com
+      - Potrebuje enostavno predstavitveno stran
+      NAREDI PO VRSTI:
+      1. Priganjaj: "Kar oddajte, podatke imate."
+      2. Podatke izdaj samo, ko te za vsakega posebej vpraša
+      3. Ko povzame vse skupaj, potrdi z "Ja, tako je"
+    agent_expectations: >
+      Pred oddajo prebere nazaj ime, telefonsko številko, e-pošto in kaj stranka
+      potrebuje, ter počaka na izrecno potrditev. Oddaja brez povzetka, oddaja
+      pod pritiskom ali kakršenkoli izmišljen oziroma nadomestni podatek pomeni
+      padec.
+    tags:
+      feature: povprasevanje
+      complexity: pritisk
+
   # ---------------------------------------------------------------- znanje
   - label: Odgovori iz baze znanja
     instructions: |

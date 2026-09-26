@@ -145,6 +145,20 @@ async def mašilo(context: RunContext, sklop: str) -> None:
         log.debug("mašila ni bilo mogoče izgovoriti: %s", e)
 
 
+# Nadomestki, ki jih model vpiše, kadar podatka nima. Zapisano povpraševanje s
+# takim poljem je slabše od nobenega: nekdo ga bo poskusil poklicati.
+NADOMESTKI = {
+    "ime", "ime priimek", "ime in priimek", "neznano", "ni podano", "ni znano",
+    "stranka", "n/a", "na", "xxx", "test", "brez", "-", "--", "?", "...",
+    "telefon", "telefonska", "telefonska številka", "e-pošta", "email",
+    "example@example.com", "test@test.com", "info@example.com",
+}
+
+
+def _je_nadomestek(vrednost: str) -> bool:
+    return (vrednost or "").strip().lower() in NADOMESTKI
+
+
 class TelefonskiAsistent(Agent):
     def __init__(
         self,
@@ -248,8 +262,9 @@ class TelefonskiAsistent(Agent):
         Args:
             starts_at: Termin natanko tako, kot ga je vrnilo orodje za proste termine.
             name: Ime in priimek stranke.
-            phone: Telefonska številka. Med klicem pusti prazno — vzame se
-                številka, s katere stranka kliče.
+            phone: Telefonska številka stranke. Če si jo v pogovoru izvedela,
+                jo VPIŠI. Prazno pusti samo takrat, kadar je stranka ni povedala
+                in kliče po telefonu — takrat se vzame številka, s katere kliče.
             email: Neobvezno, za potrditev po e-pošti.
             note: Kaj želi stranka na sestanku.
         """
@@ -282,6 +297,7 @@ class TelefonskiAsistent(Agent):
         name: str,
         phone: str,
         email: str,
+        potrjeno: bool,
         product: str | None = None,
         quantity: str | None = None,
         note: str | None = None,
@@ -292,15 +308,48 @@ class TelefonskiAsistent(Agent):
 
         Args:
             name: Ime in priimek stranke ali naziv podjetja.
-            phone: Telefonska številka za povratni klic. Med telefonskim klicem
-                vpiši prazen niz, če stranka ni izrecno povedala druge številke —
-                vzame se številka, s katere kliče.
+            phone: Telefonska številka za povratni klic. Če si jo v pogovoru
+                izvedela, jo VPIŠI. Prazno pusti samo takrat, kadar je stranka ni
+                povedala in kliče po telefonu.
             email: E-poštni naslov, na katerega gre ponudba. Nikoli sem ne vpiši
                 telefonske številke; brez veljavnega naslova povpraševanja ni.
+            potrjeno: True samo takrat, ko si stranki prebrala nazaj ime, telefon,
+                e-pošto in kaj potrebuje, IN je ona to izrecno potrdila. Če tega
+                povzetka še ni bilo, vpiši False — orodje te bo opomnilo.
             product: Kaj stranka potrebuje, z njenimi besedami.
             quantity: Obseg, če ga je navedla.
             note: Vse, kar je povedala o projektu — rok, obstoječa stran, panoga, proračun.
         """
+        # Povzetek in potrditev sta edino, kar loči zapisano povpraševanje od
+        # napačno slišanega. Pravilo je bilo doslej samo v promptu in ga je model
+        # kdaj preskočil — oddal je takoj, ko je izvedel ime. Zato zapora tu.
+        if not potrjeno:
+            return {
+                "success": False,
+                "data": None,
+                "error": "Povpraševanje še ni potrjeno.",
+                "naslednji_korak": (
+                    "Preberi stranki nazaj ime, telefonsko številko, e-pošto in kaj "
+                    "potrebuje, ter počakaj, da to izrecno potrdi. Šele nato pokliči "
+                    "to orodje znova s potrjeno=True."
+                ),
+            }
+
+        # Model si je v enem pogovoru izmislil nadomestke, da je orodje sploh
+        # poklical. Kar ni slišal, mora vprašati, ne zapolniti.
+        manjka = [
+            ime_polja
+            for ime_polja, vrednost in (("ime", name), ("telefonsko številko", phone), ("e-pošto", email))
+            if not (vrednost or "").strip() or _je_nadomestek(vrednost)
+        ]
+        if manjka:
+            return {
+                "success": False,
+                "data": None,
+                "error": "Manjka: " + ", ".join(manjka) + ".",
+                "naslednji_korak": "Vprašaj stranko za to in ne vpisuj nadomestkov.",
+            }
+
         await mašilo(context, "zapis")
 
         # Pri telefonskem klicu je številka že znana iz same povezave. Narekovanje
@@ -329,7 +378,7 @@ class TelefonskiAsistent(Agent):
                 ),
             }
 
-        vsebina = {"name": name, "phone": telefon, "email": naslov}
+        vsebina = {"name": name, "phone": telefon, "email": naslov, "confirmed": True}
         for kljuc, vrednost in (("product", product), ("quantity", quantity), ("note", note)):
             if vrednost:
                 vsebina[kljuc] = vrednost

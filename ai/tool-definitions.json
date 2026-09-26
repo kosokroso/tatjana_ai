@@ -92,12 +92,17 @@
           "note": {
             "type": "string",
             "description": "Karkoli drugega, kar je za ponudbo pomembno: rok, obstoječa stran, panoga, proračun."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "true samo takrat, ko si stranki prebrala nazaj ime, telefon, e-pošto in kaj potrebuje, IN je ona to izrecno potrdila. Brez tega orodje zavrne oddajo."
           }
         },
         "required": [
           "name",
           "phone",
-          "email"
+          "email",
+          "confirmed"
         ]
       }
     }
