@@ -210,6 +210,17 @@ define('BUSINESS_DESCRIPTION', 'Podjetje izdeluje spletne strani in spletne trgo
 define('INQUIRY_EMAIL_TO',   '');
 define('INQUIRY_EMAIL_FROM', '');
 
+// Naslov za opozorila iz cron/opozorila.php: prekoracen proracun, telefonske
+// minute pri meji, povprasevanja, ki predolgo cakajo, napake orodij, baza brez
+// odziva. Prazno = uporabi INQUIRY_EMAIL_TO.
+//
+// Cron v cPanelu, enkrat na dan:
+//   /usr/local/bin/php /home/UPORABNIK/public_html/asistent/cron/opozorila.php
+define('ALERT_EMAIL', '');
+
+// Po koliko dneh velja povprasevanje v stanju "new" za spregledano.
+define('INQUIRY_ALERT_DAYS', 2);
+
 // ---------------------------------------------------------------
 // SMTP za obvestila o povprasevanjih.
 // Na tem gostovanju je mail() izklopljen, zato posiljamo neposredno prek

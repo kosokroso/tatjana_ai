@@ -1,0 +1,3 @@
+# Cron skripte niso namenjene brskalniku. Same sicer zavrnejo zahtevek zunaj
+# CLI, a ce bi kdo dodal novo in na to pozabil, jo ta datoteka ustavi prej.
+Require all denied
