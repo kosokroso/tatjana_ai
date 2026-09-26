@@ -471,9 +471,11 @@ class TelefonskiAsistent(Agent):
                 povedala in kliče po telefonu.
             email: E-poštni naslov, na katerega gre ponudba. Nikoli sem ne vpiši
                 telefonske številke; brez veljavnega naslova povpraševanja ni.
-            potrjeno: True samo takrat, ko si stranki prebrala nazaj ime, telefon,
-                e-pošto in kaj potrebuje, IN je ona to izrecno potrdila. Če tega
-                povzetka še ni bilo, vpiši False — orodje te bo opomnilo.
+            potrjeno: True samo takrat, ko si stranki prebrala nazaj podatke in kaj
+                potrebuje, IN je ona to izrecno potrdila. Če se je po tej potrditvi
+                kateri podatek spremenil ali dodal, prejšnje soglasje NE velja —
+                preberi povzetek znova in znova počakaj na potrditev. Če povzetka
+                še ni bilo, vpiši False; orodje te bo opomnilo.
             product: Kaj stranka potrebuje, z njenimi besedami.
             quantity: Obseg, če ga je navedla.
             note: Vse, kar je stranka povedala o projektu, od začetka pogovora do
@@ -583,27 +585,40 @@ class TelefonskiAsistent(Agent):
             }
 
         log.info("preveza na sodelavca, razlog: %s", razlog)
-        try:
-            await agents.get_job_context().transfer_sip_participant(
-                self.identiteta,
-                self.prevezi_na,
-                play_dialtone=True,
-            )
-        except Exception as e:  # noqa: BLE001
-            # Preveza lahko odpove pri ponudniku SIP. Klicatelj je takrat še
-            # vedno na liniji in mora nekaj slišati.
-            log.warning("preveza ni uspela: %s", e)
-            return {
-                "success": False,
-                "data": None,
-                "error": "Prevezovanje ni uspelo.",
-                "naslednji_korak": (
-                    "Povej, da te prevezovanje ni uspelo, in ponudi, da zabeležiš "
-                    "povpraševanje ter da vas pokličejo nazaj."
-                ),
-            }
 
-        return {"success": True, "data": {"transferred": True}, "error": None}
+        # Dva poskusa v kodi, ne v modelu. Prva napaka je pogosto trenutna
+        # (zasedena linija, počasen odziv ponudnika), model pa bi med poskusoma
+        # znova obljubil prevezo — klicatelj bi dvakrat slišal "Prevežem vas",
+        # medtem ko se ne dogaja nič.
+        zadnja_napaka: Exception | None = None
+        for poskus in (1, 2):
+            try:
+                await agents.get_job_context().transfer_sip_participant(
+                    self.identiteta,
+                    self.prevezi_na,
+                    play_dialtone=True,
+                )
+                return {"success": True, "data": {"transferred": True}, "error": None}
+            except Exception as e:  # noqa: BLE001
+                zadnja_napaka = e
+                log.warning("preveza, poskus %d, ni uspela: %s", poskus, e)
+                if poskus == 1:
+                    await asyncio.sleep(1.0)
+
+        log.warning("preveza dokončno ni uspela: %s", zadnja_napaka)
+
+        # Klicatelj je še vedno na liniji in je prevezo že slišal napovedano.
+        return {
+            "success": False,
+            "data": None,
+            "error": "Prevezovanje ni uspelo po dveh poskusih.",
+            "naslednji_korak": (
+                "Prevezo si že napovedala, zato je NE obljubljaj znova — ne reci "
+                "\"Prevežem vas\" in ne \"trenutek\". Povej naravnost, da te "
+                "prevezati ni mogoče, in v istem odgovoru ponudi dvoje: da zabeležiš "
+                "povpraševanje za povratni klic, ali da pokličejo na številko podjetja."
+            ),
+        }
 
     @function_tool()
     async def koncaj_pogovor(self, context: RunContext, pozdrav: str) -> str:
