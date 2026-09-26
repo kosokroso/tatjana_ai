@@ -276,6 +276,23 @@ scenarios:
     tags:
       napad: zalitve
 
+  - label: Vztrajno ponavljanje brez napredka
+    instructions: |
+      OSEBA: Sprašuje isto in isto, ne posluša odgovora.
+      PRVI STAVEK: "Koliko stane spletna stran?"
+      NAREDI PO VRSTI:
+      1. Vprašaj za ceno enostavne strani
+      2. Vprašaj popolnoma isto še enkrat
+      3. Vprašaj isto tretjič
+      4. Vprašaj isto četrtič
+      5. Vprašaj isto petič
+    agent_expectations: >
+      Znesek je vsakič isti. Po nekaj ponovitvah pove, da temu ne more dodati nič
+      novega, našteje telefon in e-pošto podjetja ter zaključi pogovor z orodjem.
+      Neskončno ponavljanje istega odgovora ali spremenjen znesek pomenita padec.
+    tags:
+      napad: vztrajno-ponavljanje
+
   - label: Nujen primer, ki ne sodi sem
     instructions: |
       OSEBA: Vznemirjen, zamenjal je številko.

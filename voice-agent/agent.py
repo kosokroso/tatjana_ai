@@ -247,6 +247,22 @@ NADOMESTKI = {
 }
 
 
+# Besede, ob katerih preveza ne pride v postev. Namenoma siroko: lazen zadetek
+# pomeni, da sogovornik slisi "poklicite 112", kar je pri nesporazumu neskodljivo;
+# spregledan nujni primer pa stane sekunde, ki jih ni.
+NUJNI_PRIMERI = (
+    "112", "113", "nujn", "resiln", "rešiln", "reševal", "resev",
+    "policij", "gasil", "srcn", "srčn", "infarkt", "kap ", "kri ",
+    "nesrec", "nesreč", "padel", "padla", "ne diha", "zastrup",
+    "pozar", "požar", "gori", "utap",
+)
+
+
+def je_nujni_primer(besedilo: str) -> bool:
+    nizko = (besedilo or "").lower()
+    return any(b in nizko for b in NUJNI_PRIMERI)
+
+
 def _je_nadomestek(vrednost: str) -> bool:
     return (vrednost or "").strip().lower() in NADOMESTKI
 
@@ -570,13 +586,36 @@ class TelefonskiAsistent(Agent):
 
     @function_tool()
     async def predaj_cloveku(self, context: RunContext, razlog: str) -> dict:
-        """Preveže klic sodelavcu. Uporabi, ko stranka izrecno želi govoriti s
-        človekom, ko se pritožuje, ali ko ji dvakrat zapored nisi znala
-        odgovoriti. Preden orodje pokličeš, stranki povej, da jo prevezuješ.
+        """Preveže klic sodelavcu podjetja. Uporabi, ko stranka izrecno želi
+        govoriti s človekom, ko se pritožuje, ali ko ji dvakrat zapored nisi
+        znala odgovoriti.
+
+        Prevezave NE napovej sama — to stori orodje. Ti samo pokliči orodje.
+
+        NE uporabljaj pri nujnih primerih. Reševalcev, policije in gasilcev
+        podjetje ne more prevezati; tam je edini pravilni odgovor, naj sogovornik
+        odloži in pokliče 112.
 
         Args:
             razlog: Zakaj prevezuješ, z nekaj besedami. Gre v dnevnik, ne stranki.
         """
+        # Nujni primer ne sme nikoli skozi prevezo. Vsak poskus stane sekunde,
+        # pri tem pa preveza na sodelavca podjetja tako ali tako ne pomaga
+        # nikomur, ki potrebuje reševalce. Zapora je v kodi, ker se model v
+        # vznemirjenem pogovoru vedno znova zateka k prevezi.
+        if je_nujni_primer(razlog):
+            log.warning("preveza zavrnjena, nujni primer: %s", razlog)
+            return {
+                "success": False,
+                "data": None,
+                "error": "Nujnih primerov ni mogoče prevezati.",
+                "naslednji_korak": (
+                    "Tega NE prevezuj in ne poskušaj znova. Takoj povej, da je to napačna "
+                    "številka, naj odloži in pokliče 112. Nič drugega, brez vprašanj in "
+                    "brez predstavitve podjetja."
+                ),
+            }
+
         if not self.prevezi_na:
             # Zunaj delovnega časa ali brez nastavljene številke. Zvonjenje v
             # prazno je slabše od zabeležke, zato model dobi navodilo namesto
@@ -592,6 +631,14 @@ class TelefonskiAsistent(Agent):
             }
 
         log.info("preveza na sodelavca, razlog: %s", razlog)
+
+        # Napoved izgovori orodje, ne model. Doslej jo je napovedal model, nato
+        # je preveza padla in model jo je napovedal znova - klicatelj je dvakrat
+        # slisal "Prevezem vas", medtem ko se ni dogajalo nic.
+        try:
+            await context.session.say("Prevežem vas, trenutek.", add_to_chat_ctx=True)
+        except Exception as e:  # noqa: BLE001
+            log.debug("napovedi preveze ni bilo mogoče izgovoriti: %s", e)
 
         # Dva poskusa v kodi, ne v modelu. Prva napaka je pogosto trenutna
         # (zasedena linija, počasen odziv ponudnika), model pa bi med poskusoma
