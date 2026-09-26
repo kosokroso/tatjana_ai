@@ -6,11 +6,27 @@ nadgradnja vredna dela, je v **[PROJEKT.md](PROJEKT.md)**.
 Delitev je namerna: tu kljukice, tam razlogi. Nobena točka ni na obeh mestih,
 ker se dva seznama opravil razideta in nobenemu ne zaupaš več.
 
-Zadnja posodobitev: 26. 9. 2026
+Zadnja posodobitev: 26. 9. 2026 (zvečer)
 
 ---
 
 ## Zdaj — nepotrjeno ali odprto
+
+- [ ] **Poženi oba nabora do čistega izida.** Zadnji zagon napadalnega nabora je
+      našel pet stvari in vse so popravljene, a od takrat ni bil pognan znova.
+      ```
+      lk agent simulate --scenarios scenarios.yaml --agent-name tatjana --concurrency 2
+      lk agent simulate --scenarios scenarios-napadi.yaml --agent-name tatjana --concurrency 2
+      ```
+- [ ] **Preveri prekinitev ob tišini z resničnim klicem.** Pokliči, pozdravi,
+      nato molči. Po 15 s mora vprašati "Ste še tam?", po nadaljnjih 20 s odložiti.
+      V dnevniku bo `klic končan zaradi tišine`.
+- [ ] **Ugotovi, zakaj pravi klic pride brez številke.** 26. 9. je `call-guard`
+      zavrnil klic, ker je bil klicatelj prazen. Med klicem poglej vrstico
+      `lastnosti SIP`.
+- [ ] **Premisli, ali je `OBRATI_BREZ_ORODJA=10` prestrogo.** Deset enobesednih
+      odgovorov konča klic. Števec se ob vsakem orodju postavi nazaj, zato prava
+      stranka tega praviloma ne zadene — a če se zgodi, dvigni na 14.
 
 - [X] **Dodaj sklanjatev v `config.php` na strežniku** (File Manager, ni v gitu):
       `define('BUSINESS_NAME_RODILNIK', 'Kreativnega spleta');`

@@ -3,7 +3,7 @@
 Popoln pregled projekta. Ta datoteka je vir resnice o tem, kaj sistem je, kaj
 zna, kako je zgrajen in kje smo. **Posodobi jo ob vsaki večji spremembi.**
 
-Zadnja posodobitev: 26. 9. 2026
+Zadnja posodobitev: 26. 9. 2026 (zvečer)
 
 ---
 
@@ -377,6 +377,26 @@ vklopljeno posebej in preizkušeno s klici.
 poti je klic poslabšalo in ugotoviti se ni dalo, katera je kriva. Celotna pot je
 bila vrnjena na `b777fc8` in znova grajena po eni — tako je nastala zgornja
 tabela.
+
+### Varovala, ki jih drži koda in ne prompt
+
+Ta seznam je nastal iz enega pravila, ki se je potrdilo vsakič: **kar mora
+veljati zanesljivo, ne sme biti odvisno od modela.** Vsako od teh je bilo najprej
+zapisano v promptu in je vsaj enkrat odpovedalo.
+
+| Varovalo | Kje | Zakaj ni v promptu |
+|---|---|---|
+| nujni primer ne gre skozi prevezo | `predaj_cloveku` | model se v vznemirjenem pogovoru vedno znova zateka k prevezi |
+| prevezo napove orodje | `predaj_cloveku` | model jo je napovedal še enkrat po neuspehu |
+| dva poskusa preveze | `predaj_cloveku` | med poskusoma je obljubljal znova |
+| konec klica zahteva pravi pozdrav | `koncaj_pogovor` | klic se je končal z "V redu." |
+| povpraševanje zahteva potrditev | `submit_inquiry` + `InquiryTool` | oddal je takoj, ko je izvedel ime |
+| nadomestki v poljih se zavrnejo | `submit_inquiry` | vpisal je "ime priimek" |
+| `verify` mora biti kontakt | `lookup_project` | klical je z "111" |
+| štetje ponovitev | `on_user_turn_completed` | pravilo v promptu je ob četrtem vprašanju spregledal |
+| obrati brez orodja | `on_user_turn_completed` | različne ubeseditve razbijejo štetje ponovitev |
+| tuje pisave iz govora | `tts_node` | napaka ne nastane iz razumevanja, ampak iz izbire žetona |
+| meje klicev | `ai/call-guard.php` | števci morajo preživeti ponovni zagon replike |
 
 ### Kaj je odprto
 
