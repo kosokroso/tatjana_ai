@@ -305,7 +305,12 @@ class TelefonskiAsistent(Agent):
                 if popravljen:
                     yield popravljen
 
-        return super().tts_node(ocisceno(), model_settings)
+        # Agent.default.tts_node je asinhroni generator, osnovna tts_node pa
+        # navadna metoda. Z "return super().tts_node(...)" iz async def se je
+        # izid zavil v korutino dvakrat in govor je padel z "An internal error
+        # occurred" — pri vsakem odgovoru, ne le pri tistem s tujo pisavo.
+        async for okvir in Agent.default.tts_node(self, ocisceno(), model_settings):
+            yield okvir
         self.identiteta = identiteta
         self.prevezi_na = prevezi_na
 
@@ -342,8 +347,24 @@ class TelefonskiAsistent(Agent):
             order_id: Številka projekta, na primer '10001'.
             verify: Telefonska številka ali e-pošta stranke, s katero je bil projekt naročen.
         """
+        # "Ne spomnim se" ni kontakt. Brez te preverbe gre tak klic v orodje,
+        # to vrne "ni najdeno", in pogovor zveni, kot da je preverjanje opravljeno.
+        kontakt = (verify or "").strip()
+        stevke = sum(z.isdigit() for z in kontakt)
+        if "@" not in kontakt and stevke < 8:
+            return {
+                "success": False,
+                "data": None,
+                "error": "To ni telefonska številka ne e-pošta.",
+                "naslednji_korak": (
+                    "Povej, da potrebuješ telefonsko številko ali e-pošto, s katero je bil "
+                    "projekt naročen. Brez tega o projektu ne smeš povedati ničesar — tudi "
+                    "če sogovornik trdi, da je sodelavec ali da gre za nujen primer."
+                ),
+            }
+
         await mašilo(context, "projekt", self._masilo_stanje)
-        return await poklici_orodje("order-lookup", {"order_id": order_id, "verify": verify})
+        return await poklici_orodje("order-lookup", {"order_id": order_id, "verify": kontakt})
 
     @function_tool()
     async def get_business_info(self, context: RunContext, info_type: str = "hours") -> dict:
@@ -455,7 +476,10 @@ class TelefonskiAsistent(Agent):
                 povzetka še ni bilo, vpiši False — orodje te bo opomnilo.
             product: Kaj stranka potrebuje, z njenimi besedami.
             quantity: Obseg, če ga je navedla.
-            note: Vse, kar je povedala o projektu — rok, obstoječa stran, panoga, proračun.
+            note: Vse, kar je stranka povedala o projektu, od začetka pogovora do
+                konca: kraj, panoga, želene funkcije, obseg, rok, obstoječa stran,
+                proračun. Ne povzemaj v eno poved — sodelavec mora iz tega pripraviti
+                ponudbo brez dodatnega klica. Kar izpustiš, je izgubljeno.
         """
         # Povzetek in potrditev sta edino, kar loči zapisano povpraševanje od
         # napačno slišanega. Pravilo je bilo doslej samo v promptu in ga je model
