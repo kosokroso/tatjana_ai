@@ -6,7 +6,7 @@ nadgradnja vredna dela, je v **[PROJEKT.md](PROJEKT.md)**.
 Delitev je namerna: tu kljukice, tam razlogi. Nobena točka ni na obeh mestih,
 ker se dva seznama opravil razideta in nobenemu ne zaupaš več.
 
-Zadnja posodobitev: 19. 9. 2026 (zvecer)
+Zadnja posodobitev: 26. 9. 2026
 
 ---
 
@@ -58,9 +58,17 @@ Zadnja posodobitev: 19. 9. 2026 (zvecer)
 
 ## Pred javnim zagonom
 
-- [ ] **Povej klicatelju, da se klic snema.** LiveKit snemanje že dela
-      (`enable_recording: true`), obvestila pa ni. V EU to ni dopustno. Vrstica
-      gre v pozdrav v `ai/agent-config.php`.
+- [x] **Povej klicatelju, da se klic snema** — `CALL_RECORDING_NOTICE` v pozdravu
+- [ ] **Vpiši besedilo obvestila o snemanju v `config.php` na strežniku.**
+      Brez tega obvestila ni, snemanje pa teče.
+- [ ] **Ustvari novi tabeli**: `ai_knowledge` in `ai_appointments` iz `sql/schema.sql`
+- [ ] **Dodaj nove konstante v `config.php`**: `knowledge-lookup` in `appointment`
+      v `ALLOWED_TOOLS`, `APPOINTMENT_MINUTES`, `APPOINTMENT_DAYS_AHEAD`,
+      `APPOINTMENT_LEAD_MIN`, `ALERT_EMAIL`, `INQUIRY_ALERT_DAYS`
+- [ ] **Nastavi cron** v cPanelu, enkrat na dan:
+      `/usr/local/bin/php /home/UPORABNIK/public_html/asistent/cron/opozorila.php`
+- [ ] **Napolni bazo znanja** v `admin/znanje.php` — začni z vprašanji, ki jih
+      stranke najpogosteje postavijo po telefonu
 - [ ] Odstrani `setup.php` in `data-view.php` s strežnika
 - [ ] Popravi delovni čas v `ai_business_hours` — vpisan je privzeti pon–pet 9–17
 - [ ] Dopolni pogoje plačila v `data/business-info.json`
@@ -96,12 +104,12 @@ Razlogi in ocene dela: [PROJEKT.md, razdelek 9](PROJEKT.md#9-nadgradnje-ki-bi-na
 - [ ] **9.3** Več strank na eni namestitvi, po `sip.trunkPhoneNumber` *(teden; pred prvo zunanjo stranko)*
 
 ### Nato
-- [ ] **9.4** Tabela `ai_knowledge` + orodje za iskanje po njej
-- [ ] **9.5** Naročanje terminov
-- [ ] **9.6** Opozorila ob izpadu, prekoračenem proračunu, čakajočem povpraševanju
-- [ ] **9.7** Uporabi posnetke klicev kot gradivo za 9.1
+- [x] **9.4** Tabela `ai_knowledge` + orodje za iskanje po njej
+- [x] **9.5** Naročanje terminov
+- [x] **9.6** Opozorila ob izpadu, prekoračenem proračunu, čakajočem povpraševanju
+- [ ] **9.7** Uporabi zapise sej iz LiveKit kot gradivo za 9.1 *(čaka na 9.1)*
 - [ ] **9.8** SMS potrditev povpraševanja
-- [ ] **9.9** Krajši prompt in predpomnjenje *(šele po 9.1)*
+- [ ] **9.9** Krajši prompt *(šele po 9.1; predpomnjenje je že vklopljeno)*
 
 ### Kasneje
 - [ ] `VascoAdapter`, ko bo znan pravi ERP stranke

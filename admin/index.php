@@ -174,6 +174,7 @@ $naslov = defined('BUSINESS_NAME') ? BUSINESS_NAME : 'Asistent';
           <a href="./" style="margin-right:16px;color:var(--accent);font-weight:600">Povpraševanja</a>
           <a href="storitve.php" style="margin-right:16px;color:var(--ink)">Storitve</a>
           <a href="znanje.php">Znanje</a>
+        <a href="termini.php">Termini</a>
         <a href="pogovori.php" style="margin-right:16px;color:var(--ink)">Pogovori</a>
         </nav>
         <form method="post" style="display:inline">

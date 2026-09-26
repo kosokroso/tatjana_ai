@@ -1,14 +1,10 @@
 <?php
 /**
- * Urejanje baze znanja.
+ * Pregled dogovorjenih terminov.
  *
- * Katalog pove, kaj podjetje prodaja in po čem. Vprašanja kot "ali delate tudi
- * za društva" ali "kaj potrebujete od nas za začetek" doslej niso imela vira,
- * zato je asistent odgovoril splošno — kar je pri stranki, ki se odloča, enako
- * slabo kot molk.
- *
- * Vsebino ureja podjetje samo. V kodi ne sme biti nič od tega: pri naslednji
- * stranki so vprašanja druga.
+ * Asistent termine sprejema sam, zato mora nekdo videti, kaj je dogovoril.
+ * Brez te strani bi bil edini vpogled poizvedba SQL — in termin, za katerega
+ * nihče ne ve, je slabši od nobenega termina.
  */
 
 declare(strict_types=1);
@@ -45,77 +41,27 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     if (!adminCsrfVeljaven($_POST['csrf'] ?? null)) {
         $napaka = 'Seja je potekla. Osveži stran in poskusi znova.';
-    } elseif (($_POST['dejanje'] ?? '') === 'brisi') {
+    } elseif (($_POST['dejanje'] ?? '') === 'odpovej') {
         try {
-            $registry->adapter()->deleteKnowledge((int) ($_POST['id'] ?? 0));
-            $sporocilo = 'Zapis izbrisan.';
+            $registry->adapter()->cancelAppointment((int) ($_POST['id'] ?? 0));
+            $sporocilo = 'Termin odpovedan. Stranko obvesti sam — asistent tega ne stori.';
         } catch (Throwable $e) {
-            error_log('admin/znanje: ' . $e->getMessage());
-            $napaka = 'Brisanje ni uspelo.';
-        }
-    } else {
-        $napaka = preveriVnos($_POST);
-
-        if ($napaka === null) {
-            try {
-                $id = $registry->adapter()->saveKnowledge([
-                    'id'       => (int) ($_POST['id'] ?? 0),
-                    'question' => trim((string) ($_POST['question'] ?? '')),
-                    'answer'   => trim((string) ($_POST['answer'] ?? '')),
-                    'keywords' => trim((string) ($_POST['keywords'] ?? '')),
-                    'active'   => isset($_POST['active']),
-                ]);
-                $sporocilo = 'Zapis #' . $id . ' shranjen.';
-            } catch (Throwable $e) {
-                error_log('admin/znanje: ' . $e->getMessage());
-                $napaka = 'Shranjevanje ni uspelo.';
-            }
+            error_log('admin/termini: ' . $e->getMessage());
+            $napaka = 'Odpoved ni uspela.';
         }
     }
-}
-
-/** Vrne sporočilo o napaki ali null. */
-function preveriVnos(array $v): ?string
-{
-    if (mb_strlen(trim((string) ($v['question'] ?? ''))) < 5) {
-        return 'Vprašanje je obvezno in mora biti vsaj pet znakov.';
-    }
-    if (mb_strlen(trim((string) ($v['answer'] ?? ''))) < 5) {
-        return 'Odgovor je obvezen in mora biti vsaj pet znakov.';
-    }
-    if (mb_strlen((string) ($v['question'] ?? '')) > 300) {
-        return 'Vprašanje je predolgo (največ 300 znakov).';
-    }
-    if (mb_strlen((string) ($v['answer'] ?? '')) > 1200) {
-        return 'Odgovor je predolg (največ 1200 znakov). Razdeli ga na dva zapisa.';
-    }
-    return null;
 }
 
 try {
-    $zapisi = $registry->adapter()->listKnowledge();
+    $termini = $registry->adapter()->listAppointments(['from' => new DateTimeImmutable('today')]);
 } catch (Throwable $e) {
-    error_log('admin/znanje: ' . $e->getMessage());
-    $zapisi = [];
-    $napaka = $napaka ?? 'Zapisov ni bilo mogoče prebrati. Je tabela ai_knowledge ustvarjena?';
-}
-
-$urejam = null;
-if (isset($_GET['uredi'])) {
-    foreach ($zapisi as $z) {
-        if ((int) $z['id'] === (int) $_GET['uredi']) {
-            $urejam = $z;
-            break;
-        }
-    }
+    error_log('admin/termini: ' . $e->getMessage());
+    $termini = [];
+    $napaka = $napaka ?? 'Terminov ni bilo mogoče prebrati. Je tabela ai_appointments ustvarjena?';
 }
 
 $naslov = defined('BUSINESS_NAME') ? BUSINESS_NAME : 'Asistent';
-
-function polje(?array $vir, string $kljuc, string $privzeto = ''): string
-{
-    return h((string) ($vir[$kljuc] ?? $privzeto));
-}
+$danes  = new DateTimeImmutable('now');
 ?>
 <!DOCTYPE html>
 <html lang="sl">
@@ -123,7 +69,7 @@ function polje(?array $vir, string $kljuc, string $privzeto = ''): string
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Znanje — <?= h($naslov) ?></title>
+<title>Termini — <?= h($naslov) ?></title>
 <style>
   :root{--bg:#fdf9f4;--bg-2:#fbf4ea;--panel:#fff;--ink:#1f1c19;--muted:#8d8279;
     --line:#ece2d6;--accent:#e8943a;--teal:#3aaecf;--zebra:#fbf6ef}
@@ -195,13 +141,13 @@ function polje(?array $vir, string $kljuc, string $privzeto = ''): string
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><?= h($naslov) ?> <span>— znanje</span></div>
+    <div class="brand"><?= h($naslov) ?> <span>— termini</span></div>
     <div>
       <nav style="display:inline">
         <a href="./">Povpraševanja</a>
         <a href="storitve.php">Storitve</a>
-        <a href="znanje.php" class="aktiven">Znanje</a>
-        <a href="termini.php">Termini</a>
+        <a href="znanje.php">Znanje</a>
+        <a href="termini.php" class="aktiven">Termini</a>
         <a href="pogovori.php">Pogovori</a>
       </nav>
       <form method="post" style="display:inline">
@@ -211,9 +157,9 @@ function polje(?array $vir, string $kljuc, string $privzeto = ''): string
     </div>
   </header>
 
-  <h1><?= $urejam ? 'Uredi zapis' : 'Nov zapis' ?></h1>
-  <p class="sub">Odgovori na vprašanja, ki niso o ceni. Asistent jih poišče sam,
-     ko stranka vpraša kaj o načinu dela ali sodelovanju.</p>
+  <h1>Termini</h1>
+  <p class="sub">Od danes naprej. Termine sprejema asistent sam; odpoved tukaj
+     stranke ne obvesti — to stori sam.</p>
 
   <?php if ($sporocilo !== null): ?>
     <div class="obvestilo ok"><?= h($sporocilo) ?></div>
@@ -222,80 +168,45 @@ function polje(?array $vir, string $kljuc, string $privzeto = ''): string
     <div class="obvestilo err"><?= h($napaka) ?></div>
   <?php endif; ?>
 
-  <div class="kartica">
-    <form method="post">
-      <input type="hidden" name="csrf" value="<?= h(adminCsrf()) ?>">
-      <input type="hidden" name="id" value="<?= polje($urejam, 'id', '0') ?>">
-
-      <div>
-        <label for="question">Vprašanje, kot ga postavi stranka</label>
-        <input type="text" id="question" name="question" maxlength="300"
-               value="<?= polje($urejam, 'question') ?>"
-               placeholder="Ali delate tudi za društva?">
-        <p class="namig">Zapiši ga z besedami stranke, ne s svojimi.</p>
-      </div>
-
-      <div style="margin-top:18px">
-        <label for="answer">Odgovor</label>
-        <textarea id="answer" name="answer" maxlength="1200"><?= polje($urejam, 'answer') ?></textarea>
-        <p class="namig">Asistent ga pove s svojimi besedami, zato ne skrbi za slog.
-           Skrbi za dejstva — česar tu ni, si ne sme izmisliti.</p>
-      </div>
-
-      <div style="margin-top:18px">
-        <label for="keywords">Sopomenke, ločene z vejico</label>
-        <input type="text" id="keywords" name="keywords" maxlength="300"
-               value="<?= polje($urejam, 'keywords') ?>"
-               placeholder="neprofitne, zavodi, klubi">
-        <p class="namig">Stranka po telefonu redko uporabi iste besede kot zapisan
-           odgovor. Tu naštej, kako še lahko vpraša isto stvar.</p>
-      </div>
-
-      <div class="potrdi">
-        <input type="checkbox" id="active" name="active"
-               <?= ($urejam === null || !empty($urejam['active'])) ? 'checked' : '' ?>>
-        <label for="active">Asistent sme uporabiti ta odgovor</label>
-      </div>
-
-      <div style="margin-top:24px">
-        <button type="submit"><?= $urejam ? 'Shrani spremembe' : 'Dodaj zapis' ?></button>
-        <?php if ($urejam): ?>
-          <a href="znanje.php" style="margin-left:14px;font-size:14px">Prekliči</a>
-        <?php endif; ?>
-      </div>
-    </form>
-  </div>
-
-  <h2>Zapisi (<?= count($zapisi) ?>)</h2>
-
-  <?php if (!$zapisi): ?>
+  <?php if (!$termini): ?>
     <div class="kartica">
-      <p style="margin:0;color:var(--muted)">Zapisov še ni. Dodaj prvega zgoraj —
-         najbolje tistega, ki ga stranke najpogosteje vprašajo po telefonu.</p>
+      <p style="margin:0;color:var(--muted)">Dogovorjenih terminov ni.</p>
     </div>
   <?php else: ?>
   <div class="scroll">
     <table>
       <thead>
-        <tr><th>Vprašanje</th><th>Odgovor</th><th>Sopomenke</th><th>V rabi</th><th></th></tr>
+        <tr><th>Kdaj</th><th>Stranka</th><th>Telefon</th><th>E-pošta</th><th>Opomba</th><th>Stanje</th><th></th></tr>
       </thead>
       <tbody>
-      <?php foreach ($zapisi as $z): ?>
-        <tr class="<?= empty($z['active']) ? 'neaktivna' : '' ?>">
-          <td><?= h((string) $z['question']) ?></td>
-          <td><?= h(mb_strimwidth((string) $z['answer'], 0, 160, '…')) ?></td>
-          <td><?= h((string) ($z['keywords'] ?? '')) ?></td>
-          <td><span class="znacka <?= empty($z['active']) ? 'ne' : 'da' ?>">
-              <?= empty($z['active']) ? 'ne' : 'da' ?></span></td>
+      <?php foreach ($termini as $t):
+            $zacetek = new DateTimeImmutable((string) $t['starts_at']);
+            $odpovedan = ($t['status'] ?? '') === 'cancelled';
+            $relativno = SlovenianDate::relativeDay($zacetek, $danes);
+      ?>
+        <tr class="<?= $odpovedan ? 'neaktivna' : '' ?>">
           <td class="nowrap">
-            <a href="?uredi=<?= (int) $z['id'] ?>">uredi</a>
+            <strong><?= h($zacetek->format('d.m.Y H:i')) ?></strong>
+            <?php if ($relativno !== null): ?>
+              <div style="color:var(--muted);font-size:12px"><?= h($relativno) ?></div>
+            <?php endif; ?>
+          </td>
+          <td><?= h((string) $t['name']) ?></td>
+          <td class="nowrap"><?= h((string) $t['phone']) ?></td>
+          <td><?= h((string) ($t['email'] ?? '')) ?></td>
+          <td><?= h((string) ($t['note'] ?? '')) ?></td>
+          <td><span class="znacka <?= $odpovedan ? 'ne' : 'da' ?>">
+              <?= $odpovedan ? 'odpovedan' : 'velja' ?></span></td>
+          <td class="nowrap">
+            <?php if (!$odpovedan): ?>
             <form method="post" style="display:inline"
-                  onsubmit="return confirm('Izbrišem ta zapis? Tega ni mogoče razveljaviti.')">
+                  onsubmit="return confirm('Odpovem ta termin? Stranke to ne obvesti.')">
               <input type="hidden" name="csrf" value="<?= h(adminCsrf()) ?>">
-              <input type="hidden" name="dejanje" value="brisi">
-              <input type="hidden" name="id" value="<?= (int) $z['id'] ?>">
-              <button type="submit" class="tiho" style="margin-left:8px">briši</button>
+              <input type="hidden" name="dejanje" value="odpovej">
+              <input type="hidden" name="id" value="<?= (int) $t['id'] ?>">
+              <button type="submit" class="tiho">odpovej</button>
             </form>
+            <?php endif; ?>
           </td>
         </tr>
       <?php endforeach; ?>

@@ -3,7 +3,7 @@
 Popoln pregled projekta. Ta datoteka je vir resnice o tem, kaj sistem je, kaj
 zna, kako je zgrajen in kje smo. **Posodobi jo ob vsaki večji spremembi.**
 
-Zadnja posodobitev: 19. 9. 2026 (zvecer)
+Zadnja posodobitev: 26. 9. 2026
 
 ---
 
@@ -60,6 +60,21 @@ o projektu zapiše v polje `note`, da lahko ekipa pripravi ponudbo brez klica.
 
 **Ponudbe ne pripravi in cene ne potrdi** — to je namerno. Cena je odvisna od
 obsega; asistent, ki bi jo zavezujoče obljubil, bi podjetje lahko drago stal.
+
+### Odgovarja na vprašanja, ki niso o ceni
+Pogoji, potek dela, kaj potrebuje od stranke, ali dela za določeno vrsto strank.
+Vsebino ureja podjetje v `admin/znanje.php`; v kodi je ni. Če odgovora ni, tega
+**ne zapolni s splošnim znanjem** — pove, da bo potrdil sodelavec.
+
+### Dogovori termin
+Prosti termini se izpeljejo iz delovnega časa in že zasedenih vrstic, ne iz
+vnaprej pripravljene tabele. Zasedenost se preveri **še enkrat tik pred
+zapisom**: med tem, ko stranka pove ime in telefon, lahko termin vzame nekdo drug.
+
+### Preveže na človeka
+Ko stranka izrecno želi sodelavca, ko se pritožuje, ali ko ji dvakrat zapored ni
+znala odgovoriti. Samo znotraj delovnega časa — zunaj njega bi klicatelj pristal
+na zvonjenju v prazni pisarni.
 
 ### Govori in posluša
 Na spletni strani: mikrofon → prepis → odgovor → govor.
@@ -158,6 +173,8 @@ stranko se spremenijo tri vrstice.
 | `core/RateLimiter.php` | Datotečni števec s poljubnim časovnim oknom. |
 | `core/Budget.php` | Dnevna poraba žetonov. Strošek so žetoni, ne klici. |
 | `core/CallLimits.php` | Dnevni števci telefonskih klicev. Številk ne shranjuje — za štetje zadošča zgoščena vrednost. |
+| `implementations/KnowledgeTool.php` | Odgovori na vprašanja, ki jih ni v katalogu. |
+| `implementations/AppointmentTool.php` | Prosti termini in rezervacija. |
 | `core/Logger.php` | Dnevnik klicev in pogovorov z maskiranjem osebnih podatkov. |
 | `core/Mailer.php` | Lasten odjemalec SMTP — `mail()` je na gostovanju izklopljen. |
 | `core/SlovenianDate.php` | Slovenska imena dni in mesecev, relativni datumi. |
@@ -176,8 +193,11 @@ stranko se spremenijo tri vrstice.
 | `index.php` | Povpraševanja: seznam, iskanje, filter, sprememba stanja. |
 | `storitve.php` | Urejanje kataloga prek obrazca namesto SQL. |
 | `pogovori.php` | Pregled pogovorov z oznakami težav. |
+| `znanje.php` | Urejanje baze znanja. |
+| `termini.php` | Pregled in odpoved dogovorjenih terminov. |
 
 ### Ostalo
+- `cron/opozorila.php` — dnevni pregled; pošlje pošto samo, kadar je kaj narobe
 - `voice-agent/agent.py` — telefonski agent (LiveKit Agents, Python)
 - `voice-agent/Dockerfile` — slika za LiveKit Cloud; `download-files` teče ob gradnji, da se Silero ne prenaša ob vsakem hladnem zagonu
 - `voice-agent/livekit.toml` — veže mapo na oblačnega agenta. **Ni v gitu** (vezan na računalnik, razkriva gostiteljsko ime projekta). Ustvari ga `lk agent config --id CA_PiXjcGNWErxB`
@@ -199,6 +219,8 @@ Vse tabele s predpono iz `DB_PREFIX` (privzeto `ai_`).
 | `ai_orders` | Projekti. Tuji ključi na stranke in storitve. |
 | `ai_inquiries` | Povpraševanja. Ime, telefon in **e-pošta obvezni**. Stanje: `new`/`handled`/`discarded`. |
 | `ai_business_hours` | Delovni čas, 1 = ponedeljek … 7 = nedelja. |
+| `ai_knowledge` | Odgovori na vprašanja, ki niso o ceni. `keywords` obstaja, ker stranka po telefonu redko uporabi iste besede kot zapisan odgovor. |
+| `ai_appointments` | Dogovorjeni termini. Prostih terminov ni v tabeli — izpeljejo se iz delovnega časa. |
 
 ---
 
@@ -382,7 +404,7 @@ tega ostaja vse to stvar mnenja.
 
 **Vloženo:** dan dela. `tests/test-tools.sh` je že predloga za obliko.
 
-### 9.2 Predaja človeku
+### 9.2 Predaja človeku — NAPISANO, ČAKA NA DIDWW
 
 **Težava:** ko asistentka česa ne zna ali je klicatelj nejevoljen, klic konča v
 slepi ulici. Za podjetje je to izgubljena stranka, in prav ta klic si bo
@@ -416,7 +438,7 @@ stranko, ne po njej.
 
 ---
 
-### 9.4 Znanje prek kataloga
+### 9.4 Znanje prek kataloga — NAREJENO 26. 9. 2026
 
 Zdaj zna odgovoriti samo iz `ai_products` in `business-info.json`. Vprašanja
 tipa "ali delate tudi za društva", "kako poteka prevzem strani" nimajo vira.
@@ -425,7 +447,7 @@ Rešitev: tabela `ai_knowledge` z vprašanji in odgovori, ki jih stranka ureja
 sama v skrbniški strani, plus orodje za iskanje po njej. Polno indeksiranje
 spletne strani je naslednji korak, a preprosta tabela pokrije večino primerov.
 
-### 9.5 Naročanje terminov
+### 9.5 Naročanje terminov — NAREJENO 26. 9. 2026
 
 Za del slovenskih malih podjetij — frizer, zobozdravnik, servis — je rezervacija
 termina glavni razlog za klic, ne povpraševanje. Brez tega tem panogam nimaš kaj
@@ -434,31 +456,39 @@ prodati.
 Potrebuje tabelo prostih terminov, orodje za rezervacijo in potrditev po e-pošti.
 Google Calendar naj pride kasneje; najprej lastna tabela.
 
-### 9.6 Opozorila, ko kaj odpove
+### 9.6 Opozorila, ko kaj odpove — NAREJENO 26. 9. 2026
 
 Zdaj se za izpad izve šele ob naslednjem ročnem klicu. Potrebno:
 obvestilo, ko je dnevni proračun dosežen, ko orodje večkrat zapored odpove, ko
 se agent v oblaku ustavi, in ko povpraševanje čaka več kot dva dni.
 
-### 9.7 Snemanje klicev in privolitev
+### 9.7 Posnetki klicev kot gradivo — delno
 
-LiveKit klice že snema (`enable_recording: true` v zahtevi za posel). Posnetki so
-najboljše gradivo za točko 9.1 — pravi klicatelji, prava slovenščina, pravi šum.
+Obvestilo o snemanju je **narejeno**: `CALL_RECORDING_NOTICE` pride v pozdrav
+takoj za predstavitvijo, torej preden klicatelj kaj pove.
 
-**Pred uporabo je treba klicatelja obvestiti.** Snemanje brez obvestila v EU ni
-dopustno. Pozdrav mora povedati, da se klic snema, in zakaj.
+Uporaba posnetkov pa čaka na 9.1, ker brez nabora preizkusnih pogovorov nimajo
+kam. Ko bo ta obstajal, je vir nadzorna plošča LiveKit — **Agents → tatjana →
+Sessions** ima zapis vsake seje. Zapis je za ta namen boljši od zvoka: iz njega
+se takoj vidi, ali je asistentka narobe **slišala** ali narobe **odgovorila**, in
+to dvoje ima različna popravka.
+
+`lk egress` tu ne pomaga — ta zna le tekoče snemanje, ne pa dostopa do
+posnetkov, ki jih LiveKit Cloud hrani sam.
 
 ### 9.8 SMS potrditev povpraševanja
 
 Po oddaji sporočilo s številko povpraševanja. Stranka ima dokaz, podjetje pa
 manj klicev tipa "ali ste kaj dobili". DIDWW to zna; strošek je nekaj centov.
 
-### 9.9 Krajši prompt in predpomnjenje
+### 9.9 Krajši prompt in predpomnjenje — delno
 
-Sistemski prompt meri okrog 6 KB in gre v vsak obrat. Krajši prompt pomeni nižji
-LLM TTFT (zdaj 889 ms) in nižji strošek. OpenAI predpomnjenje vhoda zniža ceno
-ponovljenega dela. Smiselno šele po 9.1 — brez merjenja je krajšanje prompta
-najhitrejši način, da se asistentka začne vesti slabše.
+Predpomnjenje je **vklopljeno** (`prompt_cache_key`, od `bc1ed1b`).
+
+Krajšanje ne. Odstranjeno je bilo eno podvojeno pravilo, vsebinskih pa se nisem
+dotaknil — in prompt je z znanjem, termini in prevezo medtem zrasel na 10 KB.
+Brez 9.1 je krajšanje najhitrejši način, da se asistentka začne vesti slabše, ne
+da bi kdo opazil.
 
 ---
 

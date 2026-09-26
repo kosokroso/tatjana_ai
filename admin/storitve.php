@@ -213,6 +213,7 @@ function polje(?array $vir, string $kljuc, string $privzeto = ''): string
         <a href="./">Povpraševanja</a>
         <a href="storitve.php" class="aktiven">Storitve</a>
         <a href="znanje.php">Znanje</a>
+        <a href="termini.php">Termini</a>
         <a href="pogovori.php">Pogovori</a>
       </nav>
       <form method="post" style="display:inline">
