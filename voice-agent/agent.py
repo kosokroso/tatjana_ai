@@ -607,16 +607,28 @@ class TelefonskiAsistent(Agent):
 
         log.warning("preveza dokončno ni uspela: %s", zadnja_napaka)
 
-        # Klicatelj je še vedno na liniji in je prevezo že slišal napovedano.
+        # Nadomestni stavek izgovori orodje samo, ne model. Klicatelj je prevezo
+        # že slišal napovedano in na liniji čaka; če bi bilo prepuščeno modelu,
+        # bi včasih znova rekel "Prevežem vas" in klicatelj bi čakal na nekaj,
+        # česar ni. To je edina pot, kjer sogovornik lahko obvisi v prepričanju,
+        # da se nekaj dogaja, zato tu ne sme odločati verjetnost.
+        sporocilo = (
+            "Oprostite, sodelavca zdaj ne morem dobiti. Lahko zabeležim vaše "
+            "podatke in vas pokličemo nazaj."
+        )
+        try:
+            await context.session.say(sporocilo, add_to_chat_ctx=True)
+        except Exception as e:  # noqa: BLE001
+            log.debug("nadomestnega stavka ni bilo mogoče izgovoriti: %s", e)
+
         return {
             "success": False,
             "data": None,
             "error": "Prevezovanje ni uspelo po dveh poskusih.",
             "naslednji_korak": (
-                "Prevezo si že napovedala, zato je NE obljubljaj znova — ne reci "
-                "\"Prevežem vas\" in ne \"trenutek\". Povej naravnost, da te "
-                "prevezati ni mogoče, in v istem odgovoru ponudi dvoje: da zabeležiš "
-                "povpraševanje za povratni klic, ali da pokličejo na številko podjetja."
+                "Stranki si to pravkar povedala na glas, zato tega NE ponavljaj in "
+                "preveze NE obljubljaj znova. Nadaljuj tam, kjer si: vprašaj, ali naj "
+                "zabeležiš povpraševanje za povratni klic."
             ),
         }
 
@@ -933,6 +945,11 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
     ctx.add_shutdown_callback(ob_koncu)
 
     navodila = nastavitve["system_prompt"]
+
+    # Navodilo o telefonski številki mora biti jasno v obeh primerih. Doslej je
+    # obstajalo samo takrat, ko je bila številka znana; kadar je ni bilo, je model
+    # ostal brez navodila in je povpraševanje oddal s praznim poljem, orodje pa ga
+    # je zavrnilo. Stranka je morala podatek dati in potrditi dvakrat.
     if klicatelj:
         navodila += """
 
@@ -946,6 +963,20 @@ Pri oddaji povpraševanja in pri rezervaciji termina pusti polje phone prazno.
 
 Če stranka sama od sebe pove drugo številko za povratni klic, tisto zapiši
 in jo potrdi po skupinah.
+"""
+    else:
+        navodila += """
+
+## Telefonska številka stranke
+Številke te stranke NIMAMO — klic je brez nje ali pa gre za klepet.
+
+Zato jo moraš vprašati in jo tudi zapisati. Brez nje povpraševanja in termina
+ni mogoče oddati; orodje bo zavrnilo prazno polje in stranka bo morala podatek
+dati dvakrat.
+
+Vprašaj zanjo, preden pripraviš povzetek, in jo v povzetku naštej skupaj z
+imenom in e-pošto. Ob potrditvi jo ponovi po skupinah s premori, ker se števke
+prek zvoka pogosto zamenjajo.
 """
 
     session = AgentSession(

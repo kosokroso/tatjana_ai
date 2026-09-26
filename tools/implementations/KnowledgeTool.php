@@ -30,8 +30,11 @@ final class KnowledgeTool extends Tool
             // začne ugibati — in da lahko ponudi povpraševanje namesto odgovora.
             return ToolResponse::ok([
                 'matches' => [],
-                'note'    => 'Na to vprašanje nimamo zapisanega odgovora. Ne ugibaj; '
-                    . 'povej, da bo to potrdil sodelavec, in ponudi pripravo ponudbe.',
+                'note'    => 'NA TO VPRAŠANJE NIMAMO ZAPISANEGA ODGOVORA. Ne odgovori niti z "da" '
+                    . 'niti z "ne" in ne sklepaj iz česa drugega. Povej, da tega nimaš potrjenega '
+                    . 'in da bo odgovor potrdil sodelavec, nato ponudi pripravo ponudbe. '
+                    . 'Vsaka trditev o tem, kaj podjetje počne ali komu prodaja, ki je ni v tem '
+                    . 'izidu, je izmišljena.',
             ]);
         }
 
