@@ -826,6 +826,30 @@ async def straza(ctx: agents.JobContext, session: AgentSession, sekund_max: int,
     await odlozi(ctx)
 
 
+_zaznavalnik = None
+
+
+def zaznavalnik_govora():
+    """Zazna, kdaj je sogovornik nehal govoriti. Naloži se enkrat na proces.
+
+    Nalaganje modela ONNX traja okoli 120 ms in poteka sinhrono. Ko je bilo
+    znotraj sprejema klica, je za ta čas ustavilo celotno zanko dogodkov —
+    LiveKit to javi kot "event loop blocked ... delays audio and turn handling",
+    in to prav med vzpostavljanjem klica, ko šteje vsaka desetinka.
+
+    Delovni procesi se med klici ponovno uporabijo, zato drugi klic v istem
+    procesu modela ne nalaga več.
+    """
+    global _zaznavalnik
+    if _zaznavalnik is None:
+        _zaznavalnik = silero.VAD.load(
+            min_silence_duration=float(os.getenv("VAD_TISINA", "0.55")),
+            min_speech_duration=float(os.getenv("VAD_GOVOR", "0.10")),
+            activation_threshold=float(os.getenv("VAD_PRAG", "0.5")),
+        )
+    return _zaznavalnik
+
+
 def nastavitve_modela() -> dict:
     """Sestavi nastavitve modela, ki odgovarja.
 
@@ -1000,11 +1024,7 @@ prek zvoka pogosto zamenjajo.
         # so od tega, kako hitro govorijo pravi klicatelji. Slovenci sredi stavka
         # pogosto premolknejo; prekratek premor pomeni, da asistentka skoči v
         # besedo, predolg pa neroden molk. Po nekaj klicih popravi v .env.
-        vad=silero.VAD.load(
-            min_silence_duration=float(os.getenv("VAD_TISINA", "0.55")),
-            min_speech_duration=float(os.getenv("VAD_GOVOR", "0.10")),
-            activation_threshold=float(os.getenv("VAD_PRAG", "0.5")),
-        ),
+        vad=zaznavalnik_govora(),
         **nastavljive_izboljsave(),
     )
 
