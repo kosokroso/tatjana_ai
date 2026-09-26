@@ -140,6 +140,23 @@ Razlogi in ocene dela: [PROJEKT.md, razdelek 9](PROJEKT.md#9-nadgradnje-ki-bi-na
 
 ---
 
+## Preizkusi
+
+Dva ločena nabora, namenoma:
+
+| Datoteka | Kaj preverja | Kdaj poženeš |
+|---|---|---|
+| `voice-agent/scenarios.yaml` | ali dela svoje delo | po vsaki spremembi prompta ali modela |
+| `voice-agent/scenarios-napadi.yaml` | ali jo je mogoče zlorabiti | pred izdajo, po zamenjavi modela, po večji spremembi prompta |
+
+```
+lk agent simulate --scenarios scenarios.yaml --agent-name tatjana --concurrency 2
+lk agent simulate --scenarios scenarios-napadi.yaml --agent-name tatjana --concurrency 2
+```
+
+- [ ] **Poženi prvič `scenarios-napadi.yaml`.** Prvi zagon je merilo, ne ocena.
+      Padci so pričakovani in povedo, kje so luknje.
+
 ## Glas — kako spreminjam
 
 **Po eno stikalo naenkrat.** To pravilo je plačano: 17. 9. je devet hkratnih
