@@ -94,6 +94,11 @@ define('CALL_DAILY_MINUTES', 120);
 // stejejo skupaj pod eno oznako.
 define('CALL_MAX_PER_CALLER', 10);
 
+// Koliko klicev na dan sme opraviti skrita stevilka - vsi taki klici se stejejo
+// skupaj, ker jih ni mogoce lociti. Zato lastna, visja meja: pri isti meji kot
+// za posameznika enajsti posten klic s skrito stevilko obvisi.
+define('CALL_MAX_ANONYMOUS', 40);
+
 
 // ---------------------------------------------------------------
 // Skupna skrivnost za strežnik-na-strežnik klice (kasnejši glasovni sloj).

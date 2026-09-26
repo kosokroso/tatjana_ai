@@ -55,7 +55,8 @@ $meje = new CallLimits(
     LOG_DIR . '/klici',
     defined('CALL_MAX_SECONDS')     ? (int) CALL_MAX_SECONDS     : 600,
     defined('CALL_DAILY_MINUTES')   ? (int) CALL_DAILY_MINUTES   : 120,
-    defined('CALL_MAX_PER_CALLER')  ? (int) CALL_MAX_PER_CALLER  : 10
+    defined('CALL_MAX_PER_CALLER')  ? (int) CALL_MAX_PER_CALLER  : 10,
+    defined('CALL_MAX_ANONYMOUS')   ? (int) CALL_MAX_ANONYMOUS   : 40
 );
 
 $oznaka = CallLimits::oznaka($klicatelj);

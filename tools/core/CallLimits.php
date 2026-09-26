@@ -26,11 +26,15 @@ final class CallLimits
     /** @var int */
     private $maxCallsPerCaller;
 
+    /** @var int */
+    private $maxCallsAnonymous;
+
     public function __construct(
         string $stateDir,
         int $maxSecondsPerCall,
         int $maxMinutesPerDay,
-        int $maxCallsPerCaller
+        int $maxCallsPerCaller,
+        int $maxCallsAnonymous = 0
     ) {
         if (!is_dir($stateDir)) {
             @mkdir($stateDir, 0750, true);
@@ -39,6 +43,16 @@ final class CallLimits
         $this->maxSecondsPerCall = $maxSecondsPerCall;
         $this->maxSecondsPerDay  = $maxMinutesPerDay * 60;
         $this->maxCallsPerCaller = $maxCallsPerCaller;
+        // Klicatelji s skrito stevilko si delijo eno oznako, zato jih meja za
+        // posameznika zadene skupaj. Brez locene meje enajsti posten klic s
+        // skrito stevilko obvisi - in prav to se je zgodilo.
+        $this->maxCallsAnonymous = $maxCallsAnonymous > 0 ? $maxCallsAnonymous : $maxCallsPerCaller;
+    }
+
+    /** Oznaka, pod katero se stejejo klici brez znane stevilke. */
+    public static function oznakaSkrite(): string
+    {
+        return self::oznaka('skrita-stevilka');
     }
 
     public function maxSecondsPerCall(): int
@@ -76,7 +90,8 @@ final class CallLimits
         }
 
         $klicatelj = $stanje['klicatelji'][$callerHash] ?? ['klicev' => 0, 'sekund' => 0];
-        if ($this->maxCallsPerCaller > 0 && $klicatelj['klicev'] >= $this->maxCallsPerCaller) {
+        $meja = $callerHash === self::oznakaSkrite() ? $this->maxCallsAnonymous : $this->maxCallsPerCaller;
+        if ($meja > 0 && $klicatelj['klicev'] >= $meja) {
             return 'meja_klicev_na_klicatelja';
         }
 
