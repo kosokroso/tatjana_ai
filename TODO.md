@@ -23,7 +23,7 @@ Zadnja posodobitev: 26. 9. 2026
 - [ ] **Poskusi `STT_MODEL=gpt-transcribe`.** Novejši od `gpt-4o-transcribe` in
       edini razen realtime različice sprejme `keywords` — šele z njim usmerjanje
       prepisa na imena tvojih storitev zares deluje.
-- [ ] **Preveri, da se telefonski pogovori beležijo.** Po prvem klicu odpri
+- [x] **Preveri, da se telefonski pogovori beležijo.** Po prvem klicu odpri
       `admin/pogovori.php` — vsak obrat mora imeti oznako `telefon`.
       Če oznake ni, `ai/log-conversation.php` ni bil deployan.
 - [ ] **Poenoti opise orodij.** `ai/tool-definitions.json` (splet) in docstringi v
@@ -36,12 +36,13 @@ Zadnja posodobitev: 26. 9. 2026
 - [X] **Potrdi, da asistentka odloži slušalko.** `3b2a8a2` je v oblaku, a z
       dnevnikom ni preverjen. Pusti odprt `lk agent logs`, pokliči, oddaj
       povpraševanje. Iščeš `ROOM_DELETED`.
-- [ ] **Vrni branje številke klicatelja.** Asistentka številko ima, a zanjo še
+- [x] **Vrni branje številke klicatelja.** Asistentka številko ima, a zanjo še
       vedno sprašuje. Popravek obstaja: `git revert f9b64d1`. Isti commit vrne
       tudi predpomnjenje modela VAD (211 ms na klic) in izid orodja v meritvi.
-- [ ] **Pojasni dvojni `submit-inquiry`.** V klicu 17. 9. sta bila dva zaporedna.
-      Preveri v `admin/index.php`, ali sta zabeleženi dve povpraševanji. Če sta,
-      je to podvojen zapis in ne ponovni poskus.
+- [x] **Dvojni `submit-inquiry` pojasnjen.** Ni bil podvojen zapis, ampak ponoven
+      poskus: model je orodje najprej poklical s `potrjeno=false`, zapora ga je
+      zavrnila, nato je povzel in poklical znova. Opis orodja je to vabilo in je
+      popravljen v `4ae061b`.
 - [ ] **Odloči o `STT_PONUDNIK=azure`.** LiveKit opozarja
       `transcript arrives after turn has been committed` — prepis pride, ko je
       obrat že zaključen, zato lahko model spregleda zadnji del povedanega.
@@ -70,8 +71,8 @@ Zadnja posodobitev: 26. 9. 2026
 - [x] **Povej klicatelju, da se klic snema** — `CALL_RECORDING_NOTICE` v pozdravu
 - [ ] **Vpiši besedilo obvestila o snemanju v `config.php` na strežniku.**
       Brez tega obvestila ni, snemanje pa teče.
-- [ ] **Ustvari novi tabeli**: `ai_knowledge` in `ai_appointments` iz `sql/schema.sql`
-- [ ] **Dodaj nove konstante v `config.php`**: `knowledge-lookup` in `appointment`
+- [x] **Ustvari novi tabeli**: `ai_knowledge` in `ai_appointments` iz `sql/schema.sql`
+- [x] **Dodaj nove konstante v `config.php`**: `knowledge-lookup` in `appointment`
       v `ALLOWED_TOOLS`, `APPOINTMENT_MINUTES`, `APPOINTMENT_DAYS_AHEAD`,
       `APPOINTMENT_LEAD_MIN`, `ALERT_EMAIL`, `INQUIRY_ALERT_DAYS`
 - [ ] **Nastavi cron** v cPanelu, enkrat na dan:
@@ -91,7 +92,7 @@ Razlogi in ocene dela: [PROJEKT.md, razdelek 9](PROJEKT.md#9-nadgradnje-ki-bi-na
 ### Temelj — brez tega je vse ostalo ugibanje
 - [x] **9.1** Nabor preizkusnih pogovorov — `voice-agent/scenarios.yaml`, 11 scenarijev.
       Poganja jih `lk agent simulate`; ni bilo treba pisati lastnega ogrodja.
-- [ ] **Poženi prvi `lk agent simulate`** in poglej, kateri scenariji padejo.
+- [x] **Poženi prvi `lk agent simulate`** in poglej, kateri scenariji padejo.
       Prvi zagon je merilo, ne ocena — pade jih lahko več, in to je podatek.
 - [ ] **Dodaj scenarij za številko klicatelja.** V simulaciji ni udeleženca SIP,
       zato asistentka za številko vpraša; po telefonu tega ne sme. Tega vedenja
