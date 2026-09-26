@@ -206,15 +206,33 @@ def izberi_masilo(sklop: str) -> str:
     return _zadnje[sklop]
 
 
-async def mašilo(context: RunContext, sklop: str) -> None:
+# Najmanjši razmik med dvema mašiloma. Model pogosto sproži več orodij
+# zaporedoma; brez razmika se mašila postavijo v vrsto in sogovornik sliši
+# "Trenutek, preverim. Samo hip, pogledam. Trenutek." enega za drugim.
+MASILO_RAZMIK_SEK = 8.0
+
+
+async def mašilo(context: RunContext, sklop: str, stanje: dict) -> None:
     """Reče kratko potrdilo, medtem ko v ozadju teče klic orodja.
 
     Brez tega je v slušalki ena do dve sekundi tišine in klic zveni pokvarjeno.
     Klic s tem ni hitrejši, a sogovornik ve, da se nekaj dogaja — enako kot
     človek reče "trenutek, preverim".
+
+    Izreče se samo enkrat na več orodij: tri potrdila zapored so slabša od
+    tišine, ker zvenijo kot pokvarjen posnetek.
     """
+    zdaj = time.perf_counter()
+    if zdaj - stanje.get("zadnje", 0.0) < MASILO_RAZMIK_SEK:
+        return
+
     try:
+        # Kadar asistentka že govori, mašilo ne zapolni tišine — samo se postavi
+        # za njen odgovor v vrsto in ga zamakne.
+        if context.session.agent_state == "speaking":
+            return
         context.session.say(izberi_masilo(sklop), add_to_chat_ctx=False)
+        stanje["zadnje"] = zdaj
     except Exception as e:  # noqa: BLE001 — mašilo ne sme nikoli podreti klica
         log.debug("mašila ni bilo mogoče izgovoriti: %s", e)
 
@@ -243,6 +261,7 @@ class TelefonskiAsistent(Agent):
     ) -> None:
         super().__init__(instructions=navodila)
         self.telefon_klicatelja = telefon_klicatelja
+        self._masilo_stanje: dict = {}
         self.identiteta = identiteta
         self.prevezi_na = prevezi_na
 
@@ -263,7 +282,7 @@ class TelefonskiAsistent(Agent):
             action: 'search' za splošno ponudbo, 'get_price' za ceno, 'check_stock' za razpoložljivost.
             category: Neobvezno: 'spletne-strani', 'trzenje', 'oblikovanje', 'vzdrzevanje'.
         """
-        await mašilo(context, "isce")
+        await mašilo(context, "isce", self._masilo_stanje)
         vsebina = {"query": query, "action": action}
         if category:
             vsebina["category"] = category
@@ -279,7 +298,7 @@ class TelefonskiAsistent(Agent):
             order_id: Številka projekta, na primer '10001'.
             verify: Telefonska številka ali e-pošta stranke, s katero je bil projekt naročen.
         """
-        await mašilo(context, "projekt")
+        await mašilo(context, "projekt", self._masilo_stanje)
         return await poklici_orodje("order-lookup", {"order_id": order_id, "verify": verify})
 
     @function_tool()
@@ -289,7 +308,7 @@ class TelefonskiAsistent(Agent):
         Args:
             info_type: 'hours' za delovni čas, 'delivery' za roke in potek dela, 'payments' za plačilo.
         """
-        await mašilo(context, "podatki")
+        await mašilo(context, "podatki", self._masilo_stanje)
         return await poklici_orodje("business-info", {"info_type": info_type})
 
     @function_tool()
@@ -303,7 +322,7 @@ class TelefonskiAsistent(Agent):
             query: Vprašanje stranke z njenimi besedami, na primer
                 'ali delate tudi za društva'.
         """
-        await mašilo(context, "podatki")
+        await mašilo(context, "podatki", self._masilo_stanje)
         return await poklici_orodje("knowledge-lookup", {"query": query})
 
     @function_tool()
@@ -313,7 +332,7 @@ class TelefonskiAsistent(Agent):
         dva ali tri naenkrat — po telefonu si četrtega nihče ne zapomni.
         Termina si nikoli ne izmisli.
         """
-        await mašilo(context, "isce")
+        await mašilo(context, "isce", self._masilo_stanje)
         return await poklici_orodje("appointment", {"action": "find"})
 
     @function_tool()
@@ -342,7 +361,7 @@ class TelefonskiAsistent(Agent):
             email: Neobvezno, za potrditev po e-pošti.
             note: Kaj želi stranka na sestanku.
         """
-        await mašilo(context, "zapis")
+        await mašilo(context, "zapis", self._masilo_stanje)
 
         telefon = (phone or self.telefon_klicatelja or "").strip()
         if not telefon:
@@ -424,7 +443,7 @@ class TelefonskiAsistent(Agent):
                 "naslednji_korak": "Vprašaj stranko za to in ne vpisuj nadomestkov.",
             }
 
-        await mašilo(context, "zapis")
+        await mašilo(context, "zapis", self._masilo_stanje)
 
         # Pri telefonskem klicu je številka že znana iz same povezave. Narekovanje
         # po zvoku je najpogostejši vir napak — števke se zamenjajo in ponudba gre
