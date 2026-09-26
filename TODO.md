@@ -23,6 +23,9 @@ Zadnja posodobitev: 26. 9. 2026
 - [ ] **Poskusi `STT_MODEL=gpt-transcribe`.** Novejši od `gpt-4o-transcribe` in
       edini razen realtime različice sprejme `keywords` — šele z njim usmerjanje
       prepisa na imena tvojih storitev zares deluje.
+- [ ] **Preveri, da se telefonski pogovori beležijo.** Po prvem klicu odpri
+      `admin/pogovori.php` — vsak obrat mora imeti oznako `telefon`.
+      Če oznake ni, `ai/log-conversation.php` ni bil deployan.
 - [ ] **Poenoti opise orodij.** `ai/tool-definitions.json` (splet) in docstringi v
       `agent.py` (telefon) opisujejo ista orodja pod drugimi imeni:
       `search_products` proti `search_services`, `lookup_order` proti

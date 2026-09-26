@@ -158,6 +158,7 @@ stranko se spremenijo tri vrstice.
 | `guard.php` | Preverjanje izvora, HTTPS, omejitve, dnevni proračun žetonov. Skupno za vse tri. |
 | `agent-config.php` | Telefonskemu agentu vrne sistemski prompt. Zaščiteno s `TOOL_SECRET`. |
 | `call-guard.php` | Vratar telefonskih klicev: pove, ali sme klic naprej, in prejme trajanje. Zaščiteno s `TOOL_SECRET`. |
+| `log-conversation.php` | Telefonski agent sem ob koncu klica pošlje potek pogovora, da ga `admin/pogovori.php` prikaže enako kot klepet. |
 | `OpenAIClient.php` | Odjemalec za Chat Completions. Ponovi klic ob 429 in 5xx. Beleži porabo žetonov. |
 | `system-prompt.txt` | Pravila asistenta. Brez imena podjetja — to pride iz konfiguracije. |
 | `tool-definitions.json` | Opisi orodij za model, v slovenščini. |

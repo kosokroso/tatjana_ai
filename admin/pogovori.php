@@ -174,6 +174,7 @@ $naslov  = defined('BUSINESS_NAME') ? BUSINESS_NAME : 'Asistent';
   .odgovor{margin:0 0 12px;white-space:pre-wrap}
   .znacke{display:flex;gap:6px;flex-wrap:wrap}
   .znacka{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px}
+  .znacka.vir{background:#eef4fa;color:#2c5d80}
   .znacka.orodje{background:#e4f2f7;color:#1f7d99;
     font-family:ui-monospace,Consolas,monospace;font-size:11.5px}
   .znacka.opozorilo{background:#fdeeec;color:#a4302a;font-weight:600}
@@ -231,6 +232,7 @@ $naslov  = defined('BUSINESS_NAME') ? BUSINESS_NAME : 'Asistent';
       <div class="glava">
         <span><?= h(date('j. n. Y H:i', strtotime((string) ($z['ts'] ?? 'now')))) ?></span>
         <span style="font-family:ui-monospace,Consolas,monospace"><?= h((string) ($z['request_id'] ?? '')) ?></span>
+        <span class="znacka vir"><?= h(($z['source'] ?? '') === 'telefon' ? 'telefon' : 'klepet') ?></span>
       </div>
 
       <?php if (!empty($z['user_message'])): ?>

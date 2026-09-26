@@ -97,6 +97,80 @@ async def vprasaj_vratarja(dejanje: str, klicatelj: str, sekund: int = 0) -> dic
         return {"allow": True}
 
 
+async def zapisi_pogovor(session: AgentSession, klic_id: str) -> None:
+    """Pošlje potek pogovora v dnevnik podjetja.
+
+    Telefonski agent teče v oblaku in orodja kliče po HTTP, zato se je v dnevnik
+    podjetja zapisalo, katera orodja je klical, ne pa, kaj je povedal.
+    admin/pogovori.php je tako pokrival samo klepet na strani. Stranka, ki
+    plačuje vzdrževanje, hoče videti, kaj je asistentka povedala njenim
+    klicateljem — in "poglej v LiveKit" ni odgovor.
+
+    Zapis gre v isti dnevnik in v isti obliki kot klepet, zato ga obstoječa
+    stran prikaže brez spremembe.
+    """
+    try:
+        zgodovina = session.history.items
+    except Exception as e:  # noqa: BLE001
+        log.warning("zgodovine pogovora ni bilo mogoče prebrati: %s", e)
+        return
+
+    obrati: list[dict] = []
+    tekoci: dict | None = None
+
+    for vnos in zgodovina:
+        vloga = getattr(vnos, "role", None)
+        if vloga is None:
+            # Klic orodja ni sporočilo; zabeležimo samo ime, da se vidi, ali je
+            # asistentka ceno preverila ali si jo izmislila.
+            ime = getattr(vnos, "name", None)
+            if ime and tekoci is not None:
+                tekoci["tool_calls"].append(str(ime))
+            continue
+
+        besedilo = besedilo_sporocila(vnos)
+        if not besedilo:
+            continue
+
+        if vloga == "user":
+            if tekoci is not None:
+                obrati.append(tekoci)
+            tekoci = {"user_message": besedilo, "assistant_message": "", "tool_calls": []}
+        elif vloga == "assistant":
+            if tekoci is None:
+                # Pozdrav pride pred prvim vprašanjem stranke.
+                tekoci = {"user_message": "", "assistant_message": "", "tool_calls": []}
+            # Daljši odgovor pride v več delih; sestavimo ga nazaj v enega.
+            tekoci["assistant_message"] = (tekoci["assistant_message"] + " " + besedilo).strip()
+
+    if tekoci is not None:
+        obrati.append(tekoci)
+
+    if not obrati:
+        return
+
+    try:
+        await odjemalec().post(
+            f"{TOOLS_BASE_URL}/ai/log-conversation.php",
+            json={"call_id": klic_id, "source": "telefon", "turns": obrati},
+        )
+        log.info("pogovor zapisan: %d obratov", len(obrati))
+    except Exception as e:  # noqa: BLE001
+        # Klic je že končan. Neuspel zapis ne sme ničesar podreti.
+        log.warning("pogovora ni bilo mogoče zapisati: %s", e)
+
+
+def besedilo_sporocila(vnos) -> str:
+    """Vsebina sporočila je lahko niz ali seznam delov."""
+    vsebina = getattr(vnos, "content", None)
+    if isinstance(vsebina, str):
+        return vsebina.strip()
+    if isinstance(vsebina, list):
+        deli = [d.strip() for d in vsebina if isinstance(d, str) and d.strip()]
+        return " ".join(deli)
+    return ""
+
+
 def meritev(kaj: str, zacetek: float) -> None:
     """Zapiše trajanje koraka.
 
@@ -830,6 +904,13 @@ premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
         nadzor.cancel()
 
     ctx.add_shutdown_callback(ustavi_strazo)
+
+    async def zapisi_ob_koncu() -> None:
+        if simulacija:
+            return
+        await zapisi_pogovor(session, ctx.job.id if ctx.job else "-")
+
+    ctx.add_shutdown_callback(zapisi_ob_koncu)
 
 
 if __name__ == "__main__":
