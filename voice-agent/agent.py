@@ -378,10 +378,15 @@ class TelefonskiAsistent(Agent):
 
     @function_tool()
     async def knowledge_lookup(self, context: RunContext, query: str) -> dict:
-        """Poišče odgovor na vprašanje o podjetju, ki ni o ceni ali ponudbi:
+        """Poišče odgovor na vprašanje **o tem podjetju**, ki ni o ceni ali ponudbi:
         pogoji, potek dela, kaj potrebujemo od stranke, omejitve, pogosta
         vprašanja. Uporabi vedno, kadar stranka vpraša kaj o načinu dela ali
         sodelovanju in odgovora ne najdeš v ponudbi. Nikoli ne ugibaj.
+
+        NE uporabljaj za karkoli, kar ni o tem podjetju: splošno znanje,
+        zgodovina, vreme, šale, nesmisel. V tej bazi tega ni in nikoli ne bo,
+        zato bo izid prazen, odgovor pa bo po nepotrebnem zvenel uradno.
+        Na take stvari odgovori sama, na kratko, in vprašaj nazaj k ponudbi.
 
         Args:
             query: Vprašanje stranke z njenimi besedami, na primer
@@ -474,8 +479,10 @@ class TelefonskiAsistent(Agent):
             potrjeno: True samo takrat, ko si stranki prebrala nazaj podatke in kaj
                 potrebuje, IN je ona to izrecno potrdila. Če se je po tej potrditvi
                 kateri podatek spremenil ali dodal, prejšnje soglasje NE velja —
-                preberi povzetek znova in znova počakaj na potrditev. Če povzetka
-                še ni bilo, vpiši False; orodje te bo opomnilo.
+                preberi povzetek znova in znova počakaj na potrditev.
+                Dokler te potrditve nimaš, tega orodja SPLOH NE KLIČI. Klic s
+                potrjeno=False ni način, da preveriš, ali smeš — samo zavrnjen
+                bo in stranka bo čakala po nepotrebnem.
             product: Kaj stranka potrebuje, z njenimi besedami.
             quantity: Obseg, če ga je navedla.
             note: Vse, kar je stranka povedala o projektu, od začetka pogovora do

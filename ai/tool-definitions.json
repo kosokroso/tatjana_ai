@@ -135,7 +135,7 @@
     "type": "function",
     "function": {
       "name": "knowledge_lookup",
-      "description": "Poišče odgovor na vprašanje o podjetju, ki ni o ceni ali ponudbi: pogoji, potek dela, kaj potrebujemo od stranke, omejitve, pogosta vprašanja. Uporabi vedno, kadar stranka vpraša kaj o načinu dela ali sodelovanju in odgovora ne najdeš v ponudbi. Nikoli ne ugibaj — če orodje ne vrne zadetka, povej, da bo to potrdil sodelavec.",
+      "description": "Poišče odgovor na vprašanje o podjetju, ki ni o ceni ali ponudbi: pogoji, potek dela, kaj potrebujemo od stranke, omejitve, pogosta vprašanja. Uporabi vedno, kadar stranka vpraša kaj o načinu dela ali sodelovanju in odgovora ne najdeš v ponudbi. Nikoli ne ugibaj — če orodje ne vrne zadetka, povej, da bo to potrdil sodelavec. NE uporabljaj za karkoli, kar ni o tem podjetju: splošno znanje, zgodovina, vreme, šale, nesmisel. V tej bazi tega ni, izid bo prazen, odgovor pa bo po nepotrebnem zvenel uradno.",
       "parameters": {
         "type": "object",
         "properties": {
