@@ -919,13 +919,18 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
 
     navodila = nastavitve["system_prompt"]
     if klicatelj:
-        navodila += f"""
+        navodila += """
 
-## Številka, s katere kličejo
-Stranka kliče s številke {klicatelj}. Za to številko je ne sprašuj — že jo imaš.
-Ko zbiraš podatke za povpraševanje, jo samo potrdi, prebrano po skupinah s
-premori, na primer: "Za povratni klic uporabim številko, s katere kličete?"
-Če stranka pove drugo številko, zapiši tisto, ki jo pove.
+## Telefonska številka stranke
+Telefonsko številko te stranke že imamo — prebrana je iz same telefonske
+povezave in je pravilna.
+
+Zanjo NE sprašuj, je NE potrjuj in je NE omenjaj. Tudi v povzetku pred
+oddajo je ne naštej: povej samo ime, e-pošto in kaj stranka potrebuje.
+Pri oddaji povpraševanja in pri rezervaciji termina pusti polje phone prazno.
+
+Če stranka sama od sebe pove drugo številko za povratni klic, tisto zapiši
+in jo potrdi po skupinah.
 """
 
     session = AgentSession(
