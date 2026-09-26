@@ -122,9 +122,28 @@ odgovori(200, [
     'business_phone' => defined('BUSINESS_PHONE') ? BUSINESS_PHONE : '',
     'business_email' => defined('BUSINESS_EMAIL') ? BUSINESS_EMAIL : '',
     'system_prompt'  => $prompt,
-    'greeting'       => 'Pozdravljeni, tukaj ' . (defined('ASSISTANT_NAME') ? ASSISTANT_NAME : 'asistent')
-        . ' iz ' . ($rodilnik !== '' ? $rodilnik : 'podjetja') . '. Kako vam lahko pomagam?',
+    'greeting'       => sestavi_pozdrav($rodilnik),
 ]);
+
+/**
+ * Pozdrav, s katerim se asistent javi na telefon.
+ *
+ * Obvestilo o snemanju pride takoj za predstavitvijo in pred vprasanjem — ne na
+ * konec. Klicatelj mora vedeti, da se snema, preden kaj pove, sicer je obvestilo
+ * brez pomena.
+ */
+function sestavi_pozdrav(string $rodilnik): string
+{
+    $ime = defined('ASSISTANT_NAME') ? ASSISTANT_NAME : 'asistent';
+    $pozdrav = 'Pozdravljeni, tukaj ' . $ime . ' iz ' . ($rodilnik !== '' ? $rodilnik : 'podjetja') . '.';
+
+    $obvestilo = defined('CALL_RECORDING_NOTICE') ? trim((string) CALL_RECORDING_NOTICE) : '';
+    if ($obvestilo !== '') {
+        $pozdrav .= ' ' . rtrim($obvestilo, '.') . '.';
+    }
+
+    return $pozdrav . ' Kako vam lahko pomagam?';
+}
 
 function odgovori(int $status, array $podatki): void
 {

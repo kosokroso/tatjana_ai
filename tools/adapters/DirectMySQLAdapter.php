@@ -411,4 +411,106 @@ final class DirectMySQLAdapter implements AdapterInterface
 
         return array_values(array_unique($tokens));
     }
+
+    public function searchKnowledge(string $query, int $limit = 3): array
+    {
+        $besede = preg_split('/\s+/u', trim($query), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        // Besede, krajse od treh znakov, zadenejo skoraj vse in zameglijo izid.
+        $besede = array_slice(array_filter($besede, static fn($b) => mb_strlen($b) >= 3), 0, 6);
+        if (!$besede) {
+            return [];
+        }
+
+        // LIKE in ne MATCH: polnotekstovni indeks slovenscine ne pregiba, zato
+        // "drustva" ne najde "drustvo". LIKE z delnim ujemanjem to premosti,
+        // pri nekaj sto zapisih pa je hitrost brez pomena.
+        $pogoji = [];
+        $parametri = [];
+        foreach (array_values($besede) as $i => $beseda) {
+            // Vsaka pojavitev rabi svoj imenovani parameter: isti dvakrat
+            // pomeni SQLSTATE[HY093] pri pravih pripravljenih stavkih.
+            $kv = ':v' . $i . 'q';
+            $ka = ':v' . $i . 'a';
+            $kk = ':v' . $i . 'k';
+            $pogoji[] = "(question LIKE {$kv} OR answer LIKE {$ka} OR keywords LIKE {$kk})";
+            $vzorec = '%' . $beseda . '%';
+            $parametri[$kv] = $vzorec;
+            $parametri[$ka] = $vzorec;
+            $parametri[$kk] = $vzorec;
+        }
+
+        $sql = 'SELECT id, question, answer
+                FROM ' . $this->table('knowledge') . '
+                WHERE active = 1 AND (' . implode(' OR ', $pogoji) . ')
+                LIMIT ' . max(1, min($limit, 10));
+
+        try {
+            $stmt = $this->pdo()->prepare($sql);
+            $stmt->execute($parametri);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::searchKnowledge: ' . $e->getMessage());
+            throw new AdapterException('Iskanje po bazi znanja ni uspelo.');
+        }
+    }
+
+    public function listKnowledge(): array
+    {
+        try {
+            $stmt = $this->pdo()->query(
+                'SELECT id, question, answer, keywords, active, updated_at
+                 FROM ' . $this->table('knowledge') . '
+                 ORDER BY active DESC, updated_at DESC'
+            );
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::listKnowledge: ' . $e->getMessage());
+            throw new AdapterException('Branje baze znanja ni uspelo.');
+        }
+    }
+
+    public function saveKnowledge(array $entry): int
+    {
+        $polja = [
+            'question' => (string) ($entry['question'] ?? ''),
+            'answer'   => (string) ($entry['answer'] ?? ''),
+            'keywords' => ($entry['keywords'] ?? '') === '' ? null : (string) $entry['keywords'],
+            'active'   => !empty($entry['active']) ? 1 : 0,
+        ];
+
+        try {
+            $id = (int) ($entry['id'] ?? 0);
+            if ($id > 0) {
+                $stmt = $this->pdo()->prepare(
+                    'UPDATE ' . $this->table('knowledge') . '
+                     SET question = :question, answer = :answer, keywords = :keywords, active = :active
+                     WHERE id = :id'
+                );
+                $stmt->execute($polja + ['id' => $id]);
+                return $id;
+            }
+
+            $stmt = $this->pdo()->prepare(
+                'INSERT INTO ' . $this->table('knowledge') . ' (question, answer, keywords, active)
+                 VALUES (:question, :answer, :keywords, :active)'
+            );
+            $stmt->execute($polja);
+            return (int) $this->pdo()->lastInsertId();
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::saveKnowledge: ' . $e->getMessage());
+            throw new AdapterException('Shranjevanje zapisa ni uspelo.');
+        }
+    }
+
+    public function deleteKnowledge(int $id): bool
+    {
+        try {
+            $stmt = $this->pdo()->prepare('DELETE FROM ' . $this->table('knowledge') . ' WHERE id = :id');
+            $stmt->execute(['id' => $id]);
+            return $stmt->rowCount() > 0;
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::deleteKnowledge: ' . $e->getMessage());
+            throw new AdapterException('Brisanje zapisa ni uspelo.');
+        }
+    }
 }

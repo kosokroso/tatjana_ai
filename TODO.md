@@ -12,11 +12,11 @@ Zadnja posodobitev: 19. 9. 2026 (zvecer)
 
 ## Zdaj — nepotrjeno ali odprto
 
-- [ ] **Dodaj sklanjatev v `config.php` na strežniku** (File Manager, ni v gitu):
+- [X] **Dodaj sklanjatev v `config.php` na strežniku** (File Manager, ni v gitu):
       `define('BUSINESS_NAME_RODILNIK', 'Kreativnega spleta');`
       `define('BUSINESS_NAME_MESTNIK',  'Kreativnem spletu');`
       Brez tega pozdrav ostane "iz Kreativni Splet".
-- [ ] **Deployaj `b67f72c` na cPanel** — Update from Remote, nato Deploy HEAD Commit
+- [X] **Deployaj `b67f72c` na cPanel** — Update from Remote, nato Deploy HEAD Commit
 - [ ] **Odčitaj novo `E2E median`** na nadzorni plošči LiveKit. Zadnja meritev je
       3198 ms, izpred zamenjave modela in vklopa sprotnega prepisa. Brez nove
       številke ne veva, kje smo.
@@ -30,7 +30,7 @@ Zadnja posodobitev: 19. 9. 2026 (zvecer)
 - [ ] **Odloči o modelu za spletni klepet.** Telefon teče na `gpt-5.4-mini`,
       splet na `OPENAI_MODEL` iz `config.php`. Razhajata se.
 
-- [ ] **Potrdi, da asistentka odloži slušalko.** `3b2a8a2` je v oblaku, a z
+- [X] **Potrdi, da asistentka odloži slušalko.** `3b2a8a2` je v oblaku, a z
       dnevnikom ni preverjen. Pusti odprt `lk agent logs`, pokliči, oddaj
       povpraševanje. Iščeš `ROOM_DELETED`.
 - [ ] **Vrni branje številke klicatelja.** Asistentka številko ima, a zanjo še

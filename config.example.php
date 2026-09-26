@@ -40,7 +40,7 @@ define('ADAPTER', 'DirectMySQLAdapter');
 // ---------------------------------------------------------------
 // Tooli, ki so dovoljeni prek HTTP. Karkoli drugega vrne 404.
 // ---------------------------------------------------------------
-define('ALLOWED_TOOLS', ['product-lookup', 'order-lookup', 'business-info', 'submit-inquiry']);
+define('ALLOWED_TOOLS', ['product-lookup', 'order-lookup', 'business-info', 'submit-inquiry', 'knowledge-lookup']);
 
 // ---------------------------------------------------------------
 // Logging
@@ -185,6 +185,15 @@ define('BUSINESS_NAME_MESTNIK',  'Kreativnem spletu');
 // POZOR: prevezovanje mora biti vklopljeno tudi pri ponudniku SIP (DIDWW).
 // Brez tega LiveKit zahtevo poslje, ponudnik pa jo zavrne.
 define('TRANSFER_PHONE', '');
+
+// Obvestilo o snemanju klica, dodano pozdravu na telefonu.
+//
+// LiveKit klice snema (enable_recording v zahtevi za posel). V EU snemanje brez
+// obvestila ni dopustno, zato mora klicatelj to slisati, preden kaj pove.
+// Velja samo za telefon; spletni klepet se ne snema.
+//
+// Prazno = brez obvestila. Takrat snemanje izklopi tudi v LiveKitu.
+define('CALL_RECORDING_NOTICE', 'Klic se snema zaradi kakovosti storitve.');
 define('BUSINESS_PHONE', '+386 31 455 881');
 define('BUSINESS_EMAIL', 'info@kreativnisplet.si');
 

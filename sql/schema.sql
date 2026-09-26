@@ -131,3 +131,31 @@ INSERT INTO ai_business_hours (day_of_week, opens_at, closes_at, closed) VALUES
 (5, '09:00:00', '17:00:00', 0),
 (6, NULL,       NULL,       1),
 (7, NULL,       NULL,       1);
+
+
+-- ------------------------------------------------------------
+-- ai_knowledge — odgovori na vprasanja, ki niso o ceni
+--
+-- Katalog pove, kaj podjetje prodaja in po cem. Vprasanja kot "ali delate
+-- tudi za drustva", "kaj potrebujete od nas za zacetek" ali "kako poteka
+-- prevzem strani" pa doslej niso imela vira, zato je asistent odgovoril
+-- splosno ali pa priznal, da ne ve.
+--
+-- Vsebino ureja podjetje samo v admin/znanje.php. Nic od tega ne sme biti v
+-- kodi: pri naslednji stranki so vprasanja druga.
+--
+-- keywords obstaja, ker vprasanje po telefonu redko vsebuje iste besede kot
+-- zapisan odgovor. Stranka vprasa "a je to enkratni znesek", v odgovoru pa
+-- pise "placilo v dveh obrokih".
+-- ------------------------------------------------------------
+CREATE TABLE ai_knowledge (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  question   VARCHAR(300)  NOT NULL COMMENT 'vprasanje, kot ga postavi stranka',
+  answer     VARCHAR(1200) NOT NULL COMMENT 'odgovor s podjetjevimi besedami',
+  keywords   VARCHAR(300)  NULL COMMENT 'sopomenke, locene z vejico',
+  active     TINYINT(1)    NOT NULL DEFAULT 1 COMMENT '0 = asistent tega ne uporabi',
+  updated_at TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_knowledge_active (active),
+  FULLTEXT KEY ft_knowledge (question, answer, keywords)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

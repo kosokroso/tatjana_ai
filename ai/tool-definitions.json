@@ -13,16 +13,27 @@
           },
           "action": {
             "type": "string",
-            "enum": ["search", "get_price", "check_stock"],
+            "enum": [
+              "search",
+              "get_price",
+              "check_stock"
+            ],
             "description": "search = splošna ponudba, get_price = zanima jo cena, check_stock = zanima jo, ali storitev sploh opravljate."
           },
           "category": {
             "type": "string",
-            "enum": ["spletne-strani", "trzenje", "oblikovanje", "vzdrzevanje"],
+            "enum": [
+              "spletne-strani",
+              "trzenje",
+              "oblikovanje",
+              "vzdrzevanje"
+            ],
             "description": "Neobvezno zožanje na področje, kadar je iz pogovora jasno."
           }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     }
   },
@@ -43,7 +54,10 @@
             "description": "Telefonska številka ali e-pošta stranke, s katero je bil projekt naročen. Služi preverjanju, da podatkov ne dobi napačna oseba."
           }
         },
-        "required": ["order_id", "verify"]
+        "required": [
+          "order_id",
+          "verify"
+        ]
       }
     }
   },
@@ -80,7 +94,11 @@
             "description": "Karkoli drugega, kar je za ponudbo pomembno: rok, obstoječa stran, panoga, proračun."
           }
         },
-        "required": ["name", "phone", "email"]
+        "required": [
+          "name",
+          "phone",
+          "email"
+        ]
       }
     }
   },
@@ -94,11 +112,36 @@
         "properties": {
           "info_type": {
             "type": "string",
-            "enum": ["hours", "delivery", "payments"],
+            "enum": [
+              "hours",
+              "delivery",
+              "payments"
+            ],
             "description": "hours = delovni čas, delivery = roki izdelave in način dela, payments = pogoji plačila."
           }
         },
-        "required": ["info_type"]
+        "required": [
+          "info_type"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "knowledge_lookup",
+      "description": "Poišče odgovor na vprašanje o podjetju, ki ni o ceni ali ponudbi: pogoji, potek dela, kaj potrebujemo od stranke, omejitve, pogosta vprašanja. Uporabi vedno, kadar stranka vpraša kaj o načinu dela ali sodelovanju in odgovora ne najdeš v ponudbi. Nikoli ne ugibaj — če orodje ne vrne zadetka, povej, da bo to potrdil sodelavec.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Vprašanje stranke z njenimi besedami, npr. 'ali delate tudi za društva'."
+          }
+        },
+        "required": [
+          "query"
+        ]
       }
     }
   }

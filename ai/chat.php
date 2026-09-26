@@ -23,6 +23,7 @@ const TOOL_NAME_MAP = [
     'lookup_order'      => 'order-lookup',
     'get_business_info' => 'business-info',
     'submit_inquiry'    => 'submit-inquiry',
+    'knowledge_lookup'  => 'knowledge-lookup',
 ];
 
 const MAX_HISTORY_MESSAGES = 20;

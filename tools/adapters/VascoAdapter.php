@@ -67,4 +67,24 @@ final class VascoAdapter implements AdapterInterface
     {
         throw new AdapterException('VascoAdapter::saveProduct ni implementiran.');
     }
+
+    public function searchKnowledge(string $query, int $limit = 3): array
+    {
+        throw new AdapterException('VascoAdapter::searchKnowledge ni implementiran.');
+    }
+
+    public function listKnowledge(): array
+    {
+        throw new AdapterException('VascoAdapter::listKnowledge ni implementiran.');
+    }
+
+    public function saveKnowledge(array $entry): int
+    {
+        throw new AdapterException('VascoAdapter::saveKnowledge ni implementiran.');
+    }
+
+    public function deleteKnowledge(int $id): bool
+    {
+        throw new AdapterException('VascoAdapter::deleteKnowledge ni implementiran.');
+    }
 }

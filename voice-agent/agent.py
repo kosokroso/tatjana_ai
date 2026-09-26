@@ -205,6 +205,20 @@ class TelefonskiAsistent(Agent):
         return await poklici_orodje("business-info", {"info_type": info_type})
 
     @function_tool()
+    async def knowledge_lookup(self, context: RunContext, query: str) -> dict:
+        """Poišče odgovor na vprašanje o podjetju, ki ni o ceni ali ponudbi:
+        pogoji, potek dela, kaj potrebujemo od stranke, omejitve, pogosta
+        vprašanja. Uporabi vedno, kadar stranka vpraša kaj o načinu dela ali
+        sodelovanju in odgovora ne najdeš v ponudbi. Nikoli ne ugibaj.
+
+        Args:
+            query: Vprašanje stranke z njenimi besedami, na primer
+                'ali delate tudi za društva'.
+        """
+        await mašilo(context, "podatki")
+        return await poklici_orodje("knowledge-lookup", {"query": query})
+
+    @function_tool()
     async def submit_inquiry(
         self,
         context: RunContext,

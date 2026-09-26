@@ -80,6 +80,7 @@ if (!defined('APP_BOOTSTRAPPED')) {
     require_once __DIR__ . '/tools/implementations/OrderTool.php';
     require_once __DIR__ . '/tools/implementations/BusinessInfoTool.php';
     require_once __DIR__ . '/tools/implementations/InquiryTool.php';
+    require_once __DIR__ . '/tools/implementations/KnowledgeTool.php';
 }
 
 return ToolRegistry::create();

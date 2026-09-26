@@ -91,6 +91,44 @@ interface AdapterInterface
      * @throws AdapterException
      */
     public function saveProduct(array $product): int;
+
+    /**
+     * Poišče odgovore na vprašanja, ki jih ni v katalogu.
+     *
+     * Katalog pove, kaj podjetje prodaja in po čem. Tu so odgovori na vse
+     * drugo: pogoji, potek dela, omejitve, pogosta vprašanja.
+     *
+     * @return array[] question, answer
+     * @throws AdapterException
+     */
+    public function searchKnowledge(string $query, int $limit = 3): array;
+
+    /**
+     * Vsi zapisi znanja za skrbniško urejanje, vključno z neaktivnimi.
+     *
+     * @return array[]
+     * @throws AdapterException
+     */
+    public function listKnowledge(): array;
+
+    /**
+     * Shrani zapis znanja. Brez 'id' doda novega, z 'id' posodobi obstoječega.
+     *
+     * @param array $entry id, question, answer, keywords, active
+     * @return int številka zapisa
+     * @throws AdapterException
+     */
+    public function saveKnowledge(array $entry): int;
+
+    /**
+     * Izbriše zapis znanja.
+     *
+     * Za razliko od storitev se ti smejo brisati: nanje ne kaže noben projekt,
+     * napačen odgovor pa je slabši od nobenega.
+     *
+     * @throws AdapterException
+     */
+    public function deleteKnowledge(int $id): bool;
 }
 
 /**
