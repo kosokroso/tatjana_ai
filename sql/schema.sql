@@ -159,3 +159,30 @@ CREATE TABLE ai_knowledge (
   KEY idx_knowledge_active (active),
   FULLTEXT KEY ft_knowledge (question, answer, keywords)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ------------------------------------------------------------
+-- ai_appointments — dogovorjeni termini
+--
+-- Prosti termini se NE hranijo v tabeli. Izpeljejo se iz ai_business_hours,
+-- dolzine termina in ze zasedenih vrstic tukaj. Tabela prostih terminov bi
+-- pomenila, da jo mora nekdo vzdrzevati vnaprej - in prvi teden, ko tega ne
+-- stori, asistent ponudi termin, ki ga ni.
+--
+-- starts_at je v casovnem pasu iz TIMEZONE, ne v UTC. Vse drugo v tej bazi je
+-- lokalno; mesanje obojega je vir napak, ki se pokazejo sele ob menjavi ure.
+-- ------------------------------------------------------------
+CREATE TABLE ai_appointments (
+  id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  starts_at    DATETIME     NOT NULL,
+  duration_min SMALLINT UNSIGNED NOT NULL DEFAULT 30,
+  name         VARCHAR(160) NOT NULL,
+  phone        VARCHAR(40)  NOT NULL,
+  email        VARCHAR(160) NULL,
+  note         VARCHAR(600) NULL COMMENT 'kaj zeli stranka na sestanku',
+  status       VARCHAR(16)  NOT NULL DEFAULT 'booked' COMMENT 'booked | cancelled',
+  created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_appointments_start (starts_at, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

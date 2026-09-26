@@ -24,6 +24,7 @@ const TOOL_NAME_MAP = [
     'get_business_info' => 'business-info',
     'submit_inquiry'    => 'submit-inquiry',
     'knowledge_lookup'  => 'knowledge-lookup',
+    'appointment'       => 'appointment',
 ];
 
 const MAX_HISTORY_MESSAGES = 20;

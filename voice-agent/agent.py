@@ -219,6 +219,59 @@ class TelefonskiAsistent(Agent):
         return await poklici_orodje("knowledge-lookup", {"query": query})
 
     @function_tool()
+    async def prosti_termini(self, context: RunContext) -> dict:
+        """Vrne proste termine za sestanek. Uporabi, ko stranka želi sestanek,
+        ogled ali posvet. Stranki povej termine iz polja 'spoken' in ne več kot
+        dva ali tri naenkrat — po telefonu si četrtega nihče ne zapomni.
+        Termina si nikoli ne izmisli.
+        """
+        await mašilo(context, "isce")
+        return await poklici_orodje("appointment", {"action": "find"})
+
+    @function_tool()
+    async def rezerviraj_termin(
+        self,
+        context: RunContext,
+        starts_at: str,
+        name: str,
+        phone: str = "",
+        email: str | None = None,
+        note: str | None = None,
+    ) -> dict:
+        """Rezervira izbrani termin. Uporabi šele, ko je stranka termin potrdila
+        in si zbrala ime. Pred rezervacijo na kratko ponovi, kdaj je termin.
+
+        Args:
+            starts_at: Termin natanko tako, kot ga je vrnilo orodje za proste termine.
+            name: Ime in priimek stranke.
+            phone: Telefonska številka. Med klicem pusti prazno — vzame se
+                številka, s katere stranka kliče.
+            email: Neobvezno, za potrditev po e-pošti.
+            note: Kaj želi stranka na sestanku.
+        """
+        await mašilo(context, "zapis")
+
+        telefon = (phone or self.telefon_klicatelja or "").strip()
+        if not telefon:
+            return {
+                "success": False,
+                "data": None,
+                "error": "Manjka telefonska številka. Vprašaj stranko zanjo.",
+            }
+
+        vsebina = {
+            "action": "book",
+            "starts_at": starts_at,
+            "name": name,
+            "phone": telefon,
+        }
+        for kljuc, vrednost in (("email", email), ("note", note)):
+            if vrednost:
+                vsebina[kljuc] = vrednost
+
+        return await poklici_orodje("appointment", vsebina)
+
+    @function_tool()
     async def submit_inquiry(
         self,
         context: RunContext,

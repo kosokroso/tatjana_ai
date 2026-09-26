@@ -129,6 +129,42 @@ interface AdapterInterface
      * @throws AdapterException
      */
     public function deleteKnowledge(int $id): bool;
+
+    /**
+     * Prosti termini v naslednjih dneh.
+     *
+     * Izpeljani iz delovnega časa in že zasedenih terminov, ne iz vnaprej
+     * pripravljene tabele: tako ni česa vzdrževati in asistent ne more ponuditi
+     * termina, ki ga ni.
+     *
+     * @return string[] Začetki v obliki "Y-m-d H:i"
+     * @throws AdapterException
+     */
+    public function findFreeSlots(DateTimeImmutable $from, int $days, int $durationMin, int $limit = 6): array;
+
+    /**
+     * Rezervira termin. Vrne številko termina, ali 0, če je bil medtem zaseden.
+     *
+     * @param array $appointment starts_at, duration_min, name, phone, email, note
+     * @throws AdapterException
+     */
+    public function createAppointment(array $appointment): int;
+
+    /**
+     * Termini za skrbniško stran.
+     *
+     * @param array $filter from (DateTimeImmutable), status
+     * @return array[]
+     * @throws AdapterException
+     */
+    public function listAppointments(array $filter = []): array;
+
+    /**
+     * Odpove termin. Vrstica ostane, da se vidi, kaj se je zgodilo.
+     *
+     * @throws AdapterException
+     */
+    public function cancelAppointment(int $id): bool;
 }
 
 /**

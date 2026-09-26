@@ -87,4 +87,24 @@ final class VascoAdapter implements AdapterInterface
     {
         throw new AdapterException('VascoAdapter::deleteKnowledge ni implementiran.');
     }
+
+    public function findFreeSlots(DateTimeImmutable $from, int $days, int $durationMin, int $limit = 6): array
+    {
+        throw new AdapterException('VascoAdapter::findFreeSlots ni implementiran.');
+    }
+
+    public function createAppointment(array $appointment): int
+    {
+        throw new AdapterException('VascoAdapter::createAppointment ni implementiran.');
+    }
+
+    public function listAppointments(array $filter = []): array
+    {
+        throw new AdapterException('VascoAdapter::listAppointments ni implementiran.');
+    }
+
+    public function cancelAppointment(int $id): bool
+    {
+        throw new AdapterException('VascoAdapter::cancelAppointment ni implementiran.');
+    }
 }

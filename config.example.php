@@ -40,7 +40,7 @@ define('ADAPTER', 'DirectMySQLAdapter');
 // ---------------------------------------------------------------
 // Tooli, ki so dovoljeni prek HTTP. Karkoli drugega vrne 404.
 // ---------------------------------------------------------------
-define('ALLOWED_TOOLS', ['product-lookup', 'order-lookup', 'business-info', 'submit-inquiry', 'knowledge-lookup']);
+define('ALLOWED_TOOLS', ['product-lookup', 'order-lookup', 'business-info', 'submit-inquiry', 'knowledge-lookup', 'appointment']);
 
 // ---------------------------------------------------------------
 // Logging
@@ -220,6 +220,23 @@ define('ALERT_EMAIL', '');
 
 // Po koliko dneh velja povprasevanje v stanju "new" za spregledano.
 define('INQUIRY_ALERT_DAYS', 2);
+
+// ---------------------------------------------------------------
+// Narocanje na termin
+//
+// Prosti termini se izpeljejo iz ai_business_hours in ze zasedenih vrstic v
+// ai_appointments. Tabele prostih terminov ni - nihce je ne bi vzdrzeval.
+// ---------------------------------------------------------------
+
+// Dolzina enega termina v minutah. Delovni cas se razdeli na taksne kose.
+define('APPOINTMENT_MINUTES', 30);
+
+// Koliko dni vnaprej asistent isce proste termine.
+define('APPOINTMENT_DAYS_AHEAD', 14);
+
+// Koliko minut vnaprej mora biti termin. Termina cez deset minut stranka ne
+// more ujeti, podjetje pa se nanj ne more pripraviti.
+define('APPOINTMENT_LEAD_MIN', 120);
 
 // ---------------------------------------------------------------
 // SMTP za obvestila o povprasevanjih.

@@ -513,4 +513,158 @@ final class DirectMySQLAdapter implements AdapterInterface
             throw new AdapterException('Brisanje zapisa ni uspelo.');
         }
     }
+
+    public function findFreeSlots(DateTimeImmutable $from, int $days, int $durationMin, int $limit = 6): array
+    {
+        $delovnik = $this->getBusinessHours();
+        if (!$delovnik) {
+            return [];
+        }
+
+        $days     = max(1, min($days, 30));
+        $durationMin = max(10, min($durationMin, 240));
+        $do       = $from->modify('+' . $days . ' days');
+        $zasedeni = $this->zasedeniTermini($from, $do);
+
+        // Termina se ne ponudi za cez nekaj minut: stranka ga ne more ujeti in
+        // podjetje se nanj ne more pripraviti.
+        $najprej = $from->modify('+' . (defined('APPOINTMENT_LEAD_MIN') ? (int) APPOINTMENT_LEAD_MIN : 120) . ' minutes');
+
+        $prosti = [];
+        $dan = $from->setTime(0, 0);
+
+        for ($i = 0; $i < $days && count($prosti) < $limit; $i++, $dan = $dan->modify('+1 day')) {
+            // ISO: 1 = ponedeljek ... 7 = nedelja, enako kot ai_business_hours.
+            $vrstica = $delovnik[(int) $dan->format('N')] ?? null;
+            if ($vrstica === null || $vrstica['closed'] || !$vrstica['opens_at'] || !$vrstica['closes_at']) {
+                continue;
+            }
+
+            [$uraOd, $minOd] = array_map('intval', explode(':', $vrstica['opens_at']));
+            [$uraDo, $minDo] = array_map('intval', explode(':', $vrstica['closes_at']));
+
+            $zacetek = $dan->setTime($uraOd, $minOd);
+            $konec   = $dan->setTime($uraDo, $minDo);
+
+            while ($zacetek->modify('+' . $durationMin . ' minutes') <= $konec) {
+                if ($zacetek >= $najprej && !$this->seKrije($zacetek, $durationMin, $zasedeni)) {
+                    $prosti[] = $zacetek->format('Y-m-d H:i');
+                    if (count($prosti) >= $limit) {
+                        break;
+                    }
+                }
+                $zacetek = $zacetek->modify('+' . $durationMin . ' minutes');
+            }
+        }
+
+        return $prosti;
+    }
+
+    /** @return array[] pari zacetek/konec zasedenih terminov */
+    private function zasedeniTermini(DateTimeImmutable $od, DateTimeImmutable $do): array
+    {
+        try {
+            $stmt = $this->pdo()->prepare(
+                'SELECT starts_at, duration_min FROM ' . $this->table('appointments') . '
+                 WHERE status = :status AND starts_at >= :od AND starts_at < :do'
+            );
+            $stmt->execute([
+                'status' => 'booked',
+                'od'     => $od->format('Y-m-d H:i:s'),
+                'do'     => $do->format('Y-m-d H:i:s'),
+            ]);
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::zasedeniTermini: ' . $e->getMessage());
+            throw new AdapterException('Branje terminov ni uspelo.');
+        }
+
+        $zasedeni = [];
+        foreach ($stmt->fetchAll() as $vrstica) {
+            $z = new DateTimeImmutable((string) $vrstica['starts_at']);
+            $zasedeni[] = [$z, $z->modify('+' . (int) $vrstica['duration_min'] . ' minutes')];
+        }
+        return $zasedeni;
+    }
+
+    /** @param array[] $zasedeni */
+    private function seKrije(DateTimeImmutable $zacetek, int $durationMin, array $zasedeni): bool
+    {
+        $konec = $zacetek->modify('+' . $durationMin . ' minutes');
+        foreach ($zasedeni as [$zasedenOd, $zasedenDo]) {
+            if ($zacetek < $zasedenDo && $konec > $zasedenOd) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function createAppointment(array $appointment): int
+    {
+        $zacetek = new DateTimeImmutable((string) $appointment['starts_at']);
+        $trajanje = max(10, min((int) ($appointment['duration_min'] ?? 30), 240));
+
+        // Med tem, ko je stranka povedala ime in telefon, je termin lahko vzel
+        // nekdo drug. Preverimo tik pred zapisom, sicer se dve stranki dobita
+        // ob isti uri in to opazi sele podjetje.
+        if ($this->seKrije($zacetek, $trajanje, $this->zasedeniTermini(
+            $zacetek->modify('-1 day'),
+            $zacetek->modify('+1 day')
+        ))) {
+            return 0;
+        }
+
+        try {
+            $stmt = $this->pdo()->prepare(
+                'INSERT INTO ' . $this->table('appointments') . '
+                 (starts_at, duration_min, name, phone, email, note)
+                 VALUES (:starts_at, :duration_min, :name, :phone, :email, :note)'
+            );
+            $stmt->execute([
+                'starts_at'    => $zacetek->format('Y-m-d H:i:s'),
+                'duration_min' => $trajanje,
+                'name'         => (string) ($appointment['name'] ?? ''),
+                'phone'        => (string) ($appointment['phone'] ?? ''),
+                'email'        => ($appointment['email'] ?? '') === '' ? null : (string) $appointment['email'],
+                'note'         => ($appointment['note'] ?? '') === '' ? null : (string) $appointment['note'],
+            ]);
+            return (int) $this->pdo()->lastInsertId();
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::createAppointment: ' . $e->getMessage());
+            throw new AdapterException('Rezervacija termina ni uspela.');
+        }
+    }
+
+    public function listAppointments(array $filter = []): array
+    {
+        $od = $filter['from'] ?? new DateTimeImmutable('today');
+
+        try {
+            $stmt = $this->pdo()->prepare(
+                'SELECT id, starts_at, duration_min, name, phone, email, note, status, created_at
+                 FROM ' . $this->table('appointments') . '
+                 WHERE starts_at >= :od
+                 ORDER BY starts_at
+                 LIMIT 200'
+            );
+            $stmt->execute(['od' => $od->format('Y-m-d H:i:s')]);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::listAppointments: ' . $e->getMessage());
+            throw new AdapterException('Branje terminov ni uspelo.');
+        }
+    }
+
+    public function cancelAppointment(int $id): bool
+    {
+        try {
+            $stmt = $this->pdo()->prepare(
+                'UPDATE ' . $this->table('appointments') . ' SET status = :status WHERE id = :id'
+            );
+            $stmt->execute(['status' => 'cancelled', 'id' => $id]);
+            return $stmt->rowCount() > 0;
+        } catch (PDOException $e) {
+            error_log('DirectMySQLAdapter::cancelAppointment: ' . $e->getMessage());
+            throw new AdapterException('Odpoved termina ni uspela.');
+        }
+    }
 }

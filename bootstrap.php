@@ -81,6 +81,7 @@ if (!defined('APP_BOOTSTRAPPED')) {
     require_once __DIR__ . '/tools/implementations/BusinessInfoTool.php';
     require_once __DIR__ . '/tools/implementations/InquiryTool.php';
     require_once __DIR__ . '/tools/implementations/KnowledgeTool.php';
+    require_once __DIR__ . '/tools/implementations/AppointmentTool.php';
 }
 
 return ToolRegistry::create();

@@ -144,5 +144,48 @@
         ]
       }
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "appointment",
+      "description": "Prosti termini za sestanek in rezervacija. Z action 'find' vrne proste termine (polje 'spoken' je zapis, ki ga povej stranki). Z action 'book' termin rezervira — za to potrebuješ starts_at s seznama, ime in telefonsko številko. Termina si nikoli ne izmisli; ponudi samo tiste, ki jih je vrnil 'find'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "find",
+              "book"
+            ],
+            "description": "'find' za proste termine, 'book' za rezervacijo."
+          },
+          "starts_at": {
+            "type": "string",
+            "description": "Izbrani termin, natanko kot ga je vrnil 'find', npr. '2026-09-27 10:00'."
+          },
+          "name": {
+            "type": "string",
+            "description": "Ime in priimek stranke."
+          },
+          "phone": {
+            "type": "string",
+            "description": "Telefonska številka stranke."
+          },
+          "email": {
+            "type": "string",
+            "description": "Neobvezno: e-pošta za potrditev."
+          },
+          "note": {
+            "type": "string",
+            "description": "Kaj želi stranka na sestanku."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      }
+    }
   }
 ]
