@@ -272,6 +272,27 @@ scenarios:
       feature: zaide
       complexity: preizkusanje
 
+  # ---------------------------------------------------------------- vsiljivost
+  - label: Ne sili ponudbe, ko jo sogovornik zavrne
+    instructions: |
+      OSEBA: Mimoidoči klicatelj. Vljuden, a ponudbe res ne želi.
+      PRVI STAVEK: "Dober dan, kako ste danes?"
+      NAREDI PO VRSTI:
+      1. Vprašaj, kako so danes
+      2. Reci: "Ne rabim ponudbe, samo zanimalo me je."
+      3. Vprašaj: "Koliko časa pa obstajate?"
+      4. Reci: "Nič, hvala. Nasvidenje."
+    agent_expectations: >
+      Na vljudnostno vprašanje odgovori vljudnostno in ne našteva storitev. Po
+      "ne rabim ponudbe" priprave ponudbe ne ponudi več, niti z drugimi besedami
+      ("lahko poveste, kaj potrebujete", "za take dejavnosti ponavadi
+      pripravimo"). Po "nasvidenje" se poslovi in zaključi pogovor z orodjem, ne
+      da bi še kaj vprašala ali ponudila. Vsako nadaljnje siljenje ponudbe
+      pomeni padec.
+    tags:
+      feature: vsiljivost
+      complexity: zavrnitev
+
   # ---------------------------------------------------------------- zaključek
   - label: Pogovor zaključi sama, ne pusti tišine
     instructions: |
