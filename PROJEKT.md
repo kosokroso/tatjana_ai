@@ -570,6 +570,7 @@ s PAT v URL-ju.
 | Povpraševanje vrne napako, čeprav je zapis v bazi | Obvestilo po pošti je padlo in podrlo cel klic. Pošiljanje mora biti v `try/catch`. |
 | `proto: syntax error` pri `lk` CLI | JSON shranjen z BOM. Uporabi `[System.IO.File]::WriteAllText` z `UTF8Encoding($false)`. |
 | Azure: "region not accepting new customers" | West Europe je poln. |
+| Glas na vzorcu zveni bolje, po telefonu slabše | Vzorec je 16 kHz naravnost v zvočnike, telefon stisne na 8 kHz. Večjezični glasovi to prenesejo slabše od lastnih slovenskih. `en-US-AvaMultilingualNeural` je bil tako preizkušen in zavrnjen. Primerjaj vedno s pravim klicem. |
 | Asistentka se ne javi, telefon samo zvoni | Agent ne teče. V oblaku teče posnetek izpred zadnjega `lk agent deploy`, ne tvoja mapa. |
 | Klica ne prekine, čeprav orodje obstaja | `session.aclose()` znotraj orodja `koncaj_pogovor`: seja čaka na orodje, orodje na sejo. Zapri samo sobo. |
 | `unable to create agent: maximum number of agents reached (1/1)` | Mesto zaseda Builder agent iz nadzorne plošče. Izbriši ga; `lk agent deploy` nanj ne dela. |
