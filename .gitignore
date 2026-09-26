@@ -12,3 +12,6 @@ logs/ratelimit/
 .DS_Store
 Thumbs.db
 *.swp
+
+# Vzorci glasov za primerjavo na uho. Niso del izdelka.
+glasovi/
