@@ -26,6 +26,20 @@ final class InquiryTool extends Tool
         return 'submit-inquiry';
     }
 
+    /** Vrednosti, ki jih model vpise namesto manjkajocega podatka. */
+    private const NADOMESTKI = [
+        'ime', 'ime priimek', 'ime in priimek', 'neznano', 'ni podano', 'ni znano',
+        'stranka', 'n/a', 'na', 'xxx', 'test', 'brez', '-', '--', '?', '...',
+        'telefon', 'telefonska', 'telefonska stevilka', 'telefonska številka',
+        'e-posta', 'e-pošta', 'email', 'aaa', 'abc',
+        'example@example.com', 'test@test.com', 'info@example.com',
+    ];
+
+    private static function jeNadomestek(string $vrednost): bool
+    {
+        return in_array(mb_strtolower(trim($vrednost)), self::NADOMESTKI, true);
+    }
+
     public function handle(array $input): ToolResponse
     {
         $name  = $this->requireString($input, 'name', 120);
@@ -45,6 +59,19 @@ final class InquiryTool extends Tool
         $product  = $this->optionalString($input, 'product', 160);
         $quantity = $this->optionalString($input, 'quantity', 60);
         $note     = $this->optionalString($input, 'note', 500);
+
+        // Nadomestki, ki jih model vpise, kadar podatka nima. Zapisano
+        // povprasevanje s takim poljem je slabse od nobenega: nekdo ga bo
+        // poskusil poklicati. Telefonski agent to lovi ze pri sebi; tu velja
+        // za obe poti, torej tudi za klepet na strani.
+        foreach (['ime' => $name, 'telefonsko številko' => $phone, 'e-pošto' => $email] as $polje => $vrednost) {
+            if (self::jeNadomestek($vrednost)) {
+                return ToolResponse::invalidInput(
+                    'Za ' . $polje . ' je vpisan nadomestek, ne pravi podatek. Vprašaj stranko '
+                    . 'in ne vpisuj ničesar, česar nisi slišala.'
+                );
+            }
+        }
 
         $digits = (string) preg_replace('/\D+/', '', $phone);
         if (strlen($digits) < self::MIN_PHONE_DIGITS) {

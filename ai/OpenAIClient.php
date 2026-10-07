@@ -43,13 +43,27 @@ final class OpenAIClient
     public function chat(array $messages, array $tools = []): array
     {
         $payload = [
-            'model'       => $this->model,
-            'messages'    => $messages,
-            // 0,3 je zvenelo kot posnetek — model je vedno izbral najbolj
-            // pričakovano besedo. 0,6 da več raznolikosti v ubeseditvi. Cen to
-            // ne ogroža, ker jih prepiše iz orodja in ne sestavlja sam.
-            'temperature' => defined('LLM_TEMPERATURE') ? (float) LLM_TEMPERATURE : 0.6,
+            'model'    => $this->model,
+            'messages' => $messages,
         ];
+
+        // 0,3 je zvenelo kot posnetek — model je vedno izbral najbolj
+        // pričakovano besedo. 0,6 da več raznolikosti v ubeseditvi. Cen to
+        // ne ogroža, ker jih prepiše iz orodja in ne sestavlja sam.
+        //
+        // "auto" ali prazno pomeni, da temperature ne pošljemo. Novejši modeli
+        // je pogosto ne sprejmejo in klic pade — na telefonu je to že ustavilo
+        // vse klice, dokler nismo polja izpustili.
+        $temperatura = defined('LLM_TEMPERATURE') ? strtolower(trim((string) LLM_TEMPERATURE)) : '0.6';
+        if ($temperatura !== '' && $temperatura !== 'auto') {
+            $payload['temperature'] = (float) $temperatura;
+        }
+
+        // Novejše družine razmišljajo, preden odgovorijo. V klepetu to pomeni
+        // čakanje na prvo besedo, zato najnižja stopnja, kadar je nastavljena.
+        if (defined('LLM_NAPOR') && LLM_NAPOR !== '') {
+            $payload['reasoning_effort'] = LLM_NAPOR;
+        }
 
         if ($tools) {
             $payload['tools']       = $tools;

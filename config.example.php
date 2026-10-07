@@ -117,12 +117,19 @@ define('REQUIRE_HTTPS', false);
 // OpenAI — za chat sloj (/ai)
 // ---------------------------------------------------------------
 define('OPENAI_API_KEY', '');
-define('OPENAI_MODEL', 'gpt-4o');
+// Model mora biti isti kot na telefonu (LLM_MODEL v voice-agent/.env), sicer
+// asistentka na strani in po telefonu odgovarja drugace.
+define('OPENAI_MODEL', 'gpt-5.4-mini');
 define('OPENAI_TIMEOUT_SECONDS', 20);
 
 // Raznolikost ubeseditve. 0,3 zveni kot posnetek, 0,6 kot pogovor.
 // Visje od 0,8 ne priporocam - model zacne prosto ravnati s podatki.
-define('LLM_TEMPERATURE', 0.6);
+// 'auto' pomeni, da temperature ne posljemo. Novejsi modeli je pogosto ne
+// sprejmejo in klic pade. Isto velja v voice-agent/.env.
+define('LLM_TEMPERATURE', 'auto');
+
+// Koliko naj model razmislja pred odgovorom. Prazno = privzetek modela.
+define('LLM_NAPOR', 'minimal');
 
 // ---------------------------------------------------------------
 // Govor (glasovni asistent na index.html)
@@ -137,7 +144,10 @@ define('SPEECH_LANGUAGE', 'sl');
 // Azure ima prava slovenska glasova (sl-SI-PetraNeural, sl-SI-RokNeural), zato
 // pravilno prebere stevila in cene, prek SSML pa telefonsko stevilko po stevkah.
 // OpenAI je vecjezicni model, ki slovenscino bere s tujim naglasom.
-define('TTS_PROVIDER', 'openai');
+// 'azure' da prava slovenska glasova; 'openai' bere slovenscino s tujim
+// naglasom. Telefon uporablja Azure, zato mora tudi stran - drugace isti
+// asistent na dveh mestih govori z dvema glasovoma.
+define('TTS_PROVIDER', 'azure');
 
 define('AZURE_SPEECH_KEY',    '');
 define('AZURE_SPEECH_REGION', 'westeurope');

@@ -58,6 +58,11 @@ if ($text === '') {
 }
 
 $text = mb_substr($text, 0, NAJVEC_ZNAKOV);
+$text = samoLatinica($text);
+
+if ($text === '') {
+    napaka('Po filtriranju ni ostalo nič za izgovoriti.', 400);
+}
 $ponudnik = defined('TTS_PROVIDER') && TTS_PROVIDER !== '' ? TTS_PROVIDER : 'openai';
 
 [$zvok, $status, $cnapaka] = $ponudnik === 'azure'
@@ -128,6 +133,35 @@ function vSsml(string $text, string $glas, string $jezik): string
 }
 
 /** @return array{0: string|false, 1: int, 2: string} */
+/**
+ * Odstrani znake iz tujih pisav, preden gre besedilo v govor.
+ *
+ * Model je v enem telefonskem odgovoru izpustil armenski "Եթե" sredi
+ * slovenskega stavka. Sogovornik tega ni videl — slišal je, kako je glas to
+ * poskusil prebrati. Z navodilom v promptu tega ni mogoče zanesljivo
+ * preprečiti, ker napaka ne nastane iz razumevanja, ampak iz izbire žetona.
+ *
+ * Latinica sega do U+024F; slovenski č, š in ž so znotraj tega. Nad tem
+ * ostanejo samo valute in ločila. Telefonski agent ima isti filter v tts_node.
+ */
+function samoLatinica(string $besedilo): string
+{
+    $dovoljeni = ['€', '£', '$', '—', '–', '…', '„', '“', '”', '‘', '’', '«', '»'];
+
+    $izid = '';
+    $dolzina = mb_strlen($besedilo);
+    for ($i = 0; $i < $dolzina; $i++) {
+        $znak = mb_substr($besedilo, $i, 1);
+        $koda = mb_ord($znak, 'UTF-8');
+        if ($koda !== false && ($koda <= 0x024F || in_array($znak, $dovoljeni, true))) {
+            $izid .= $znak;
+        }
+    }
+
+    // Odstranjena beseda pusti dvojni presledek; ta se sliši kot zatikanje.
+    return trim((string) preg_replace('/\s{2,}/u', ' ', $izid));
+}
+
 function azureGovor(string $text): array
 {
     $kljuc  = defined('AZURE_SPEECH_KEY')    ? AZURE_SPEECH_KEY    : '';
