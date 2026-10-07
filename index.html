@@ -186,31 +186,6 @@
     font-family: ui-monospace, Consolas, monospace;
   }
 
-  /* ---------- portali ---------- */
-  .portali { margin-top: 64px; }
-  .portali h2 {
-    font-size: 13px; font-weight: 700; color: var(--muted);
-    text-transform: uppercase; letter-spacing: .12em; margin: 0 0 18px;
-  }
-  .kartice { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 16px; }
-  .kartica {
-    display: block; background: var(--panel); border: 1px solid var(--line);
-    border-radius: 18px; padding: 22px 24px; color: var(--ink);
-    position: relative; overflow: hidden;
-    transition: transform .22s, box-shadow .22s, border-color .22s;
-  }
-  .kartica::after {
-    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
-    background: linear-gradient(90deg, var(--accent), var(--teal));
-    transform: scaleX(0); transform-origin: left; transition: transform .28s;
-  }
-  .kartica:hover {
-    transform: translateY(-4px); text-decoration: none;
-    box-shadow: 0 14px 34px rgba(31,28,25,.08); border-color: transparent;
-  }
-  .kartica:hover::after { transform: scaleX(1); }
-  .kartica strong { display: block; font-size: 16.5px; margin-bottom: 5px; }
-  .kartica span { color: var(--muted); font-size: 13.5px; }
 
   footer {
     margin-top: 46px; padding-top: 24px; border-top: 1px solid var(--line);
@@ -239,7 +214,6 @@
   <header>
     <div class="brand">Kreativni <span>Splet</span></div>
     <nav>
-      <a href="admin/">Povpraševanja</a>
       <a href="https://kreativnisplet.si/">Nazaj na stran</a>
     </nav>
   </header>
@@ -264,30 +238,9 @@
 
   <div class="log" id="log"></div>
 
-  <div class="portali">
-    <h2>Za ekipo</h2>
-    <div class="kartice">
-      <a class="kartica" href="admin/">
-        <strong>Povpraševanja</strong>
-        <span>Kdo je pisal, kaj potrebuje, kaj je že urejeno.</span>
-      </a>
-      <a class="kartica" href="admin/storitve.php">
-        <strong>Storitve in cene</strong>
-        <span>Kar je vpisano tu, asistentka pove strankam.</span>
-      </a>
-      <a class="kartica" href="admin/pogovori.php">
-        <strong>Pogovori</strong>
-        <span>Kje je asistentka zgrešila in kaj je treba popraviti.</span>
-      </a>
-      <a class="kartica" href="data-view.php">
-        <strong>Stanje sistema</strong>
-        <span>Baza, poraba, preizkus pošiljanja.</span>
-      </a>
-    </div>
-  </div>
 
   <footer>
-    <span>Interna stran. Ni povezana iz menija in ni indeksirana.</span>
+    <span>Asistentka odgovarja na vprašanja o ponudbi. Za zavezujočo ponudbo nas pokličite.</span>
     <span>info@kreativnisplet.si &nbsp;·&nbsp; +386 31 455 881</span>
   </footer>
 </div>

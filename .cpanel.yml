@@ -9,8 +9,13 @@ deployment:
     # Rsync cilja izkljucno to podmapo — WordPressovih datotek v public_html
     # se ne dotakne.
     - export DEPLOYPATH=$HOME/public_html/asistent/
+    # setup.php in data-view.php ne gresta na zivo stran. Prvi zna zapisati
+    # config.php, drugi kaze osebne podatke strank; oba ostaneta v repozitoriju
+    # za namestitev pri novi stranki, na streznik pa ju je treba nesti rocno.
+    # Brez tega izvzema bi ju vsak deploy vrnil nazaj, ceprav bi ju izbrisal.
+    #
     # Brez --chmod bi rsync -a prenesel pravice izvorne mape: cPanel git repozitorij
     # je 0700, spletni streznik pa v tako mapo ne more vstopiti in vrne 404 na vseh
     # datotekah. D755/F644 sta pravici, ki jih Apache/LiteSpeed potrebuje.
-    - /usr/bin/rsync -rlt --chmod=D755,F644 --exclude='.git' --exclude='.cpanel.yml' --exclude='config.php' --exclude='logs/*.log' ./ $DEPLOYPATH
+    - /usr/bin/rsync -rlt --chmod=D755,F644 --exclude='.git' --exclude='.cpanel.yml' --exclude='config.php' --exclude='logs/*.log' --exclude='setup.php' --exclude='data-view.php' --exclude='scenarios*.yaml' ./ $DEPLOYPATH
     - /bin/chmod 755 $DEPLOYPATH

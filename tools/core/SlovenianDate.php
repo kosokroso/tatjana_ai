@@ -44,7 +44,12 @@ final class SlovenianDate
      */
     public static function relativeDay(DateTimeInterface $date, DateTimeInterface $today): ?string
     {
-        $diff = (int) $today->diff($date)->format('%r%a');
+        // Primerjamo koledarska dneva, ne razmika v urah. Brez tega je bil
+        // jutrisnji termin ob devetih "danes", ker je od danasnjih sestih zvecer
+        // do njega manj kot štiriindvajset ur — in diff() steje cele dneve.
+        $odDne = (new DateTimeImmutable($today->format('Y-m-d')));
+        $doDne = (new DateTimeImmutable($date->format('Y-m-d')));
+        $diff  = (int) $odDne->diff($doDne)->format('%r%a');
 
         switch ($diff) {
             case 0:  return 'danes';
