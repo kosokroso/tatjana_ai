@@ -448,6 +448,11 @@ zapomnil.
 SDK že na voljo. Sproži se, ko stranka izrecno zahteva človeka, ko dvakrat
 zapored ne dobi odgovora, ali ko gre za pritožbo.
 
+**`transfer_to` mora biti SIP URI, ne tel: URI.** DIDWW prevezov na tel: URI
+ne podpira in vrne `603 Unconfigured xfer for tel URIs`; v Refer-To hoce
+`sip:<stevilka>@<gostitelj odhodnega trunka>`. Zato je v `TRANSFER_PHONE`
+celoten URI, pretvorba v `tel:` v agentu pa velja le za ponudnike, ki ga sprejmejo.
+
 **Zakaj:** to je največji dejavnik zaupanja pri prodaji. "Če te ne razume, te
 preveže" odpravi glavni ugovor stranke.
 

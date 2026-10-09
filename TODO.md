@@ -133,12 +133,18 @@ Razlogi in ocene dela: [PROJEKT.md, razdelek 9](PROJEKT.md#9-nadgradnje-ki-bi-na
          zavihek **Authorization** dohodnega trunka.
       5. Dohodni trunk → zavihek **Signalling** → **Max Transfers** na `1` ali več.
          Pri `0` so zahteve SIP REFER zavrnjene.
+         Potrjeno 9. 10. 2026: klic ob 7.54 je padel prav tu, Max Transfers je bil `0`.
       6. *Network Protocol* dohodnega trunka se mora ujemati z različico IP
          naslovov, dovoljenih na odhodnem. Neujemanje je najpogostejša napaka.
+      7. **V `TRANSFER_PHONE` vpisi SIP URI, ne stevilke.** Po popravku Max
+         Transfers na `1` je klic ob 15.43 padel z `603 Unconfigured xfer for
+         tel URIs` - DIDWW prevezov na tel: URI ne podpira. V Refer-To hoce
+         `sip:38631455881@fra.eu.out.didww.com`, torej celoten URI z gostiteljem
+         odhodnega trunka. Agent vrednost, ki se zacne s `sip:`, poslje nespremenjeno.
 
       Odhodne minute se plačajo posebej. Isti odhodni trunk je pogoj tudi za
       samodejne odhodne klice iz razdelka *Kasneje*.
-- [ ] **Vpiši `TRANSFER_PHONE` v `config.php` na strežniku.** Prazno = prevezovanje izklopljeno
+- [x] **Vpiši `TRANSFER_PHONE` v `config.php` na strežniku.** Prazno = prevezovanje izklopljeno
 - [ ] **Preizkusi prevezo z resničnim klicem** — v konzolnem načinu je to prazen ukaz z opozorilom
 - [ ] **9.3** Več strank na eni namestitvi, po `sip.trunkPhoneNumber` *(teden; pred prvo zunanjo stranko)*
 
