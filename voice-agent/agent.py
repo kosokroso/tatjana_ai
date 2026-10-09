@@ -360,6 +360,12 @@ class TelefonskiAsistent(Agent):
         self._brez_orodja = 0
         self.telefon_podjetja = ""
         self.eposta_podjetja = ""
+        self.identiteta = identiteta
+        # TRANSFER_PHONE je v config.php navadna številka, LiveKit pa za REFER
+        # zahteva tel: URI v obliki E.164. Brez pretvorbe preveza tiho pade.
+        if prevezi_na and not prevezi_na.startswith(("tel:", "sip:")):
+            prevezi_na = "tel:" + "".join(z for z in prevezi_na if z.isdigit() or z == "+")
+        self.prevezi_na = prevezi_na
 
     async def on_user_turn_completed(
         self, turn_ctx: "llm.ChatContext", new_message: "llm.ChatMessage"
@@ -430,8 +436,6 @@ class TelefonskiAsistent(Agent):
         # occurred" — pri vsakem odgovoru, ne le pri tistem s tujo pisavo.
         async for okvir in Agent.default.tts_node(self, ocisceno(), model_settings):
             yield okvir
-        self.identiteta = identiteta
-        self.prevezi_na = prevezi_na
 
     @function_tool()
     async def search_services(

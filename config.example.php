@@ -194,6 +194,9 @@ define('BUSINESS_NAME_MESTNIK',  'Kreativnem spletu');
 // Stevilka, na katero asistent preveze klicatelja, ki zahteva cloveka.
 // Prazno = prevezovanje izklopljeno; asistent takrat ponudi povratni klic.
 //
+// Zapis v obliki E.164 z vodilnim plusom, na primer '+38631455881'. Presledke
+// agent odstrani sam, vodilne nicle pa ne - '00386...' je napacen zapis.
+//
 // Preveze samo znotraj delovnega casa iz ai_business_hours. Zunaj njega bi
 // klicatelj pristal na zvonjenju v prazni pisarni, kar je slabse od zabelezke.
 //
