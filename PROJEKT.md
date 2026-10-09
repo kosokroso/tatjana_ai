@@ -389,6 +389,7 @@ zapisano v promptu in je vsaj enkrat odpovedalo.
 | nujni primer ne gre skozi prevezo | `predaj_cloveku` | model se v vznemirjenem pogovoru vedno znova zateka k prevezi |
 | prevezo napove orodje | `predaj_cloveku` | model jo je napovedal še enkrat po neuspehu |
 | dva poskusa preveze | `predaj_cloveku` | med poskusoma je obljubljal znova |
+| napoved preveze čaka največ 4 s | `predaj_cloveku` | ročica govora se ni razrešila in REFER je odšel 11 s prepozno |
 | konec klica zahteva pravi pozdrav | `koncaj_pogovor` | klic se je končal z "V redu." |
 | povpraševanje zahteva potrditev | `submit_inquiry` + `InquiryTool` | oddal je takoj, ko je izvedel ime |
 | nadomestki v poljih se zavrnejo | `submit_inquiry` | vpisal je "ime priimek" |

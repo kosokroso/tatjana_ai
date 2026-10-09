@@ -792,8 +792,16 @@ class TelefonskiAsistent(Agent):
         # Napoved izgovori orodje, ne model. Doslej jo je napovedal model, nato
         # je preveza padla in model jo je napovedal znova - klicatelj je dvakrat
         # slisal "Prevezem vas", medtem ko se ni dogajalo nic.
+        #
+        # Čakanje je omejeno. "await session.say(...)" čaka na ročico govora in ta
+        # se ne razreši, dokler govor ni odigran do konca; ob prekinitvi sploh ne.
+        # 9. 10. 2026 je zato REFER odšel 11 s po klicu orodja in klicatelj je med
+        # tiho linijo odložil - LiveKit je vrnil "unknown call", ker noge klica ni
+        # bilo več. Stavek je dolg dve sekundi; če v štirih ni odigran, je preveza
+        # pomembnejša od napovedi.
         try:
-            await context.session.say("Prevežem vas, trenutek.", add_to_chat_ctx=True)
+            rocica = context.session.say("Prevežem vas, trenutek.", add_to_chat_ctx=True)
+            await asyncio.wait_for(rocica.wait_for_playout(), timeout=4.0)
         except Exception as e:  # noqa: BLE001
             log.debug("napovedi preveze ni bilo mogoče izgovoriti: %s", e)
 
