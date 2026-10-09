@@ -805,6 +805,10 @@ class TelefonskiAsistent(Agent):
         except Exception as e:  # noqa: BLE001
             log.debug("napovedi preveze ni bilo mogoče izgovoriti: %s", e)
 
+        # Meritev: loči čakanje na napoved od časa, ki ga porabi LiveKit za REFER.
+        # Brez te vrstice je iz dnevnika vidna samo skupna vrzel.
+        log.info("napoved končana, pošiljam REFER na %s", self.prevezi_na)
+
         # Dva poskusa v kodi, ne v modelu. Prva napaka je pogosto trenutna
         # (zasedena linija, počasen odziv ponudnika), model pa bi med poskusoma
         # znova obljubil prevezo — klicatelj bi dvakrat slišal "Prevežem vas",
