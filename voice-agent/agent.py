@@ -1032,6 +1032,15 @@ async def stevilka_klicatelja(ctx: agents.JobContext) -> tuple[str, str]:
     if not stevilka and identiteta_udelezenca.startswith("sip_"):
         stevilka = identiteta_udelezenca[4:].strip()
 
+    # Prevezo DIDWW izvede samo, če je From User na dohodnem trunku naša lastna
+    # številka (CLI druge noge mora biti na računu). Potem je "klicatelj" pri
+    # vseh klicih naša številka, vratar pa bi jih štel pod isto oznako. Taka
+    # številka je enaka skriti: stranko vprašamo za pravo.
+    # Prava številka je sicer v imenu v glavi From, a je LiveKit ne izpostavi.
+    trunk =(udelezenec.attributes.get("sip.trunkPhoneNumber") or "").strip()
+    if stevilka and trunk and "".join(filter(str.isdigit, stevilka)) == "".join(filter(str.isdigit, trunk)):
+        stevilka = ""
+
     # Imena lastnosti gredo v dnevnik, vrednosti ne. Iz imen se vidi, kaj je
     # LiveKit sploh poslal, brez tega pa se manjkajoča številka išče na slepo.
     # Vrednosti so telefonske številke in v dnevnik ne sodijo.
