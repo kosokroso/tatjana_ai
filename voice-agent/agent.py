@@ -568,10 +568,10 @@ class TelefonskiAsistent(Agent):
         """
         async def ocisceno():
             # Naslov pride iz modela po kosih, zato ga je treba sestaviti nazaj,
-            # preden ga razpišemo po črkah: Azurin glas prebere
-            # "janez.novak@gmail.com" kot besedo in stranka ne more preveriti,
-            # ali smo slišali prav. Zadržimo samo zadnjo nedokončano besedo —
-            # zamik je ena beseda, ne cel odgovor.
+            # preden ga preberemo z besedami: Azurin glas sicer prebere
+            # "janez.novak@gmail.com" kot eno besedo in afne ne izgovori.
+            # Zadržimo samo zadnjo nedokončano besedo — zamik je ena beseda, ne
+            # cel odgovor.
             ostanek = ""
             async for kos in text:
                 popravljen = samo_latinica(kos)
@@ -582,9 +582,9 @@ class TelefonskiAsistent(Agent):
                 if meja == -1:
                     continue
                 zdaj, ostanek = ostanek[: meja + 1], ostanek[meja + 1 :]
-                yield izgovori_eposte(zdaj, (self.eposta_podjetja,))
+                yield izgovori_eposte(zdaj)
             if ostanek:
-                yield izgovori_eposte(ostanek, (self.eposta_podjetja,))
+                yield izgovori_eposte(ostanek)
 
         # Agent.default.tts_node je asinhroni generator, osnovna tts_node pa
         # navadna metoda. Z "return super().tts_node(...)" iz async def se je
@@ -1574,6 +1574,12 @@ prek zvoka pogosto zamenjajo.
         # pogosto premolknejo; prekratek premor pomeni, da asistentka skoči v
         # besedo, predolg pa neroden molk. Po nekaj klicih popravi v .env.
         vad=zaznavalnik_govora(),
+        # Konec obrata določi VAD, kot je bilo ob uglaševanju VAD_TISINA in
+        # KONEC_MIN. livekit-agents 1.8 brez tega privzame model LiveKit Inference
+        # (inference.TurnDetector), ki čaka do 2,5 s, ali je sogovornik res
+        # končal, in pri VAD_TISINA pod 0,25 s sejo podre z ValueError. 11. 10.
+        # 2026 sta se po ponovni gradnji slike zgodila oba: tišina in padci klicev.
+        turn_detection="vad",
         # Po tolikšni tišini velja sogovornik za odsotnega in ga vprašamo,
         # ali je še tam.
         user_away_timeout=float(os.getenv("TISINA_VPRASAJ", "15")),

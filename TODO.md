@@ -61,9 +61,25 @@ Zadnja posodobitev: 26. 9. 2026 (zvečer)
       Ni preneseno, ker je panoga: zaloga in poslovalnice, katalog, roki
       dostave, Majini scenariji. Ostale razlike so Tatjanina orodja (termini,
       projekti), ki jih Maja nima.
-- [ ] **`VAD_TISINA=0.4` kot pri Maji.** Edina preostala razlika v nastavitvah.
-      Tatjana ima 0.2. Pri 0.2 s premora se narekovanje razreže na več obratov.
-      V `voice-agent/.env`, nato `lk agent update-secrets --secrets-file .env --overwrite`.
+- [X] **Tišina in padci po gradnji slike** (11. 10. 2026). `requirements.txt` je
+      imel `~=1.6`, zato je deploy `2f89691` potegnil `livekit-agents` 1.8. Ta
+      brez nastavitve za konec obrata uporabi model LiveKit Inference
+      (`inference.TurnDetector`): čaka do 2,5 s in pri `VAD_TISINA` pod 0,25 s
+      sejo podre z `ValueError: vad min_silence_duration=0.2s is too low for the
+      TurnDetector`. Popravek: `turn_detection="vad"` v `AgentSession` in
+      natančna različica `==1.8.1`.
+- [X] **Nikoli ne črkuje** (11. 10. 2026). Majin `izgovori_eposte` je del naslova
+      pred afno razpisal po črkah in slovenski glas je to bral kot angleško
+      abecedo. Zdaj z besedami ("marko pika zupan afna gmail pika com"), plus
+      pravilo v promptu. Tu se Tatjana namenoma razlikuje od Maje.
+- [X] **Številke stranke ne primerja s številko podjetja.** Klic je dobil "zadnje
+      tri številke se ne ujemajo s Kreativnim spletom". Model ima telefon
+      podjetja v promptu in ga je primerjal z narekovano številko.
+- [ ] **`VAD_TISINA=0.4` kot pri Maji — šele po meritvi.** Z `turn_detection="vad"`
+      je 0.2 spet veljavna in hitrejša. Dvigni samo, če se narekovanje e-pošte
+      še reže na več obratov, in nič drugega hkrati.
+- [ ] **Maja ima isti `~=1.6`.** Ob naslednjem deployu dobi 1.8 in model za konec
+      obrata — ne pade (ima 0.4), a bo počasnejša. Prenesi ista popravka.
 - [ ] **Preveri popravke z resničnim klicem.** Zahteva `lk agent deploy`.
       1. Pogovor o storitvi, ki je ni v ponudbi, prek desetega obrata, vmes "ja".
       2. Narekuj e-pošto trikrat, kot da je prepis padel.

@@ -7,9 +7,9 @@ Dva opravila, oba zato, ker po zvoku naslov ne pride cel:
    sam in se je motil: izpustil je "afna", črko "es" je zapisal kot "se", enkrat
    pa je v polje vpisal telefonsko številko.
 
-2. `izgovori_eposte` naslov pred govorom razpiše po črkah. Azurin glas prebere
-   "janez.novak@gmail.com" kot besedo in stranka ne more preveriti, ali smo
-   slišali prav — to je bil drugi vir izgubljenih ponudb.
+2. `izgovori_eposte` naslov pred govorom prebere z besedami: "janez pika novak
+   afna gmail pika com". Nikoli po črkah — slovenski glas je imena črk bral kot
+   angleško abecedo.
 
 Brez odvisnosti in brez stika s omrežjem, da se da pognati samostojno:
     python test_eposta.py
@@ -69,16 +69,9 @@ IZPUSTI = {"velika", "mala", "velik", "črka", "crka", "znak", "vse", "skupaj"}
 NASLOV = re.compile(r"^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$")
 NASLOV_V_BESEDILU = re.compile(r"[A-Za-zČŠŽčšž0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
 
-# Črka -> ime črke, za branje nazaj. Obratna smer CRKE ne zadošča, ker ima ta
-# po dva vnosa za isto črko.
-IMENA_CRK = {
-    "a": "a", "b": "be", "c": "ce", "č": "če", "d": "de", "e": "e",
-    "f": "ef", "g": "ge", "h": "ha", "i": "i", "j": "je", "k": "ka",
-    "l": "el", "m": "em", "n": "en", "o": "o", "p": "pe", "q": "ku",
-    "r": "er", "s": "es", "š": "eš", "t": "te", "u": "u", "v": "ve",
-    "w": "dvojni ve", "x": "iks", "y": "ipsilon", "z": "zet", "ž": "že",
-    ".": "pika", "-": "vezaj", "_": "podčrtaj", "+": "plus", "@": "afna",
-}
+# Ločila v naslovu, kot se izgovorijo. "@" ni tu: ta loči dva dela in se
+# izgovori posebej.
+LOCILA_IZGOVOR = {".": "pika", "-": "vezaj", "_": "podčrtaj", "+": "plus"}
 
 
 def je_naslov(naslov: str) -> bool:
@@ -110,33 +103,25 @@ def popravi_naslov(besedilo: str) -> tuple[str, str]:
     return naslov, "sestavljeno iz narekovanja"
 
 
-def izgovori_eposte(besedilo: str, izvzeti: "tuple[str, ...] | set[str] | list[str]" = ()) -> str:
-    """Naslove v besedilu pripravi za glas: del pred afno gre po črkah.
+def izgovori_eposte(besedilo: str) -> str:
+    """Naslove v besedilu pripravi za glas: z besedami, nikoli po črkah.
 
-    Domena ostane beseda ("afna gmail pika com"). Črkovanje domene je zvenelo
-    kot tuja abeceda in je trajalo dlje, kot je kdo pripravljen poslušati,
-    domene pa so izgovorljive besede. Napake nastajajo pred afno.
-
-    `izvzeti` so naslovi, ki se preberejo naravno, brez črkovanja — predvsem
-    naslov podjetja. Tega klicatelj ne zapisuje po nareku, ampak ga sliši kot
-    podatek, komu naj piše.
+    Brez tega Azurin glas "janez.novak@gmail.com" prebere kot eno besedo in
+    afne ne izgovori. Črkovanje (11. 10. 2026, po Majinem zgledu) je slovenski
+    glas bral kot angleško abecedo, zato ga ni več.
     """
-    brez_crkovanja = {naslov.strip().lower() for naslov in izvzeti if naslov}
-    return NASLOV_V_BESEDILU.sub(lambda u: _izgovor(u.group(0), brez_crkovanja), besedilo)
+    return NASLOV_V_BESEDILU.sub(lambda u: _izgovor(u.group(0)), besedilo)
 
 
-def _izgovor(naslov: str, brez_crkovanja: "set[str]" = frozenset()) -> str:
+def _izgovor(naslov: str) -> str:
     lokalno, _, domena = naslov.lower().rpartition("@")
-    domena_po_besedah = domena.replace(".", " pika ")
+    return f"{_z_besedami(lokalno)} afna {_z_besedami(domena)}"
 
-    if naslov.lower() in brez_crkovanja:
-        return f"{lokalno} afna {domena_po_besedah}"
 
-    return ", ".join([
-        ", ".join(IMENA_CRK.get(z, z) for z in lokalno),
-        "afna",
-        domena_po_besedah,
-    ])
+def _z_besedami(del_naslova: str) -> str:
+    for znak, beseda in LOCILA_IZGOVOR.items():
+        del_naslova = del_naslova.replace(znak, f" {beseda} ")
+    return " ".join(del_naslova.split())
 
 
 def _iz_narekovanja(besedilo: str) -> str:

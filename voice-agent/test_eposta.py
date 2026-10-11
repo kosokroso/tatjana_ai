@@ -69,32 +69,31 @@ preveri("pravi", je_naslov("a@b.si"), True)
 preveri("brez pike", je_naslov("a@b"), False)
 
 print("izgovori_eposte")
+# Nikoli po črkah: slovenski glas je imena črk bral kot angleško abecedo.
 preveri(
-    "znana domena ostane beseda",
+    "naslov z besedami",
     izgovori_eposte("Ponudbo pošljemo na janez@gmail.com, prav?"),
-    "Ponudbo pošljemo na je, a, en, e, zet, afna, gmail pika com, prav?",
-)
-preveri(
-    "neznana domena ostane beseda",
-    izgovori_eposte("ana@mojafirma.si"),
-    "a, en, a, afna, mojafirma pika si",
-)
-preveri(
-    "naslov podjetja brez črkovanja",
-    izgovori_eposte(
-        "Pišite na luka@kreativnisplet.si.", ("luka@kreativnisplet.si",)
-    ),
-    "Pišite na luka afna kreativnisplet pika si.",
-)
-preveri(
-    "izvzetje velja samo za ta naslov",
-    izgovori_eposte("ana@gmail.com", ("luka@kreativnisplet.si",)),
-    "a, en, a, afna, gmail pika com",
+    "Ponudbo pošljemo na janez afna gmail pika com, prav?",
 )
 preveri(
     "pika v imenu",
-    izgovori_eposte("a.b@gov.si"),
-    "a, pika, be, afna, gov pika si",
+    izgovori_eposte("janez.novak@gmail.com"),
+    "janez pika novak afna gmail pika com",
+)
+preveri(
+    "naslov podjetja enako",
+    izgovori_eposte("Pišite na luka@kreativnisplet.si."),
+    "Pišite na luka afna kreativnisplet pika si.",
+)
+preveri(
+    "podčrtaj, vezaj in števke",
+    izgovori_eposte("brus_72@t-2.net"),
+    "brus podčrtaj 72 afna t vezaj 2 pika net",
+)
+preveri(
+    "nobena črka sama zase",
+    any(len(b) == 1 and b.isalpha() for b in izgovori_eposte("marko.zupan@gmail.com").split()),
+    False,
 )
 preveri("besedilo brez naslova", izgovori_eposte("Pokličite na 05 300 10 10."), "Pokličite na 05 300 10 10.")
 
