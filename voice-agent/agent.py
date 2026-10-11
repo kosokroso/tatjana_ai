@@ -20,6 +20,7 @@ import asyncio
 import logging
 import os
 import random
+import re
 import time
 
 import httpx
@@ -27,6 +28,8 @@ from dotenv import load_dotenv
 from livekit import agents
 from livekit.agents import Agent, AgentSession, RunContext, function_tool, llm
 from livekit.plugins import azure, openai, silero
+
+from eposta import izgovori_eposte, popravi_naslov
 
 load_dotenv()
 
@@ -275,14 +278,47 @@ MASILA_ISKANJA = {
 }
 
 
+# Obrati, ki sami po sebi nič ne povedo. Sogovornik jih med pogovorom ponovi
+# večkrat ("ja", "mhm", "aha"), vprašanje pa niso. Prej je vsak tak obrat štel
+# proti meji obratov brez orodja in proti ponovitvam istega vprašanja.
+PRITRDITVE = {
+    "ja", "jaa", "jah", "mhm", "mhmm", "aha", "ahaa", "ok", "okej", "oukej",
+    "ne", "no", "prav", "dobro", "tako", "seveda", "tocno", "točno", "drzi",
+    "drži", "razumem", "super", "hvala", "prosim", "lahko", "eee", "mmm",
+}
+
+
+OBRATI_BREZ_ORODJA_PRIVZETO = 20
+
+
+def je_samo_pritrditev(besedilo: str) -> bool:
+    """Obrat brez vsebine: same pritrditve, nobenega vprašanja ali podatka."""
+    besede = [b for b in re.split(r"[^\w]+", (besedilo or "").lower(), flags=re.UNICODE) if b]
+    return bool(besede) and all(b in PRITRDITVE for b in besede)
+
+
+def je_podatek_stranke(besedilo: str) -> bool:
+    """Obrat, v katerem sogovornik narekuje kontakt, ki ga je asistentka zahtevala.
+
+    Ponovljena e-pošta ni ponovljeno vprašanje — narekuje jo znova, ker je
+    prepis prvič padel. Štetje takih obratov je 11. 10. 2026 končalo klic sredi
+    zbiranja podatkov za povpraševanje, kjer po zasnovi ni klica orodja.
+    """
+    nizko = (besedilo or "").lower()
+    # ponytail: narekovano e-pošto prepoznamo po "@", slovenski "afna" in
+    # najpogostejšem ponudniku. Izgovorjena domena drugega ponudnika ("pri siol
+    # pika net") sem ne pade — dopolni, ko tak klic res pade.
+    if "@" in nizko or "afna" in nizko or "gmail" in nizko:
+        return True
+    return len(re.findall(r"\d", nizko)) >= 6
+
+
 def kljuc_vprasanja(besedilo: str) -> str:
     """Isto vprašanje z drugimi besedami da isti ključ.
 
     Brez tega bi se ponovitve štele samo ob dobesedno enakem nizu, sogovornik
     pa vsakič vpraša malo drugače.
     """
-    import re
-
     besede = [b for b in re.split(r"[^\w]+", (besedilo or "").lower(), flags=re.UNICODE) if b]
     pomembne = sorted({b for b in besede if len(b) >= 4 and b not in MASILA_ISKANJA})
 
@@ -307,6 +343,92 @@ def je_nujni_primer(besedilo: str) -> bool:
 
 def _je_nadomestek(vrednost: str) -> bool:
     return (vrednost or "").strip().lower() in NADOMESTKI
+
+
+POTRDITVE_BESEDE = {
+    "ja", "jaa", "da", "drži", "drzi", "potrdim", "potrjujem", "potrjeno",
+    "prav", "velja", "seveda", "točno", "tocno", "ok", "okej", "tako",
+}
+POTRDITVE_ZVEZE = ("tako je", "v redu", "se strinjam", "kar oddaj")
+
+
+def _besede(besedilo: str) -> list[str]:
+    cisto = "".join(
+        z if z.isalnum() or z.isspace() else " " for z in (besedilo or "").lower()
+    )
+    return cisto.split()
+
+
+def _je_potrditev(besedilo: str) -> bool:
+    """Ali je to, kar je stranka nazadnje izgovorila, potrditev povzetka."""
+    cisto = " ".join(_besede(besedilo))
+    if any(zveza in cisto for zveza in POTRDITVE_ZVEZE):
+        return True
+    return any(
+        beseda in POTRDITVE_BESEDE or beseda.startswith("oddaj")
+        for beseda in cisto.split()
+    )
+
+
+# Vprašalnice, ki jih ni mogoče zamenjati za kaj drugega. "ali" in "a" nista
+# tu: "a" je tudi veznik, "ali" pa nastopa v naštevanju, in oboje bi slovo
+# zavrnilo po nepotrebnem. Prepis govora vprašaj pogosto izpusti, zato same
+# besede nosijo to presojo.
+VPRASALNICE = {
+    "kako", "koliko", "kje", "kam", "kdaj", "zakaj", "kdo", "koga", "komu",
+    "kateri", "katera", "katero", "katere", "kakšen", "kakšna", "kakšno",
+    "kakšni", "kakšnih",
+}
+
+
+def _je_vprasanje(besedilo: str) -> bool:
+    """Ali je stranka v tem stavku nekaj vprašala."""
+    if "?" in (besedilo or ""):
+        return True
+    return any(beseda in VPRASALNICE for beseda in _besede(besedilo))
+
+
+def _povzetek_vsebuje_ime(povzetek: str, name: str) -> bool:
+    """Ali je v povzetku res padlo ime stranke.
+
+    Potrditev sama ne pove, kaj je stranka potrdila: kontakt in "Ja, tako je"
+    zna povedati v istem stavku, potrditev pa takrat velja za prejšnji povzetek.
+    Ime je v povzetku vedno izgovorjeno enako, zato je zanesljivejše merilo kot
+    e-pošta, ki jo zna povedati tudi po črkah.
+    """
+    povzetek = (povzetek or "").lower()
+    deli = [d for d in (name or "").lower().split() if len(d) >= 3]
+    return bool(deli) and any(d in povzetek for d in deli)
+
+
+def _zgodovina(context: RunContext) -> list:
+    """Dosedanji potek pogovora.
+
+    Prazen seznam pomeni, da zgodovine ni bilo mogoče prebrati. Klicatelj tega
+    ne sme čutiti, zato takrat nobena zapora ne drži — povpraševanje ne sme
+    pasti zaradi branja dnevnika.
+    """
+    try:
+        return list(context.session.history.items)
+    except Exception as e:  # noqa: BLE001
+        log.warning("zgodovine pogovora ni bilo mogoče prebrati: %s", e)
+        return []
+
+
+def _zadnje_od_stranke(context: RunContext) -> str:
+    """Zadnje, kar je stranka izgovorila pred tem klicem orodja."""
+    for vnos in reversed(_zgodovina(context)):
+        if getattr(vnos, "role", None) == "user":
+            return besedilo_sporocila(vnos)
+    return ""
+
+
+def _zadnje_od_asistentke(context: RunContext) -> str:
+    """Zadnje, kar je asistentka izgovorila pred tem klicem orodja."""
+    for vnos in reversed(_zgodovina(context)):
+        if getattr(vnos, "role", None) == "assistant":
+            return besedilo_sporocila(vnos)
+    return ""
 
 
 # Znaki zunaj latinice, ki jih vseeno pustimo: valute, narekovaji, pomišljaji.
@@ -352,6 +474,10 @@ class TelefonskiAsistent(Agent):
         # pa je ceno ob četrtem vprašanju vseeno ponovil.
         self._ponovitve: dict[str, int] = {}
         self._konec_zaradi_ponavljanja = False
+        # Zavrnitev slovesa velja samo enkrat na klic. Če model vztraja, klica
+        # ne držimo odprtega proti njegovi presoji — tišina v slušalki je slabša
+        # od enega neodgovorjenega vprašanja.
+        self._konec_zavrnjen = False
         # Obrati, v katerih ni bilo nobenega klica orodja. Pogovor, ki jih
         # nakopiči, se ne premakne nikamor: vljudnostna vprašanja, splošno
         # znanje, ponavljanje z drugimi besedami. Števec se ob vsakem orodju
@@ -381,6 +507,9 @@ class TelefonskiAsistent(Agent):
         pokaže, da se na njegovo upoštevanje pravil ni mogoče zanesti.
         """
         besedilo = besedilo_sporocila(new_message)
+        if je_samo_pritrditev(besedilo) or je_podatek_stranke(besedilo):
+            return
+
         kljuc = kljuc_vprasanja(besedilo)
         if not kljuc:
             return
@@ -388,11 +517,26 @@ class TelefonskiAsistent(Agent):
         self._ponovitve[kljuc] = self._ponovitve.get(kljuc, 0) + 1
         self._brez_orodja += 1
 
+        # Meja je bila 10 in je 11. 10. 2026 odložila zdrav klic (`AJ_6ePLgc9vtcDv`):
+        # sogovornik je spraševal o fotografiranju, Tatjana je postavljala
+        # pod-vprašanja in ni poklicala orodja, pri desetem obratu pa je klic
+        # končala sredi pogovora. Stroške klica že omejuje `KLIC_MAX_SEK`, zato
+        # ta števec ni zadnja obramba in sme biti ohlapnejši.
         dovolj = (
             self._ponovitve[kljuc] >= int(os.getenv("PONOVITVE_MEJA", "4"))
-            or self._brez_orodja >= int(os.getenv("OBRATI_BREZ_ORODJA", "10"))
+            or self._brez_orodja >= int(
+                os.getenv("OBRATI_BREZ_ORODJA", str(OBRATI_BREZ_ORODJA_PRIVZETO))
+            )
         )
         if not dovolj or self._konec_zaradi_ponavljanja:
+            return
+
+        # Klic se ne sme končati na vprašanju. Štetje teče naprej, zato enak
+        # pogovor brez premika pade ob prvem obratu, ki vprašanje ni — varovalka
+        # ostane, obvisel pa ne bo nihče sredi stavka. Dvakrat 11. 10. 2026 se
+        # je klic tako končal z "Temu ne morem dodati nič novega."
+        if _je_vprasanje(besedilo):
+            log.info("meja dosežena, a zadnji obrat je vprašanje — klic teče naprej")
             return
 
         koliko = self._ponovitve[kljuc]
@@ -423,12 +567,24 @@ class TelefonskiAsistent(Agent):
         izbire žetona, in se zgodi redko.
         """
         async def ocisceno():
+            # Naslov pride iz modela po kosih, zato ga je treba sestaviti nazaj,
+            # preden ga razpišemo po črkah: Azurin glas prebere
+            # "janez.novak@gmail.com" kot besedo in stranka ne more preveriti,
+            # ali smo slišali prav. Zadržimo samo zadnjo nedokončano besedo —
+            # zamik je ena beseda, ne cel odgovor.
+            ostanek = ""
             async for kos in text:
                 popravljen = samo_latinica(kos)
                 if popravljen != kos:
                     log.warning("iz govora odstranjena tuja pisava: %r", kos)
-                if popravljen:
-                    yield popravljen
+                ostanek += popravljen
+                meja = ostanek.rfind(" ")
+                if meja == -1:
+                    continue
+                zdaj, ostanek = ostanek[: meja + 1], ostanek[meja + 1 :]
+                yield izgovori_eposte(zdaj, (self.eposta_podjetja,))
+            if ostanek:
+                yield izgovori_eposte(ostanek, (self.eposta_podjetja,))
 
         # Agent.default.tts_node je asinhroni generator, osnovna tts_node pa
         # navadna metoda. Z "return super().tts_node(...)" iz async def se je
@@ -468,6 +624,43 @@ class TelefonskiAsistent(Agent):
     def _zabelezi_orodje(self) -> None:
         """Klic orodja pomeni, da se pogovor premika. Števec se postavi nazaj."""
         self._brez_orodja = 0
+
+    def _preveri_eposto(self, email: str | None) -> tuple[str, dict | None]:
+        """Vrne (naslov, napaka). Napaka je odgovor orodja, ki ga vrneš modelu.
+
+        Narekovan naslov sestavi koda, ne model: ta je izpuščal "afno", črko
+        "es" zapisal kot "se", enkrat pa je v to polje vpisal telefonsko
+        številko. Glej eposta.py in test_eposta.py.
+        """
+        naslov, popravek = popravi_naslov(email or "")
+        if not naslov:
+            return "", {
+                "success": False,
+                "data": None,
+                "error": "To ni e-poštni naslov.",
+                "naslednji_korak": (
+                    "Vprašaj stranko za e-pošto in jo prosi, naj jo pove po črkah. "
+                    "V to polje vpiši natanko to, kar je povedala — tudi 'ka o es afna "
+                    "ge em a i el pika ce o em' je v redu, naslov sestavi koda."
+                ),
+            }
+
+        if popravek:
+            # Popravljen naslov ni tisti, ki ga je stranka potrdila. Branje nazaj
+            # je edino, kar loči popravek od tihe zamenjave naslova.
+            log.info("e-pošta (%s): %r -> %r", popravek, email, naslov)
+            return naslov, {
+                "success": False,
+                "data": None,
+                "error": f"Naslov {naslov} stranka še ni potrdila.",
+                "naslednji_korak": (
+                    f"Preberi stranki nazaj naslov {naslov}, počakaj na potrditev, "
+                    f"nato pokliči to orodje znova in v polje email vpiši natanko "
+                    f"{naslov}."
+                ),
+            }
+
+        return naslov, None
 
     def _preveri_ponovitve(self, vprasanje: str) -> dict | None:
         """Vrne navodilo, kadar je isto vprašanje postavljeno prevečkrat.
@@ -602,16 +795,48 @@ class TelefonskiAsistent(Agent):
             email: Neobvezno, za potrditev po e-pošti.
             note: Kaj želi stranka na sestanku.
         """
+        # Ista zapora kot pri povpraševanju: rezervacija je zapis, ki ga stranka
+        # dobi po e-pošti in ga sodelavec upošteva v koledarju. Brez izrecne
+        # potrditve zadnjega ponovljenega termina ga ni.
+        zadnje_od_stranke = _zadnje_od_stranke(context)
+        if zadnje_od_stranke and not _je_potrditev(zadnje_od_stranke):
+            return {
+                "success": False,
+                "data": None,
+                "error": "Zadnje, kar je stranka povedala, ni potrditev termina.",
+                "naslednji_korak": (
+                    "Ponovi dan in uro termina ter ime, nato počakaj, da stranka to "
+                    "izrecno potrdi. Šele nato pokliči to orodje znova."
+                ),
+            }
+
+        if not (name or "").strip() or _je_nadomestek(name):
+            return {
+                "success": False,
+                "data": None,
+                "error": "Manjka ime.",
+                "naslednji_korak": "Vprašaj stranko za ime in ne vpisuj nadomestka.",
+            }
+
         self._zabelezi_orodje()
         await mašilo(context, "zapis", self._masilo_stanje)
 
-        telefon = (phone or self.telefon_klicatelja or "").strip()
+        telefon = (phone or "").strip()
+        if not telefon or _je_nadomestek(telefon):
+            telefon = (self.telefon_klicatelja or "").strip()
         if not telefon:
             return {
                 "success": False,
                 "data": None,
                 "error": "Manjka telefonska številka. Vprašaj stranko zanjo.",
             }
+
+        # E-pošta je pri terminu neobvezna, a če jo stranka da, gre nanjo
+        # potrdilo — napačen naslov pomeni potrdilo neznancu.
+        if email:
+            email, napaka = self._preveri_eposto(email)
+            if napaka:
+                return napaka
 
         vsebina = {
             "action": "book",
@@ -677,11 +902,58 @@ class TelefonskiAsistent(Agent):
                 ),
             }
 
+        # `potrjeno` pove samo, kaj model trdi. Po spremembi podatka (druga
+        # e-pošta, drug obseg) je ta zastavica ostala True, povzetka pa ni bilo.
+        # Zato preverimo pri izvoru: zadnje, kar je stranka izgovorila, mora
+        # biti potrditev. Sprememba podatka tega pogoja ne izpolni.
+        # ponytail: nabor potrditev je kratek in jezikovno preprost. Nenavadna
+        # potrditev pomeni en odvečen povzetek, nikoli napačen zapis — taka
+        # napaka je poceni, obratna ni. Ko se v dnevnikih pokaže potrditev, ki
+        # je nabor ne ujame, jo dodaj v POTRDITVE_BESEDE ali POTRDITVE_ZVEZE.
+        zadnje_od_stranke = _zadnje_od_stranke(context)
+        if zadnje_od_stranke and not _je_potrditev(zadnje_od_stranke):
+            return {
+                "success": False,
+                "data": None,
+                "error": "Zadnje, kar je stranka povedala, ni potrditev povzetka.",
+                "naslednji_korak": (
+                    "Preberi stranki nazaj cel povzetek s podatki, kakršni so zdaj — "
+                    "tudi tiste, ki jih je pravkar spremenila — in počakaj, da to "
+                    "izrecno potrdi. Šele nato pokliči to orodje znova."
+                ),
+            }
+
+        # Potrditev sama ne pove, kaj je stranka potrdila: kontakt in "Ja, tako
+        # je" zna povedati v istem stavku, potrditev pa velja za prejšnji
+        # povzetek. Ime in e-pošta tako nista nikoli prebrana nazaj — in prav ta
+        # dva podatka odločata, ali ponudba pride do stranke.
+        zadnje_od_asistentke = _zadnje_od_asistentke(context)
+        if zadnje_od_asistentke and not _povzetek_vsebuje_ime(zadnje_od_asistentke, name):
+            return {
+                "success": False,
+                "data": None,
+                "error": "Povzetek pred potrditvijo ni vseboval imena stranke.",
+                "naslednji_korak": (
+                    "Preberi nazaj ime, e-pošto in kaj stranka potrebuje, nato počakaj "
+                    "na potrditev. Potrditev prejšnjega povzetka ne velja za podatke, "
+                    "ki jih je stranka povedala za njim."
+                ),
+            }
+
+        # Pri telefonskem klicu je številka znana iz povezave in prompt veleva, da
+        # je asistentka ne sprašuje - zato pride `phone` prazen. Preverba je bila
+        # prej pred to nadomeščbo in je tak klic zavrnila z "Manjka: telefonsko
+        # številko", povpraševanje pa se ni shranilo. Kar stranka izrecno pove, ima
+        # prednost: klicati zna s centrale in želeti povratni klic na mobilni.
+        telefon = (phone or "").strip()
+        if not telefon or _je_nadomestek(telefon):
+            telefon = (self.telefon_klicatelja or "").strip()
+
         # Model si je v enem pogovoru izmislil nadomestke, da je orodje sploh
         # poklical. Kar ni slišal, mora vprašati, ne zapolniti.
         manjka = [
             ime_polja
-            for ime_polja, vrednost in (("ime", name), ("telefonsko številko", phone), ("e-pošto", email))
+            for ime_polja, vrednost in (("ime", name), ("telefonsko številko", telefon), ("e-pošto", email))
             if not (vrednost or "").strip() or _je_nadomestek(vrednost)
         ]
         if manjka:
@@ -695,31 +967,9 @@ class TelefonskiAsistent(Agent):
         self._zabelezi_orodje()
         await mašilo(context, "zapis", self._masilo_stanje)
 
-        # Pri telefonskem klicu je številka že znana iz same povezave. Narekovanje
-        # po zvoku je najpogostejši vir napak — števke se zamenjajo in ponudba gre
-        # v prazno. Kar stranka izrecno pove, ima vseeno prednost: klicati zna s
-        # centrale in želeti povratni klic na mobilni.
-        telefon = (phone or self.telefon_klicatelja or "").strip()
-        if not telefon:
-            return {
-                "success": False,
-                "data": None,
-                "error": "Manjka telefonska številka. Vprašaj stranko zanjo.",
-            }
-
-        # Po zvoku se "at" in "pika" pogosto izgubita, model pa je v to polje že
-        # vpisal telefonsko številko. Napako ujamemo tu, da dobi jasen popravek
-        # namesto splošne zavrnitve s strežnika.
-        naslov = (email or "").strip()
-        if "@" not in naslov or "." not in naslov.rsplit("@", 1)[-1]:
-            return {
-                "success": False,
-                "data": None,
-                "error": (
-                    "To ni e-poštni naslov. Vprašaj stranko za e-pošto in jo prosi, "
-                    "naj jo pove po črkah."
-                ),
-            }
+        naslov, napaka = self._preveri_eposto(email)
+        if napaka:
+            return napaka
 
         vsebina = {"name": name, "phone": telefon, "email": naslov, "confirmed": True}
         for kljuc, vrednost in (("product", product), ("quantity", quantity), ("note", note)):
@@ -867,6 +1117,22 @@ class TelefonskiAsistent(Agent):
                 "lep pozdrav", "lep dan", "se slišiva". Sam "V redu." ali "Hvala."
                 ni slovo in orodje ga zavrne.
         """
+        # Vprašanje in slovo zna sogovornik povedati v istem stavku, in slovo
+        # takrat zmaga: model odloži, ne da bi odgovor izgovoril. Pravilo je v
+        # promptu, zato tu šteje koda.
+        if not self._konec_zavrnjen and _je_vprasanje(_zadnje_od_stranke(context)):
+            self._konec_zavrnjen = True
+            return {
+                "success": False,
+                "data": None,
+                "error": "Stranka je v zadnjem stavku še nekaj vprašala.",
+                "naslednji_korak": (
+                    "Najprej izgovori odgovor na to vprašanje — če si ga že poiskala z "
+                    "orodjem, povej tisto, kar je orodje vrnilo — in nato vprašaj, ali "
+                    "potrebuje še kaj. To orodje pokliči šele po njenem odgovoru."
+                ),
+            }
+
         # Sogovornik mora slisati, da se poslavljas, ne samo da si nehala govoriti.
         # Pravilo v promptu ni zadoscalo: klic se je koncal z "V redu." in odlozeno
         # slusalko, kar zveni kot prekinjena zveza.

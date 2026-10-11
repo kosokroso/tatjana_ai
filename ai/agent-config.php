@@ -59,6 +59,9 @@ $prompt .= "\n\n## Posebnosti telefonskega pogovora\n"
     . "- Ko ti stranka pove telefonsko številko ali e-pošto, ju ponovi nazaj po delih in počakaj na potrditev. "
     . "Napačno slišan naslov pomeni izgubljeno ponudbo.\n"
     . "- Če česa ne slišiš dobro, prosi, naj ponovi, namesto da ugibaš.\n"
+    . "- E-pošto vpiši v orodje natanko tako, kot jo je stranka povedala. Če jo je narekovala "
+    . "po črkah, prepiši črke po vrsti ('ka o es afna ge em a i el pika ce o em') — naslov "
+    . "sestavi sistem in ti ga vrne, da ga prebereš nazaj. Ne ugibaj, kaj je hotela reči.\n"
     . "- Ne naštevaj več kot dveh storitev naenkrat. Po telefonu si tretje nihče ne zapomni.\n";
 
 $now = new DateTimeImmutable('now');
@@ -75,6 +78,15 @@ $kljucne = [];
 if (defined('BUSINESS_NAME') && BUSINESS_NAME !== '') {
     $kljucne[] = BUSINESS_NAME;
 }
+
+// E-postne domene in narekovalne besede stojijo pred katalogom, ker prezivijo
+// rez na koncu seznama. Naslov je edini podatek, brez katerega ponudba ne pride
+// nikamor, imena domen pa prepis po 8 kHz liniji najpogosteje zgresi.
+$kljucne = array_merge($kljucne, [
+    'gmail.com', 'siol.net', 'telemach.net', 't-2.net', 'amis.net', 'volja.net',
+    'outlook.com', 'hotmail.com', 'gov.si', 'guest.arnes.si',
+    'afna', 'podcrtaj', 'dvojni ve', 'ipsilon',
+]);
 try {
     foreach ($registry->adapter()->listProducts() as $storitev) {
         if (!empty($storitev['active'])) {

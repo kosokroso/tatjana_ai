@@ -24,9 +24,56 @@ Zadnja posodobitev: 26. 9. 2026 (zvečer)
 - [ ] **Ugotovi, zakaj pravi klic pride brez številke.** 26. 9. je `call-guard`
       zavrnil klic, ker je bil klicatelj prazen. Med klicem poglej vrstico
       `lastnosti SIP`.
-- [ ] **Premisli, ali je `OBRATI_BREZ_ORODJA=10` prestrogo.** Deset enobesednih
-      odgovorov konča klic. Števec se ob vsakem orodju postavi nazaj, zato prava
-      stranka tega praviloma ne zadene — a če se zgodi, dvigni na 14.
+- [X] **`OBRATI_BREZ_ORODJA=10` je bil prestrog — zgodilo se je.** 11. 10. 2026
+      je klic `AJ_6ePLgc9vtcDv` odložila sredi pogovora o fotografiranju:
+      `konec klica: 1. ponovitev 'spalnici', 10 obratov brez orodja`. Privzeto
+      je zdaj 20 (`OBRATI_BREZ_ORODJA_PRIVZETO` v `agent.py`), pritrdilni obrati
+      ("ja", "mhm", "aha") pa se ne štejejo več — ne proti tej meji in ne proti
+      ponovitvam. Stroške klica omejuje `KLIC_MAX_SEK`, zato ta števec ni
+      zadnja obramba. Preizkus: `cd voice-agent; python test_varovalke.py`.
+- [X] **Prenesene Majine varovalke** (11. 10. 2026). V Tatjani jih ni bilo
+      nikoli — `git log -S` jih ne najde. Zdaj koda, ne prompt, zagotavlja:
+      `koncaj_pogovor` enkrat zavrne slovo, če je stranka v zadnjem stavku kaj
+      vprašala; `submit_inquiry` zahteva, da je zadnji obrat stranke potrditev
+      in da je povzetek vseboval ime; `rezerviraj_termin` zahteva potrditev in
+      pravo ime. Varovalka obratov ne konča klica na vprašanju, narekovan
+      kontakt in pritrditve se ne štejejo.
+- [X] **Prenesen Majin `eposta.py`** (11. 10. 2026). Tatjana ga ni imela nikoli,
+      zato je e-pošto razumela slabo. Zdaj naslov iz narekovanja ("marko pika
+      zupan afna gmail pika com") sestavi koda, skoraj ujeto domeno popravi
+      (`gmial` -> `gmail`) in v obeh primerih zahteva branje nazaj. Glas del
+      pred afno prebere po črkah. Velja za `submit_inquiry` in za neobvezno
+      e-pošto pri `rezerviraj_termin`. Preizkus: `python test_eposta.py`.
+- [X] **Usklajeno z Majo do konca** (11. 10. 2026). Pregledani vsi Majini
+      popravki iz repozitorija KurivoGorica (`c1e5d65`..`2e483d7`) in celoten
+      `diff` obeh agentov. Preneseno, kar ni vezano na panogo:
+      - `submit_inquiry` po telefonu ni oddal: preverba manjkajočih podatkov
+        je gledala prazen `phone`, preden se je vstavila številka klicatelja,
+        in vrnila "Manjka: telefonsko številko". Zdaj enak vrstni red kot Maja.
+      - Iskanje po bazi znanja je rezalo na `$limit` vrstic **pred**
+        ocenjevanjem, zato je pravi zadetek lahko ostal zunaj. Zdaj zajem 50,
+        ključne besede štejejo dvojno.
+      - `agent-config.php`: e-poštne domene in "afna" med ključnimi besedami
+        prepisa; navodilo, naj model e-pošto vpiše tako, kot jo je slišal.
+      - Prompt: "zabeleženo" samo po uspešnem orodju, povzetek ne izpusti
+        pogojev, drugačna ubeseditev zadetka ni druga tema, brez slovesa ob
+        neodgovorjenem vprašanju, izrecno pravilo za telefonsko številko.
+      Ni preneseno, ker je panoga: zaloga in poslovalnice, katalog, roki
+      dostave, Majini scenariji. Ostale razlike so Tatjanina orodja (termini,
+      projekti), ki jih Maja nima.
+- [ ] **`VAD_TISINA=0.4` kot pri Maji.** Edina preostala razlika v nastavitvah.
+      Tatjana ima 0.2. Pri 0.2 s premora se narekovanje razreže na več obratov.
+      V `voice-agent/.env`, nato `lk agent update-secrets --secrets-file .env --overwrite`.
+- [ ] **Preveri popravke z resničnim klicem.** Zahteva `lk agent deploy`.
+      1. Pogovor o storitvi, ki je ni v ponudbi, prek desetega obrata, vmes "ja".
+      2. Narekuj e-pošto trikrat, kot da je prepis padel.
+      3. V istem stavku vprašaj in se poslovi ("Koliko stane, hvala, adijo").
+      Klic ne sme odložiti v nobenem.
+- [ ] **"Lahko preverim" brez klica orodja.** Pri `reasoning_effort="none"` model
+      napove preverjanje in namesto orodja postavi pod-vprašanje. Višjega napora
+      `gpt-5.6-sol` z orodji na `/v1/chat/completions` ne sprejme (400), vtičnik
+      `livekit.plugins.openai` pa `/v1/responses` ne podpira. Ostane prompt in
+      scenarij v `scenarios.yaml`.
 
 - [X] **Dodaj sklanjatev v `config.php` na strežniku** (File Manager, ni v gitu):
       `define('BUSINESS_NAME_RODILNIK', 'Kreativnega spleta');`
@@ -172,10 +219,18 @@ Dva ločena nabora, namenoma:
 | `voice-agent/scenarios.yaml` | ali dela svoje delo | po vsaki spremembi prompta ali modela |
 | `voice-agent/scenarios-napadi.yaml` | ali jo je mogoče zlorabiti | pred izdajo, po zamenjavi modela, po večji spremembi prompta |
 
+Oba poženeš prek `voice-agent/preizkus.ps1`, ki izpis shrani v `logs/`:
+
 ```
-lk agent simulate --scenarios scenarios.yaml --agent-name tatjana --concurrency 2
-lk agent simulate --scenarios scenarios-napadi.yaml --agent-name tatjana --concurrency 2
+cd voice-agent
+.\preizkus.ps1
+.\preizkus.ps1 -Nabor scenarios-napadi.yaml
 ```
+
+Besedilni in zvočni obhodi se merijo ločeno. Ko besedilni zadene
+`quota exceeded: MaxSimulationTextTurns`, je mesečna kvota porabljena in se
+ponastavi 1. v mesecu; zvočni obhod (`lk agent simulate audio`) ima svoj števec
+in takrat še teče, le počasneje in dražje.
 
 - [ ] **Poženi prvič `scenarios-napadi.yaml`.** Prvi zagon je merilo, ne ocena.
       Padci so pričakovani in povedo, kje so luknje.

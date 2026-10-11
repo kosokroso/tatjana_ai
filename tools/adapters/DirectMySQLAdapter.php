@@ -459,10 +459,14 @@ final class DirectMySQLAdapter implements AdapterInterface
             $parametri[$kk] = $vzorec;
         }
 
+        // LIMIT tu je zajem kandidatov, ne koncno stevilo zadetkov: omejitev na
+        // $limit je rezala pred ocenjevanjem, zato je pravi zadetek lahko ostal
+        // zunaj, ocenile pa so se tri nakljucne vrstice. Baza znanja ima nekaj
+        // desetin vnosov, zato je zajem 50 vrstic brez posledic za hitrost.
         $sql = 'SELECT id, question, answer, keywords
                 FROM ' . $this->table('knowledge') . '
                 WHERE active = 1 AND (' . implode(' OR ', $pogoji) . ')
-                LIMIT ' . max(1, min($limit, 10));
+                LIMIT 50';
 
         try {
             $stmt = $this->pdo()->prepare($sql);
@@ -482,14 +486,19 @@ final class DirectMySQLAdapter implements AdapterInterface
 
         $ocenjeni = [];
         foreach ($vrstice as $vrstica) {
-            $seno = mb_strtolower(
-                $vrstica['question'] . ' ' . $vrstica['answer'] . ' ' . ($vrstica['keywords'] ?? '')
-            );
+            $kljucne = mb_strtolower((string) ($vrstica['keywords'] ?? ''));
+            $seno    = mb_strtolower($vrstica['question'] . ' ' . $vrstica['answer']) . ' ' . $kljucne;
             $tocke = 0;
             foreach ($besede as $beseda) {
-                if (mb_strpos($seno, $beseda) !== false) {
-                    $tocke++;
+                if (mb_strpos($seno, $beseda) === false) {
+                    continue;
                 }
+                // Zadetek v kljucnih besedah steje dvojno, ker so te vpisane
+                // rocno in povedo temo vnosa. Vprasanje se po masilih skrci na
+                // dve besedi; ce glagola v bazi ni nikjer, prag dveh besed ni
+                // dosegljiv in pravi vnos pade ven. Lazni zadetek iz vprasanja
+                // ali odgovora (zgodba o drustvih zgoraj) s tem ne pridobi nicesar.
+                $tocke += mb_strpos($kljucne, $beseda) !== false ? 2 : 1;
             }
             if ($tocke >= $najmanj) {
                 $ocenjeni[] = ['tocke' => $tocke, 'vrstica' => $vrstica];
