@@ -119,7 +119,7 @@ define('REQUIRE_HTTPS', false);
 define('OPENAI_API_KEY', '');
 // Model mora biti isti kot na telefonu (LLM_MODEL v voice-agent/.env), sicer
 // asistentka na strani in po telefonu odgovarja drugace.
-define('OPENAI_MODEL', 'gpt-5.4-mini');
+define('OPENAI_MODEL', 'gpt-5.6-sol');
 define('OPENAI_TIMEOUT_SECONDS', 20);
 
 // Raznolikost ubeseditve. 0,3 zveni kot posnetek, 0,6 kot pogovor.
@@ -129,13 +129,18 @@ define('OPENAI_TIMEOUT_SECONDS', 20);
 define('LLM_TEMPERATURE', 'auto');
 
 // Koliko naj model razmislja pred odgovorom. Prazno = privzetek modela.
-define('LLM_NAPOR', 'minimal');
+// Izmerjeno 11. 10. 2026: kadar so v zahtevi orodja, sprejmejo preizkuseni
+// modeli samo 'none'; 'low' vrne 400 pri vseh. 'minimal' na gpt-5.6-* ni
+// preizkusen, zato ga ne uporabljaj. Isto velja za voice-agent/.env.
+define('LLM_NAPOR', 'none');
 
 // ---------------------------------------------------------------
 // Govor (glasovni asistent na index.html)
 // Imena modelov se pri OpenAI spreminjajo - preveri jih, preden krivis kodo.
 // ---------------------------------------------------------------
-define('STT_MODEL', 'gpt-4o-transcribe');
+// gpt-transcribe je novejsi, cenejsi in edini (poleg gpt-live-transcribe), ki
+// sprejme seznam keywords. Pri starejsem modelu seznam tiho izpade.
+define('STT_MODEL', 'gpt-transcribe');
 define('TTS_MODEL', 'gpt-4o-mini-tts');
 define('TTS_VOICE', 'shimmer');        // alloy, echo, fable, onyx, nova, shimmer, coral
 define('SPEECH_LANGUAGE', 'sl');

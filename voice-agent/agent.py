@@ -927,7 +927,9 @@ def izberi_prepis(kljucne: list[str] | None = None):
             segmentation_silence_timeout_ms=int(os.getenv("STT_TISINA_MS", "500")),
         )
 
-    model = os.getenv("STT_MODEL", "gpt-4o-transcribe")
+    # Privzetek je model, ki sprejme keywords (glej pogoj nižje). Pri starejšem
+    # bi seznam ključnih besed tiho izpadel in tega se ob zagonu ne vidi.
+    model = os.getenv("STT_MODEL", "gpt-transcribe")
 
     dodatno: dict = {}
     if kljucne:
@@ -1135,7 +1137,7 @@ def nastavitve_modela() -> dict:
     tišino, zato je razmislek privzeto na najnižji stopnji — sogovornik čaka v
     živo in nekaj desetink je več vredno od malenkost boljše ubeseditve.
     """
-    izbrano: dict = {"model": os.getenv("LLM_MODEL", "gpt-4o-mini")}
+    izbrano: dict = {"model": os.getenv("LLM_MODEL", "gpt-5.6-sol")}
 
     # "auto" ali prazno pomeni, da temperature ne pošljemo. Nekateri modeli je
     # ne sprejmejo in klic pade — takrat vpiši auto namesto številke.
@@ -1143,11 +1145,15 @@ def nastavitve_modela() -> dict:
     if temperatura not in ("", "auto"):
         izbrano["temperature"] = float(temperatura)
 
-    for kljuc, spremenljivka in (
-        ("reasoning_effort", "LLM_NAPOR"),
-        ("verbosity", "LLM_OBSEZNOST"),
+    # Izmerjeno 11. 10. 2026: kadar so v zahtevi orodja, sprejmejo preizkušeni
+    # modeli samo reasoning_effort="none", "low" vrne 400. Ta agent ima orodja
+    # vedno, vtičnik pa vrednost sam napolni le modelom s svojega seznama —
+    # novejši ostanejo brez nje. Zato privzetek tukaj in ne v .env.
+    for kljuc, spremenljivka, privzeto in (
+        ("reasoning_effort", "LLM_NAPOR", "none"),
+        ("verbosity", "LLM_OBSEZNOST", ""),
     ):
-        vrednost = os.getenv(spremenljivka)
+        vrednost = os.getenv(spremenljivka) or privzeto
         if vrednost:
             izbrano[kljuc] = vrednost
 
@@ -1155,7 +1161,9 @@ def nastavitve_modela() -> dict:
     # ponudnik hrani predpomnjenega: nižji čas do prve besede in nižja cena.
     izbrano["prompt_cache_key"] = os.getenv("LLM_PREDPOMNILNIK", "tatjana-telefon")
 
-    log.info("model: %s", izbrano["model"])
+    # Napor je v dnevniku zato, ker se napačna vrednost ne pokaže kot napaka ob
+    # zagonu, ampak kot asistentka, ki pozdravi in nato molči.
+    log.info("model: %s, napor: %s", izbrano["model"], izbrano.get("reasoning_effort", "-"))
     return izbrano
 
 

@@ -60,9 +60,16 @@ final class OpenAIClient
         }
 
         // Novejše družine razmišljajo, preden odgovorijo. V klepetu to pomeni
-        // čakanje na prvo besedo, zato najnižja stopnja, kadar je nastavljena.
-        if (defined('LLM_NAPOR') && LLM_NAPOR !== '') {
-            $payload['reasoning_effort'] = LLM_NAPOR;
+        // čakanje na prvo besedo, zato najnižja stopnja.
+        //
+        // Izmerjeno 11. 10. 2026: kadar so v zahtevi orodja, sprejmejo
+        // preizkušeni modeli samo 'none'; 'low' vrne 400 "Function tools with
+        // reasoning_effort are not supported". Ta sloj orodja pošilja skoraj
+        // vedno, zato je 'none' privzetek, kadar konstante ni. Prazen niz
+        // še naprej pomeni, da polja ne pošljemo.
+        $napor = defined('LLM_NAPOR') ? trim((string) LLM_NAPOR) : 'none';
+        if ($napor !== '') {
+            $payload['reasoning_effort'] = $napor;
         }
 
         if ($tools) {
