@@ -273,5 +273,6 @@ primerjaj `E2E median` na nadzorni plošči LiveKit.
 | `KONEC_MIN`, `KONEC_MAX` | izklopljeno | čakanje po koncu govora |
 | `PREKIN_SEK`, `PREKIN_BESEDE` | izklopljeno | sekanje od šuma na liniji |
 | `TTS_SAMPLE_RATE=16000` | izklopljeno | praskanje pri dolgih odgovorih |
+| `TTS_PONUDNIK=elevenlabs` | izklopljeno | glas ElevenLabs "Maja" (`eleven_v4_turbo`); rabi `ELEVEN_API_KEY` |
 
 Izmerjeno stanje in razčlenitev po korakih: [PROJEKT.md, razdelek 8](PROJEKT.md#8-kje-smo).

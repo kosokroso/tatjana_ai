@@ -1242,6 +1242,25 @@ def izberi_glas():
     preizkusiti takoj, brez čakanja na še en račun — slovenščino bere s tujim
     naglasom in telefonskih številk ne izgovori pravilno.
     """
+    # ElevenLabs je stikalo za preizkus, ne privzetek. Slovenščine ne znata
+    # hitra eleven_flash_v2_5 in eleven_multilingual_v2; znajo jo eleven_v3,
+    # eleven_v3_conversational in družina v4. Privzet je eleven_v4_turbo:
+    # najnižja zakasnitev med njimi in edini, ki ga ElevenLabs priporoča za ta
+    # glas — slovenski stavek s ceno, številko in e-pošto je z njim preizkušen
+    # 12. 10. 2026 v njihovem urejevalniku. Vtičnik 1.8.1 tega imena ne našteva,
+    # a polje `model` sprejme poljuben niz.
+    # Brez ključa ostane Azure — manjkajoč ključ bi sicer podrl sejo.
+    if os.getenv("TTS_PONUDNIK") == "elevenlabs":
+        if os.getenv("ELEVEN_API_KEY"):
+            from livekit.plugins import elevenlabs
+
+            return elevenlabs.TTS(
+                voice_id=os.getenv("ELEVEN_TTS_VOICE", "WwFMMxYWrkm6h88c7f0n"),
+                model=os.getenv("ELEVEN_TTS_MODEL", "eleven_v4_turbo"),
+                language="sl",
+            )
+        log.warning("TTS_PONUDNIK=elevenlabs, a ELEVEN_API_KEY ni nastavljen — uporabljam Azure")
+
     if os.getenv("AZURE_SPEECH_KEY"):
         return azure.TTS(
             voice=os.getenv("AZURE_TTS_VOICE", "sl-SI-PetraNeural"),

@@ -2,6 +2,6 @@
 # 11. 10. 2026 je tako prisla 1.8 z drugacnim privzetim zaznavanjem konca obrata
 # in klici so padali, ceprav se koda ni spremenila. Nadgradnja je odlocitev,
 # ne stranski ucinek deploya: lokalno preizkusi, nato dvigni tu.
-livekit-agents[openai,azure,silero]==1.8.1
+livekit-agents[openai,azure,silero,elevenlabs]==1.8.1
 python-dotenv~=1.0
 httpx~=0.27
