@@ -1242,13 +1242,21 @@ def izberi_glas():
     preizkusiti takoj, brez čakanja na še en račun — slovenščino bere s tujim
     naglasom in telefonskih številk ne izgovori pravilno.
     """
-    # ElevenLabs je stikalo za preizkus, ne privzetek. Slovenščine ne znata
-    # hitra eleven_flash_v2_5 in eleven_multilingual_v2; znajo jo eleven_v3,
-    # eleven_v3_conversational in družina v4. Privzet je eleven_v4_turbo:
-    # najnižja zakasnitev med njimi in edini, ki ga ElevenLabs priporoča za ta
-    # glas — slovenski stavek s ceno, številko in e-pošto je z njim preizkušen
-    # 12. 10. 2026 v njihovem urejevalniku. Vtičnik 1.8.1 tega imena ne našteva,
-    # a polje `model` sprejme poljuben niz.
+    # ElevenLabs je stikalo za preizkus, ne privzetek.
+    #
+    # Model NE spreminjaj brez preizkusa rokovanja. Izmerjeno 12. 10. 2026 na
+    # `wss://.../multi-stream-input`, ki ga vtičnik uporablja: `eleven_v4_turbo`
+    # in `eleven_v4` vrneta 400. V urejevalniku ElevenLabs v4 dela, prek te
+    # vtičnice pa ne — zato je bil prvi pravi klic brez glasu in sogovornik je
+    # slišal tišino. Rokovanje sprejmejo `eleven_turbo_v2_5`, `eleven_flash_v2_5`
+    # in `eleven_multilingual_v2`, a nobeden od teh ne zna slovensko.
+    # Slovenščino znata `eleven_v3` in `eleven_v3_conversational`; ta dva gresta
+    # prek `/text-to-dialogue/multi-stream-input` in rokovanje sprejmeta.
+    #
+    # ponytail: brezplačni paket to pot tako ali tako zapre —
+    # `402 paid_plan_required: Free users cannot use library voices via the API`.
+    # Dokler paket ni plačan, stikala ni smiselno vklapljati.
+    #
     # Brez ključa ostane Azure — manjkajoč ključ bi sicer podrl sejo.
     if os.getenv("TTS_PONUDNIK") == "elevenlabs":
         if os.getenv("ELEVEN_API_KEY"):
@@ -1256,7 +1264,7 @@ def izberi_glas():
 
             return elevenlabs.TTS(
                 voice_id=os.getenv("ELEVEN_TTS_VOICE", "WwFMMxYWrkm6h88c7f0n"),
-                model=os.getenv("ELEVEN_TTS_MODEL", "eleven_v4_turbo"),
+                model=os.getenv("ELEVEN_TTS_MODEL", "eleven_v3_conversational"),
                 language="sl",
             )
         log.warning("TTS_PONUDNIK=elevenlabs, a ELEVEN_API_KEY ni nastavljen — uporabljam Azure")

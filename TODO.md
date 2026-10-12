@@ -273,6 +273,24 @@ primerjaj `E2E median` na nadzorni plošči LiveKit.
 | `KONEC_MIN`, `KONEC_MAX` | izklopljeno | čakanje po koncu govora |
 | `PREKIN_SEK`, `PREKIN_BESEDE` | izklopljeno | sekanje od šuma na liniji |
 | `TTS_SAMPLE_RATE=16000` | izklopljeno | praskanje pri dolgih odgovorih |
-| `TTS_PONUDNIK=elevenlabs` | izklopljeno | glas ElevenLabs "Maja" (`eleven_v4_turbo`); rabi `ELEVEN_API_KEY` |
+| `TTS_PONUDNIK=elevenlabs` | izklopljeno | glas ElevenLabs "Maja"; **rabi plačan paket** — glej spodaj |
+
+### ElevenLabs — dve oviri, obe izmerjeni 12. 10. 2026
+
+1. **Model.** Vtičnik govori prek `wss://.../multi-stream-input`. Rokovanje tam
+   zavrneta `eleven_v4_turbo` in `eleven_v4` s **400**, čeprav v urejevalniku
+   ElevenLabs v4 dela. Sprejmejo ga `eleven_turbo_v2_5`, `eleven_flash_v2_5` in
+   `eleven_multilingual_v2`, a nobeden ne zna slovensko. Edina uporabna sta
+   `eleven_v3_conversational` (privzeti) in `eleven_v3`, ki gresta prek
+   `/text-to-dialogue/multi-stream-input`.
+   Prvi pravi klic z `eleven_v4_turbo` je bil zato tih: STT in model sta delala,
+   glasu ni bilo in sogovornik je odložil.
+2. **Paket.** Brezplačni paket vrne
+   `402 paid_plan_required: Free users cannot use library voices via the API`.
+   Glas "Maja" je iz knjižnice, zato prek API ne dela, ne glede na model.
+
+Preden stikalo spet vklopiš: plačaj paket, nato preveri rokovanje in šele
+potem `lk agent deploy`. Vrnitev na Azure je prazen `TTS_PONUDNIK=` in
+`lk agent update-secrets` — brez deploya.
 
 Izmerjeno stanje in razčlenitev po korakih: [PROJEKT.md, razdelek 8](PROJEKT.md#8-kje-smo).
