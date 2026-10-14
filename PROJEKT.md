@@ -262,7 +262,8 @@ skozi, a časovna meja vseeno velja: nedosegljiv strežnik ne sme pomeniti nemeg
 telefona niti linije brez konca.
 
 **Osebni podatki:** dnevniki maskirajo telefone, e-pošto, imena in zadnji oktet
-IP. Hranijo se 14 dni. Mapa `logs/` je zaprta z `.htaccess`.
+IP. Hranijo se 14 dni. Mapa `logs/` je zaprta z `.htaccess`. Celotna pot zapisa
+pogovora, kaj se maskira in kaj ne ter poti razkritja: razdelek 15.
 
 **Skrbniška stran:** geslo zgoščeno (`password_hash`), seja 8 ur, piškotek
 HttpOnly in SameSite=Strict, CSRF žeton na dejanjih, 10 poskusov na 15 minut.
@@ -634,3 +635,94 @@ Vseh 26 testov mora biti zelenih. Posebej zadnja dva: `GET` na tool mora vrniti
 Asistenta preizkusi na `https://kreativnisplet.si/asistent/`. Če pri vprašanju o
 ceni **ne pokliče orodja**, je odgovor izmišljen — to je najhujša napaka in jo
 `admin/pogovori.php` sam označi.
+
+---
+
+## 15. Vsebina pogovorov s Tatjano
+
+### Kako deluje
+
+Tatjana ob koncu telefonskega klica pošlje potek pogovora na
+`ai/log-conversation.php` (`POST`, glava `X-Tool-Secret`). Zapis gre skozi isti
+`Logger` kot klepet na strani, zato ga `admin/pogovori.php` prikaže brez
+posebne obravnave. Razlog, da to obstaja: agent teče v LiveKit Cloud in orodja
+kliče po HTTP, zato se je prej zapisalo le, **katera** orodja je klical, ne pa,
+**kaj je povedal** — in "poglej v LiveKit" ni odgovor stranki, ki plačuje
+vzdrževanje.
+
+Spletni klepet zapiše isto iz `ai/chat.php`. Vsak obrat je ena vrstica JSON:
+vprašanje, klicana orodja, odgovor.
+
+Endpoint ima meje, da en zahtevek ne napolni diska: največ 256 KB telesa,
+100 obratov, 4.000 znakov na sporočilo, 10 imen orodij.
+
+### Kaj se zapiše in kje
+
+| Zapis | Kje | Hramba |
+|---|---|---|
+| Potek pogovora | `logs/conversations-YYYY-MM-DD.log` na gostovanju | 14 dni |
+| Klici orodij, trajanja, napake | `logs/tool-calls-*.log` | 14 dni |
+| Povpraševanja in termini | baza, `ai_inquiries` in `ai_appointments`, **nemaskirano** | do izbrisa |
+| Zvok in prepis seje | LiveKit Cloud, če je *Agent observability* vklopljen | 30 dni; na brezplačnem paketu del podatkov dlje |
+| Podatki o klicu (številka, trajanje) | DIDWW | po pravilih operaterja |
+| Vsebina pogovora | OpenAI (prepis in model) | ob evropskem projektu brez hrambe |
+| Besedilo odgovora | Azure (sinteza govora) | brez hrambe; Azure prejme samo besedilo, nikoli posnetek klicatelja |
+
+Nemaskirani podatki v bazi so namen, ne napaka: povpraševanje brez imena,
+telefona in e-pošte je neuporabno. Dnevniki so drugo — tam gre za pregled nad
+vedenjem asistentke, ne za podatke stranke.
+
+### Kaj se maskira in kaj ne
+
+Maskirano v dnevnikih: e-pošta v običajni obliki (`janez@domena.si` →
+`j***@domena.si`), telefonska številka z osmimi ali več ciframi (→
+`[tel:***123]`), polja `address` in `note` (→ `[skrito]`), zadnji oktet naslova
+IP.
+
+**Ne maskirano, in to je treba vedeti:**
+
+1. **Ime in priimek v prostem besedilu.** Maskiranje imena velja za polja, ki se
+   imenujejo `name` ali `ime`, ne za stavek "jaz sem Janez Novak" sredi
+   pogovora. Ta ostane zapisan.
+2. **E-pošta, narekovana po črkah.** Po telefonu klicatelj naslov pogosto
+   izgovori ("janez pika novak afna gmail pika com"). Vzorec za e-pošto tega ne
+   prepozna, zato ostane v dnevniku berljiv.
+3. Domena e-pošte in zadnje tri cifre telefonske številke ostanejo tudi pri
+   maskiranih vnosih.
+
+Dnevniki so torej **psevdonimizirani, ne anonimizirani**. V pogodbi s stranko
+jih je treba tako tudi imenovati.
+
+### Ali lahko pride do razkritja podatkov
+
+Po velikosti tveganja:
+
+1. **WordPress na istem gostovanju in v isti bazi.** Tabele `ai_*` stojijo v
+   bazi `kreati02_wp_iuikg`. Ranljiv vtičnik na glavni strani je pot do
+   povpraševanj strank, mimo celotnega asistenta. Največje tveganje in edino,
+   ki ni pod našim nadzorom. Ukrep: ločen uporabnik baze z dostopom samo do
+   `ai_*`, dolgoročno ločena baza in strežnik.
+2. **LiveKit observability.** Hrani zvok in prepis **brez maskiranja**. Na
+   brezplačnem paketu je projekt vključen v program izboljševanja modelov, kar
+   pomeni hrambo dela podatkov dlje od 30 dni. Ukrep: izklop v nastavitvah
+   projekta (*Data and privacy*) ali *PII redaction* in plačljiv paket; v kodi
+   `record=False` v `session.start()`. Opazovanja s tem ne izgubimo, ker potek
+   pogovora zapiše `zapisi_pogovor()` v naš dnevnik.
+3. **`voice-agent/.env` na strežniku.** Vsebuje ključe, varuje ga samo zavrnitev
+   dostopa. Na strežniku ga ne rabimo — skrivnosti so v LiveKitu. Ukrep: izbriši.
+4. **Mapa `logs/` leži znotraj web roota.** Zaščitena je z `.htaccess` in
+   `Require all denied`, deploy pa `logs/*.log` izključuje, da se zapisi ne
+   prepisujejo. Zaščita visi na eni datoteki: brez `.htaccess` ali ob prehodu na
+   nginx bi bili dnevniki javni.
+5. **`TOOL_SECRET` je eno samo geslo za vsa orodja po HTTP.** Kdor ga ima, lahko
+   bere katalog in piše v dnevnik; vpogled v projekt zahteva dva ujemajoča se
+   podatka, zato sam ključ ne zadošča. Ukrep: zamenjava ob vsaki menjavi
+   sodelavca.
+6. **Čiščenje po 14 dneh se sproži naključno**, pri približno vsakem petdesetem
+   zapisu. Pri majhnem prometu lahko star dnevnik ostane dlje, kot pravi
+   politika hrambe. Ukrep: izbris prek `cron`.
+
+Nižje tveganje, ker je že urejeno: `setup.php` (zna zapisati `config.php`) in
+`data-view.php` (prikazuje osebne podatke) sta izključena iz deploya in na živi
+strani ne obstajata; `config.php` ni v repozitoriju; skrbniška stran je za
+geslom, s CSRF žetonom in omejitvijo poskusov prijave.
