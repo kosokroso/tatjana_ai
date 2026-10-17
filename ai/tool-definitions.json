@@ -26,9 +26,10 @@
               "spletne-strani",
               "trzenje",
               "oblikovanje",
-              "vzdrzevanje"
+              "vzdrzevanje",
+              "ai-resitve"
             ],
-            "description": "Neobvezno zožanje na področje, kadar je iz pogovora jasno."
+            "description": "Neobvezno zožanje na področje, kadar je iz pogovora jasno. ai-resitve = lastni AI izdelki, na primer NeRo Platform."
           }
         },
         "required": [

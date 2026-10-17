@@ -221,7 +221,7 @@ define('TRANSFER_PHONE', '');
 // Velja samo za telefon; spletni klepet se ne snema.
 //
 // Prazno = brez obvestila. Takrat snemanje izklopi tudi v LiveKitu.
-define('CALL_RECORDING_NOTICE', 'Klic se snema zaradi kakovosti storitve.');
+define('', 'Klic se snema zaradi kakovosti storitve.');
 define('BUSINESS_PHONE', '+386 31 455 881');
 define('BUSINESS_EMAIL', 'info@kreativnisplet.si');
 

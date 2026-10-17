@@ -37,6 +37,7 @@ const KATEGORIJE = [
     'trzenje'        => 'Trženje',
     'oblikovanje'    => 'Oblikovanje',
     'vzdrzevanje'    => 'Vzdrževanje',
+    'ai-resitve'     => 'AI rešitve',
 ];
 
 const ENOTE = ['paket', 'mesec', 'projekt', 'ura'];

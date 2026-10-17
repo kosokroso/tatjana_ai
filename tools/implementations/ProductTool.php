@@ -8,7 +8,7 @@
 final class ProductTool extends Tool
 {
     private const ACTIONS    = ['search', 'get_price', 'check_stock'];
-    private const CATEGORIES = ['spletne-strani', 'trzenje', 'oblikovanje', 'vzdrzevanje'];
+    private const CATEGORIES = ['spletne-strani', 'trzenje', 'oblikovanje', 'vzdrzevanje', 'ai-resitve'];
 
     public function name(): string
     {
