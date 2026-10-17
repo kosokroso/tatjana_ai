@@ -6,11 +6,25 @@ nadgradnja vredna dela, je v **[PROJEKT.md](PROJEKT.md)**.
 Delitev je namerna: tu kljukice, tam razlogi. Nobena točka ni na obeh mestih,
 ker se dva seznama opravil razideta in nobenemu ne zaupaš več.
 
-Zadnja posodobitev: 26. 9. 2026 (zvečer)
+Zadnja posodobitev: 17. 10. 2026
 
 ---
 
 ## Zdaj — nepotrjeno ali odprto
+
+- [ ] **Ukinitev spletnega klepeta** (17. 10. 2026; razlogi in celoten načrt v
+      PROJEKT.md, razdelek 16). Kodo sem odstranil, strežnik pa še ni očiščen:
+      - [ ] cPanel Update from Remote → Deploy HEAD Commit
+      - [ ] v File Managerju izbriši `index.html`, `widget.js`, `ai/chat.php`,
+            `ai/speak.php`, `ai/transcribe.php`, `ai/OpenAIClient.php`
+            (rsync ne briše; do takrat stari endpointi še trošijo ključe)
+      - [ ] preveri 404 na teh datotekah in preusmeritev na `/asistent/`
+      - [ ] testni klic na telefon + `tests/test-tools.sh`
+      - [ ] odstrani povezavo in vgradnjo `widget.js` na WordPress strani
+      - [ ] počisti `config.php` (`CHAT_ALLOWED_ORIGINS`, govor za splet)
+      - [ ] posodobi `PROMPT-ZA-SODELAVCA.md` in PROJEKT.md razdelek 10
+- [ ] **Novi klepet na strani (pozneje):** poceni, večinoma lokalno ali brez
+      modela. Zasnova v PROJEKT.md, razdelek 16, točka 5.
 
 - [ ] **Poženi oba nabora do čistega izida.** Zadnji zagon napadalnega nabora je
       našel pet stvari in vse so popravljene, a od takrat ni bil pognan znova.

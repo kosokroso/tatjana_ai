@@ -59,8 +59,6 @@ asistent/
 ├── tests/
 ├── tools/           tool sloj in HTTP endpointi
 ├── voice-agent/     agent za telefonske klice (tece locено)
-├── index.html       glasovni asistent + gumbi do portalov
-├── widget.js        vgradnja klepeta v tujo stran
 ├── setup.php        carovnik — PO NAMESTITVI IZBRISI
 └── config.php       ustvari carovnik
 ```
@@ -102,7 +100,7 @@ mapa `logs/` ne sme biti dosegljiva prek brskalnika.
 Pošiljanje e-pošte preizkusiš na `data-view.php` (ključ je v `config.php` pod
 `DATA_VIEW_KEY`).
 
-Asistenta preizkusi na `https://domena.si/asistent/`:
+Spletni klepet je ukinjen (17. 10. 2026). Asistenta preizkusi s telefonskim klicem ali s simulacijo (`lk agent simulate`); tabela spodaj velja za vprašanja, ki jih preizkusiš:
 
 | Vprašanje | Kaj mora narediti |
 |---|---|
@@ -117,15 +115,7 @@ najhujša napaka, ki jo iščeš.
 
 ## 6. Vgradnja v spletno stran
 
-```html
-<div id="tatjana-chat"></div>
-<script src="/asistent/widget.js" defer></script>
-```
-
-Kadar je asistent na isti domeni kot stran, dodatnih nastavitev ni. Pri vgradnji
-s tuje domene mora biti ta domena v `CHAT_ALLOWED_ORIGINS`.
-
----
+Ukinjeno 17. 10. 2026. `widget.js` ne obstaja več; glej PROJEKT.md, razdelek 16.
 
 ## Pred predajo stranki
 

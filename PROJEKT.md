@@ -3,15 +3,15 @@
 Popoln pregled projekta. Ta datoteka je vir resnice o tem, kaj sistem je, kaj
 zna, kako je zgrajen in kje smo. **Posodobi jo ob vsaki večji spremembi.**
 
-Zadnja posodobitev: 26. 9. 2026 (zvečer)
+Zadnja posodobitev: 17. 10. 2026 (spletni klepet ukinjen, glej razdelek 16)
 
 ---
 
 ## 1. Kaj to je
 
-AI asistent, ki se na spletni strani podjetja pogovarja z obiskovalci — po
-besedilu ali z glasom — odgovarja na vprašanja o ponudbi, cenah in rokih ter
-zbira povpraševanja. Isti asistent bo sprejemal telefonske klice.
+AI asistent, ki po telefonu odgovarja na vprašanja o ponudbi, cenah in rokih ter
+zbira povpraševanja. **Spletni klepet in glasovni asistent na strani sta ukinjena
+(17. 10. 2026)**; ostal je samo telefonski klic. Načrt za novi klepet je v razdelku 16.
 
 **Poslovni namen:** Luka to prodaja slovenskim malim podjetjem kot storitev z
 mesečnim vzdrževanjem. Prva stranka je njegova lastna agencija Kreativni Splet.
@@ -20,7 +20,7 @@ konfiguraciji in bazi, ne v kodi.
 
 | | |
 |---|---|
-| Živi naslov | `https://kreativnisplet.si/asistent/` |
+| Živi naslov | `https://kreativnisplet.si/asistent/` — koren preusmerja na glavno stran; živijo samo `tools/`, `ai/` (agent-config, call-guard, log-conversation) in `admin/` |
 | Repozitorij | `https://github.com/kosokroso/tatjana_ai` (javen) |
 | Gostovanje | cPanel, `public_html/asistent/`, uporabnik `kreati02` |
 | Baza | skupna z WordPressom, tabele s predpono `ai_` |
@@ -77,9 +77,7 @@ znala odgovoriti. Samo znotraj delovnega časa — zunaj njega bi klicatelj pris
 na zvonjenju v prazni pisarni.
 
 ### Govori in posluša
-Na spletni strani: mikrofon → prepis → odgovor → govor.
-
-Po telefonu enako, prek ločenega agenta, ki teče v LiveKit Cloud. Ta zna dvoje,
+Samo po telefonu, prek ločenega agenta, ki teče v LiveKit Cloud. Ta zna dvoje,
 česar klepet ne:
 
 - **Prebere številko, s katere kličejo**, iz same povezave (`sip.phoneNumber`),
@@ -93,18 +91,12 @@ Po telefonu enako, prek ločenega agenta, ki teče v LiveKit Cloud. Ta zna dvoje
 ## 3. Kako je zgrajeno
 
 ```
-Obiskovalec (brskalnik ali telefon)
+Klicatelj (telefon)
         │
-        ├─ index.html ........... glasovni asistent + gumbi do portalov
-        └─ widget.js ............ vgradnja klepeta v tujo stran
-                │
+        └─ telefon (LiveKit agent, voice-agent/agent.py)
+                │   HTTP + TOOL_SECRET
                 ▼
-        ai/chat.php ............. pogovor z OpenAI, zanka klicanja orodij
-        ai/transcribe.php ....... govor → besedilo
-        ai/speak.php ............ besedilo → govor (Azure ali OpenAI)
-        ai/guard.php ............ skupna zaščita vseh treh
-                │
-                ▼
+        ai/agent-config.php ..... prompt; ai/call-guard.php ... vratar klica
         ToolRegistry ............ sestavi orodja, lovi napake, piše dnevnik
                 │
                 ▼
@@ -140,8 +132,6 @@ stranko se spremenijo tri vrstice.
 ### Koren
 | Datoteka | Kaj dela |
 |---|---|
-| `index.html` | Glasovni asistent, gumbi do portalov. Videz po kreativnisplet.si. |
-| `widget.js` | Vgradnja klepeta v tujo stran z eno posodo in eno skripto. Naslov končne točke prebere iz lastnega `src`. |
 | `setup.php` | Namestitveni čarovnik. **Po namestitvi izbriši.** Sam se izklopi, ko `config.php` obstaja. |
 | `data-view.php` | Razvojni pregled baze, stanja strežnika in preizkus pošiljanja. Zaklenjen s `DATA_VIEW_KEY`. |
 | `bootstrap.php` | Naloži konfiguracijo in razrede, vrne pripravljen `ToolRegistry`. Zazna BOM. |
@@ -152,14 +142,10 @@ stranko se spremenijo tri vrstice.
 ### `ai/` — pogovorni sloj
 | Datoteka | Kaj dela |
 |---|---|
-| `chat.php` | Pošlje pogovor OpenAI, izvede klicane toole, vrne odgovor. Največ 4 krogi. |
-| `transcribe.php` | Posnetek → besedilo prek `gpt-4o-transcribe`, jezik izrecno `sl`. |
-| `speak.php` | Besedilo → mp3. Azure (SSML, slovenski glas) ali OpenAI. Normalizira cene in telefonske številke. |
-| `guard.php` | Preverjanje izvora, HTTPS, omejitve, dnevni proračun žetonov. Skupno za vse tri. |
+| `guard.php` | Preverjanje izvora, omejitve, dnevni proračun žetonov. Po ukinitvi klepeta ga rabi samo `cron/opozorila.php` (`aiBudget()`); ob novem klepetu se vrne v uporabo. |
 | `agent-config.php` | Telefonskemu agentu vrne sistemski prompt. Zaščiteno s `TOOL_SECRET`. |
 | `call-guard.php` | Vratar telefonskih klicev: pove, ali sme klic naprej, in prejme trajanje. Zaščiteno s `TOOL_SECRET`. |
 | `log-conversation.php` | Telefonski agent sem ob koncu klica pošlje potek pogovora, da ga `admin/pogovori.php` prikaže enako kot klepet. |
-| `OpenAIClient.php` | Odjemalec za Chat Completions. Ponovi klic ob 429 in 5xx. Beleži porabo žetonov. |
 | `system-prompt.txt` | Pravila asistenta. Brez imena podjetja — to pride iz konfiguracije. |
 | `tool-definitions.json` | Opisi orodij za model, v slovenščini. |
 
@@ -431,7 +417,7 @@ sprememb poslabšalo klic in ugotoviti se ni dalo, katera je kriva.
 **Kaj:** 30 do 50 zapisanih slovenskih pogovorov s pričakovanim izidom —
 vprašanje o ceni mora sprožiti orodje, vprašanje o tujem projektu mora biti
 zavrnjeno, povpraševanje mora imeti vsa tri polja. Skripta jih požene skozi
-`ai/chat.php` in prešteje odstopanja.
+`ai/chat.php` (ukinjen, glej razdelek 16; zdaj `lk agent simulate`) in prešteje odstopanja.
 
 **Zakaj prvo:** šele s tem se da odgovoriti, ali je večji model vreden denarja,
 ali Azure prepis slovenščino res razume slabše, ali je nov prompt boljši. Brez
@@ -632,7 +618,7 @@ BASE_URL=https://kreativnisplet.si/asistent bash tests/test-tools.sh
 Vseh 26 testov mora biti zelenih. Posebej zadnja dva: `GET` na tool mora vrniti
 405, mapa `logs/` ne sme biti dosegljiva.
 
-Asistenta preizkusi na `https://kreativnisplet.si/asistent/`. Če pri vprašanju o
+Asistenta preizkusi s klicem na telefonsko številko ali z `lk agent simulate`. Če pri vprašanju o
 ceni **ne pokliče orodja**, je odgovor izmišljen — to je najhujša napaka in jo
 `admin/pogovori.php` sam označi.
 
@@ -650,7 +636,7 @@ kliče po HTTP, zato se je prej zapisalo le, **katera** orodja je klical, ne pa,
 **kaj je povedal** — in "poglej v LiveKit" ni odgovor stranki, ki plačuje
 vzdrževanje.
 
-Spletni klepet zapiše isto iz `ai/chat.php`. Vsak obrat je ena vrstica JSON:
+Ukinjeni spletni klepet je zapisal isto iz `ai/chat.php`; format ostane. Vsak obrat je ena vrstica JSON:
 vprašanje, klicana orodja, odgovor.
 
 Endpoint ima meje, da en zahtevek ne napolni diska: največ 256 KB telesa,
@@ -726,3 +712,55 @@ Nižje tveganje, ker je že urejeno: `setup.php` (zna zapisati `config.php`) in
 `data-view.php` (prikazuje osebne podatke) sta izključena iz deploya in na živi
 strani ne obstajata; `config.php` ni v repozitoriju; skrbniška stran je za
 geslom, s CSRF žetonom in omejitvijo poskusov prijave.
+
+---
+
+## 16. Ukinitev spletnega klepeta in načrt za novega
+
+**Odločitev (17. 10. 2026):** `/asistent/` na strani ukinjen. Za zdaj obstaja samo
+glasovni klic. Klepet na spletni strani pride pozneje, v drugi obliki.
+
+**Zakaj:** stari klepet je klical OpenAI pri vsakem sporočilu, strošek pa je
+sorazmeren s številom obiskovalcev, ne z vrednostjo pogovora. Dnevni proračun
+žetonov (razdelek 6) je bil le zaklep, ne rešitev. Novi klepet mora biti cenejši
+po zasnovi: čim več dela lokalno in na strežniku, model samo kjer je nujen.
+
+### Kaj je bilo odstranjeno
+`index.html`, `widget.js`, `ai/chat.php`, `ai/speak.php`, `ai/transcribe.php`,
+`ai/OpenAIClient.php`. Koren `/asistent/` v `.htaccess` preusmerja na glavno stran,
+`Options -Indexes` izklopi izpis mape.
+
+### Kaj ostane in se ne sme premakniti
+`tools/*.php`, `ai/agent-config.php`, `ai/call-guard.php`, `ai/log-conversation.php`,
+`ai/system-prompt.txt`, `ai/tool-definitions.json`, `ai/guard.php` (cron), `admin/`,
+`cron/`. Vse to rabi telefonski agent. **Ne briši mape `tools/` ali `ai/` v celoti.**
+
+### Past pri deployu
+`.cpanel.yml` rsync nima `--delete`, zato **deploy izbrisanih datotek ne izbriše
+na strežniku**. Do ročnega brisanja v File Managerju (`public_html/asistent/`)
+ostanejo dosegljive stare `chat.php`, `speak.php` in `transcribe.php`, ki
+še vedno trošijo OpenAI/Azure ključe iz `config.php`. Zato je brisanje korak 1.
+
+### Načrt dela
+1. **Deploy in ročno brisanje na strežniku:** cPanel Update from Remote → Deploy
+   HEAD Commit; nato v File Managerju izbriši `index.html`, `widget.js`,
+   `ai/chat.php`, `ai/speak.php`, `ai/transcribe.php`, `ai/OpenAIClient.php`.
+   Preveri, da vsi vrnejo 404 in da `/asistent/` preusmeri.
+2. **Preveri, da telefon dela:** en testni klic; `tests/test-tools.sh` zelen.
+3. **Na glavni strani (WordPress) odstrani povezave in vgrajeni `widget.js`**
+   (meni, gumbi, morebitna vgradnja `#tatjana-chat`). Brez tega ostane mrtva povezava.
+4. **Počisti `config.php` na strežniku:** `CHAT_ALLOWED_ORIGINS` in nastavitve
+   govora za splet ne rabijo več nič. Telefonski agent ima svoje ključe v
+   `voice-agent/.env`; `OPENAI_API_KEY` v `config.php` pusti, če ga rabi kaj drugega.
+5. **Zasnova novega klepeta (ni začeta):**
+   - najprej odgovori brez modela: iskanje po `ai_knowledge` in katalogu (že
+     obstaja v `DirectMySQLAdapter::searchKnowledge`);
+   - model samo za vprašanja, ki jih iskanje ne reši, in samo majhen model;
+   - kratke zgodovine, trd strop žetonov na pogovor in na dan (`Budget`);
+   - ista baza znanja kot telefon, da sta odgovora enaka;
+   - povpraševanje prek obstoječega `submit_inquiry`.
+   Izbira med lokalnim modelom in iskanjem brez modela pride, ko bo znano, koliko
+   obiskovalcev dejansko sprašuje.
+6. **Posodobi `PROMPT-ZA-SODELAVCA.md`:** še vedno opisuje `index.html`, `widget.js`,
+   `chat.php`, `speak.php`.
+7. Razdelek 10 (strošek): vrstica "Klepet in glas na strani" ne velja več.

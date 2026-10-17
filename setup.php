@@ -313,8 +313,6 @@ $vseVredu   = !in_array(false, array_column($preverbe, 1), true);
             privzetega pon–pet 9–17. Asistent ga stranki pove kot dejstvo.</li>
         <li>Preizkusi pošiljanje e-pošte na strani <code>data-view.php</code> (ključ je v
             <code>config.php</code> pod <code>DATA_VIEW_KEY</code>).</li>
-        <li>Vgradi klepet na stran:<br>
-            <code>&lt;div id="tatjana-chat"&gt;&lt;/div&gt;&lt;script src="/asistent/widget.js" defer&gt;&lt;/script&gt;</code></li>
       </ol>
     </div>
   <?php else: ?>
