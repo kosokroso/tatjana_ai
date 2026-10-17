@@ -20,7 +20,7 @@ konfiguraciji in bazi, ne v kodi.
 
 | | |
 |---|---|
-| Živi naslov | `https://kreativnisplet.si/asistent/` — koren preusmerja na glavno stran; živijo samo `tools/`, `ai/` (agent-config, call-guard, log-conversation) in `admin/` |
+| Živi naslov | `https://kreativnisplet.si/asistent/` — koren pokaže `asistent.html`; živijo samo `tools/`, `ai/` (agent-config, call-guard, log-conversation) in `admin/` |
 | Repozitorij | `https://github.com/kosokroso/tatjana_ai` (javen) |
 | Gostovanje | cPanel, `public_html/asistent/`, uporabnik `kreati02` |
 | Baza | skupna z WordPressom, tabele s predpono `ai_` |
@@ -727,7 +727,7 @@ po zasnovi: čim več dela lokalno in na strežniku, model samo kjer je nujen.
 
 ### Kaj je bilo odstranjeno
 `index.html`, `widget.js`, `ai/chat.php`, `ai/speak.php`, `ai/transcribe.php`,
-`ai/OpenAIClient.php`. Koren `/asistent/` v `.htaccess` preusmerja na glavno stran,
+`ai/OpenAIClient.php`. Koren `/asistent/` v `.htaccess` pokaže statično `asistent.html` (opis Tatjane, številka za klic),
 `Options -Indexes` izklopi izpis mape.
 
 ### Kaj ostane in se ne sme premakniti
@@ -745,7 +745,7 @@ ostanejo dosegljive stare `chat.php`, `speak.php` in `transcribe.php`, ki
 1. **Deploy in ročno brisanje na strežniku:** cPanel Update from Remote → Deploy
    HEAD Commit; nato v File Managerju izbriši `index.html`, `widget.js`,
    `ai/chat.php`, `ai/speak.php`, `ai/transcribe.php`, `ai/OpenAIClient.php`.
-   Preveri, da vsi vrnejo 404 in da `/asistent/` preusmeri.
+   Preveri, da vsi vrnejo 404 in da `/asistent/` pokaže `asistent.html`.
 2. **Preveri, da telefon dela:** en testni klic; `tests/test-tools.sh` zelen.
 3. **Na glavni strani (WordPress) odstrani povezave in vgrajeni `widget.js`**
    (meni, gumbi, morebitna vgradnja `#tatjana-chat`). Brez tega ostane mrtva povezava.

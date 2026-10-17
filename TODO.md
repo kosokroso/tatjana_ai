@@ -18,7 +18,7 @@ Zadnja posodobitev: 17. 10. 2026
       - [ ] v File Managerju izbriši `index.html`, `widget.js`, `ai/chat.php`,
             `ai/speak.php`, `ai/transcribe.php`, `ai/OpenAIClient.php`
             (rsync ne briše; do takrat stari endpointi še trošijo ključe)
-      - [ ] preveri 404 na teh datotekah in preusmeritev na `/asistent/`
+      - [ ] preveri 404 na teh datotekah in prikaz `asistent.html` na `/asistent/`
       - [ ] testni klic na telefon + `tests/test-tools.sh`
       - [ ] odstrani povezavo in vgradnjo `widget.js` na WordPress strani
       - [ ] počisti `config.php` (`CHAT_ALLOWED_ORIGINS`, govor za splet)

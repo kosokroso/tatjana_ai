@@ -8,9 +8,9 @@
     RewriteRule ^ - [F,L]
 </IfModule>
 
-# Spletni klepet je ukinjen (17. 10. 2026). Koren /asistent/ vodi na glavno stran;
+# Spletni klepet je ukinjen (17. 10. 2026). Koren /asistent/ pokaže asistent.html;
 # tools/, ai/ in admin/ naprej delujejo za telefonskega agenta.
 <IfModule mod_rewrite.c>
-    RewriteRule ^$ https://kreativnisplet.si/ [R=302,L]
+    RewriteRule ^$ asistent.html [L]
 </IfModule>
 Options -Indexes
