@@ -7,3 +7,9 @@
     RewriteCond %{REQUEST_URI} \.git(/|$) [NC]
     RewriteRule ^ - [F,L]
 </IfModule>
+
+# Spletni klepet je ukinjen (17. 10. 2026), index.html ne obstaja vec. Brez
+# DirectoryIndex vrne /asistent/ 403, ker ni ne zacetne datoteke ne izpisa mape.
+# RewriteRule ^$ na tem LiteSpeed gostovanju ni delovala, DirectoryIndex pa je.
+DirectoryIndex asistent.html
+Options -Indexes
