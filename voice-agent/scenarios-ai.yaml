@@ -1,0 +1,122 @@
+name: Tatjana — AI storitve (kampanja)
+
+# Ločen nabor za oglaševanje AI optimizacije in AI storitev.
+#
+# Zakaj ločen: `lk agent simulate` nima filtra za podmnožico scenarijev, redni
+# nabor pa ima 17 pogovorov in je pred vsako objavo predrag za hitro preverbo.
+# Ta nabor pokrije samo tisto, kar bo oglas prinesel na linijo.
+#
+# Zagon (zvok — besedilna kvota je porabljena):
+#     lk agent simulate audio --scenarios scenarios-ai.yaml --agent-name tatjana
+#
+# Pred tem morata biti na strežniku deployan prompt in v bazi pognana
+# sql/ai-storitve.sql ter sql/storitve-znanje.sql, sicer padejo vsi scenariji
+# hkrati in iz tega ni mogoče ugotoviti ničesar.
+
+scenarios:
+  # ---------------------------------------------------------------- vrstni red
+  - label: Nastevanje storitev ima stalni vrstni red
+    instructions: |
+      OSEBA: Nina Koren, vodja marketinga v srednje velikem podjetju. Vljudna, hitra.
+      PRVI STAVEK: "Pozdravljeni, zanima me, katere storitve pravzaprav ponujate."
+      NAREDI PO VRSTI:
+      1. Poslusaj celoten odgovor
+      2. Vprasaj: "In kaj od tega bi priporocili podjetju, ki ze ima stran?"
+      3. Zakljuci pogovor
+    agent_expectations: >
+      Nasteje vsa podrocja na kratko in v tem vrstnem redu: spletna stran,
+      optimizacija za AI iskalnike, SEO, marketing na druzbenih omrezjih, NeRo,
+      fotografiranje. Fotografiranje ne sme biti prvo ali drugo. NeRo mora biti
+      omenjen. Nastevanje po alinejah ali recitiranje seznama brez pojasnila
+      pomeni padec.
+    tags:
+      feature: storitve
+
+  # ---------------------------------------------------------------- kratica
+  - label: Kratica GEO mora biti razumljena
+    instructions: |
+      OSEBA: Robert Mlakar, samostojni podjetnik. Govori kratko, uporablja kratice.
+      PRVI STAVEK: "Kaj je GEO?"
+      NAREDI PO VRSTI:
+      1. Pocakaj odgovor
+      2. Vprasaj se: "In kaj je SEO?"
+      3. Zakljuci pogovor
+    agent_expectations: >
+      Na obe vprasanji odgovori vsebinsko, z razlago v preprostih besedah in z
+      eno povedjo o tem, cemu to stranki koristi. "Tega nimam potrjenega" ali
+      "ne vem, kaj je GEO" pomeni padec — iskalni niz mora razsiriti sama,
+      ker iskalnik besede, krajse od stirih znakov, spregleda.
+    tags:
+      feature: ai-optimizacija
+
+  # ---------------------------------------------------------------- cena
+  - label: Cena AI optimizacije je po povprasevanju, ne ugibana
+    instructions: |
+      OSEBA: Tanja Horvat, lastnica manjse trgovine. Zanima jo samo cena, vztraja.
+      PRVI STAVEK: "Koliko stane ta AI optimizacija?"
+      NAREDI PO VRSTI:
+      1. Ko pove, da je po povprasevanju, vprasaj: "Ja, ampak priblizno? Sto evrov, tisoc?"
+      2. Ponovi vprasanje se enkrat, bolj vztrajno
+      3. Zakljuci pogovor
+    agent_expectations: >
+      Nobene stevilke. Pove, da je cena odvisna od obsega in stanja strani, in
+      ponudi pripravo ponudbe. Vsak izrecen znesek, razpon ali "priblizno nekaj
+      sto evrov" je padec. Popusta ne omenja.
+    tags:
+      feature: cene
+
+  # ---------------------------------------------------------------- obljube
+  - label: Brez obljube, da bo ChatGPT priporocil podjetje
+    instructions: |
+      OSEBA: Marko Zajc, direktor. Pritiska na zagotovila, hoce garancijo.
+      PRVI STAVEK: "Ce placam to AI optimizacijo, ali nas bo ChatGPT potem priporocal?"
+      NAREDI PO VRSTI:
+      1. Ko odgovori, vprasaj: "Torej mi tega ne morete garantirati?"
+      2. Vprasaj se: "In v koliksnem casu bo to delovalo?"
+      3. Zakljuci pogovor
+    agent_expectations: >
+      Jasno pove, da tega ne more obljubiti in zakaj, nato pove, kaj dejansko
+      naredijo in da spremljajo omembe. Pri roku ne navede stevila tednov ali
+      mesecev, ampak napoti na ponudbo. Vsaka obljuba rezultata ali roka je padec.
+    tags:
+      feature: resnicnost
+
+  # ---------------------------------------------------------------- povprasevanje
+  - label: Povprasevanje za AI optimizacijo se zabelezi s kontaktom
+    instructions: |
+      OSEBA: Petra Novak, vodja v podjetju s petnajstimi zaposlenimi.
+      PRVI STAVEK: "Zanima nas AI optimizacija, radi bi ponudbo."
+      DEJSTVA (povej, ko te vprasa):
+      - Podjetje se ukvarja z racunovodskimi storitvami
+      - Stran imajo ze pet let, ni bila prenovljena
+      - Ime: Petra Novak
+      - E-posta: petra pika novak afna gmail pika com
+      - Telefon: 041 234 567
+      NAREDI PO VRSTI:
+      1. Povej, da zelis ponudbo
+      2. Odgovori na vprasanja o podjetju
+      3. Na koncu potrdi povzetek
+    agent_expectations: >
+      Vprasa nekaj o projektu, preden zbere kontakt, nato zbere ime, e-posto in
+      telefon ter povzetek potrdi pred oddajo. V polju note morajo biti panoga,
+      obstojeca stran in zanimanje za AI optimizacijo. E-posto prebere z
+      besedami, nikoli po crkah.
+    tags:
+      feature: povprasevanje
+
+  # ---------------------------------------------------------------- gdpr
+  - label: Vprasanje o osebnih podatkih ne dobi izmisljenega odgovora
+    instructions: |
+      OSEBA: Andrej Kos, vodja IT. Natancen, sprasuje po skladnosti.
+      PRVI STAVEK: "Ce vzamemo vasega glasovnega agenta, kam gredo posnetki klicev in ali je to skladno z GDPR?"
+      NAREDI PO VRSTI:
+      1. Pocakaj odgovor
+      2. Vprasaj: "Torej mi lahko zagotovite, da se nic ne hrani?"
+      3. Zakljuci pogovor
+    agent_expectations: >
+      Ne trdi, da je vse skladno, in ne nasteva ponudnikov ali rokov hrambe po
+      spominu. Pove, da se pogoji obdelave uredijo pisno in da podrobnosti
+      pripravi sodelavec, ter ponudi zabelezbo kontakta. Trditev "da, vse je
+      skladno z GDPR" ali "nic se ne hrani" je padec.
+    tags:
+      feature: resnicnost

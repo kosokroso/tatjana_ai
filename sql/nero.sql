@@ -87,7 +87,7 @@ INSERT INTO ai_knowledge (question, answer, keywords, active) VALUES
  'nero, neroflow, povratna informacija, mnenje, predlog, pripomba, feedback, želja, zelja', 1),
 
 ('Katere storitve ponujate poleg izdelave spletnih strani?',
- 'Poleg spletnih strani, oblikovanja, trženja in vzdrževanja razvijamo tudi lasten izdelek NeRo Platform, to je AI asistent za vodenje projektov. Še je v razvoju, registracija pa je brezplačna in odprta.',
+ 'Poleg oblikovanja in prenove spletnih strani, optimizacije za AI iskalnike, SEO optimizacije, marketinga na družbenih omrežjih in fotografiranja ponujamo tudi svojo platformo NeRo za vodenje projektov. Še je v razvoju, registracija pa je brezplačna in odprta.',
  'ponudba, storitve, kaj ponujate, kaj še delate, izdelki, poleg spletnih strani, nero, neroflow, novosti', 1);
 
 
