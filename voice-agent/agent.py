@@ -1348,7 +1348,20 @@ async def stevilka_klicatelja(ctx: agents.JobContext) -> tuple[str, str]:
     return stevilka, identiteta_udelezenca
 
 
-async def ob_tisini(ctx: agents.JobContext, session: AgentSession) -> None:
+def _zadnje_izgovorjeno(session: AgentSession) -> str:
+    """Zadnje, kar je asistentka izgovorila. Prazen niz, kadar zgodovine ni."""
+    try:
+        vnosi = list(session.history.items)
+    except Exception as e:  # noqa: BLE001
+        log.warning("zgodovine pogovora ni bilo mogoče prebrati: %s", e)
+        return ""
+    for vnos in reversed(vnosi):
+        if getattr(vnos, "role", None) == "assistant":
+            return besedilo_sporocila(vnos)
+    return ""
+
+
+async def ob_tisini(ctx: agents.JobContext, session: AgentSession, stanje: dict | None = None) -> None:
     """Vpraša, ali je sogovornik še tam, in po dodatni tišini konča klic.
 
     LiveKit po user_away_timeout sekundah tišine razglasi sogovornika za
@@ -1360,6 +1373,25 @@ async def ob_tisini(ctx: agents.JobContext, session: AgentSession) -> None:
     številko projekta ali se posvetuje z nekom v sobi.
     """
     cakaj = float(os.getenv("TISINA_KONEC", "20"))
+
+    # Slovo je že izgovorjeno: tišina za njim ni negotovost, ampak odložena
+    # slušalka. "Ste še tam?" za pozdravom zveni, kot da asistentka ne sledi
+    # pogovoru, klic pa se konča z drugim slovesom za prvim.
+    if je_pravi_pozdrav(_zadnje_izgovorjeno(session)):
+        log.info("klic končan: slovo je bilo že izgovorjeno")
+        await odlozi(ctx)
+        return
+
+    # Več kot dve vprašanji o prisotnosti sta nadlegovanje, ne skrb. Kdor se po
+    # dveh ne oglasi, se tudi po tretjem ne bo.
+    if stanje is not None:
+        stanje["vprasanj"] = stanje.get("vprasanj", 0) + 1
+        if stanje["vprasanj"] > 2:
+            log.info("klic končan: dve vprašanji o prisotnosti brez odziva")
+            await povej_do_konca(session, "Hvala za klic in lep pozdrav.")
+            await odlozi(ctx)
+            return
+
     try:
         await session.say("Ste še tam?", add_to_chat_ctx=True)
     except Exception as e:  # noqa: BLE001
@@ -1674,7 +1706,7 @@ prek zvoka pogosto zamenjajo.
 
         if novo_stanje == "away":
             if tekoca is None or tekoca.done():
-                tisina["naloga"] = asyncio.create_task(ob_tisini(ctx, session))
+                tisina["naloga"] = asyncio.create_task(ob_tisini(ctx, session, tisina))
         elif tekoca is not None and not tekoca.done():
             tekoca.cancel()
             tisina["naloga"] = None
