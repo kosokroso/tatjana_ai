@@ -431,6 +431,43 @@ def _zadnje_od_asistentke(context: RunContext) -> str:
     return ""
 
 
+# Imena, ki jih slovenski glas prebere narobe.
+#
+# Azure sl-SI bere zapisano ime po slovenskih pravilih, zato je "ChatGPT-ju"
+# izgovoril kot "catgpetju". Zapis v pogovoru ostane pravilen; zamenjava velja
+# samo za govor, tik pred sintezo.
+#
+# Vzorec ujame vse zapise in vse sklone: "ChatGPT", "Chat GPT", "chat-gpt",
+# "ChatGPT-ju", "ChatGPT-jem". Koncnica se ohrani in prilepi na zadnji zlog,
+# da sklanjatev ostane slovenska: "Cet Dzi Pi Tiju".
+#
+# Namenoma NI na seznamu: Perplexity, Grok, Bing, Copilot kot "kopilot" —
+# slovensko branje je dovolj blizu. Preden kaj dodas, poslusaj po telefonu pri
+# 8 kHz, ne na zvocniku: vzorec glasu ne napove telefona.
+IZGOVORJAVA = [
+    # Koncnico vzamemo samo, kadar je pripeta z vezajem ("ChatGPT-ju"). Brez
+    # tega bi vzorec pozrl naslednjo besedo: "ChatGPT in Gemini" bi postal
+    # "Cet Dzi Pi Tiin Gemini".
+    (re.compile(r"chat[\s-]*gpt(?:-(\w+))?", re.IGNORECASE), "Čet Dži Pi Ti"),
+    (re.compile(r"\bgpt(?:-(\w+))?", re.IGNORECASE), "Dži Pi Ti"),
+    (re.compile(r"\bclaude(?:-(\w+))?", re.IGNORECASE), "Klod"),
+    (re.compile(r"\bgemini(?:-(\w+))?", re.IGNORECASE), "Džemini"),
+    (re.compile(r"\bcopilot(?:-(\w+))?", re.IGNORECASE), "Kopajlot"),
+]
+
+
+def izgovori_znamke(besedilo: str) -> str:
+    """Zamenja imena, ki jih slovenski glas prebere narobe.
+
+    Sem sodi samo tisto, kar je bilo slisano in je zvenelo napacno. Vrstni red
+    je pomemben: "chat gpt" mora pasti pred samostojnim "gpt", sicer ostane
+    polovica imena nespremenjena.
+    """
+    for vzorec, izgovor in IZGOVORJAVA:
+        besedilo = vzorec.sub(lambda m, i=izgovor: i + (m.group(1) or ""), besedilo)
+    return besedilo
+
+
 # Znaki zunaj latinice, ki jih vseeno pustimo: valute, narekovaji, pomišljaji.
 DOVOLJENI_POSEBNI = set("€£$—–…„“”‘’«»\u00a0")
 
@@ -582,9 +619,9 @@ class TelefonskiAsistent(Agent):
                 if meja == -1:
                     continue
                 zdaj, ostanek = ostanek[: meja + 1], ostanek[meja + 1 :]
-                yield izgovori_eposte(zdaj)
+                yield izgovori_znamke(izgovori_eposte(zdaj))
             if ostanek:
-                yield izgovori_eposte(ostanek)
+                yield izgovori_znamke(izgovori_eposte(ostanek))
 
         # Agent.default.tts_node je asinhroni generator, osnovna tts_node pa
         # navadna metoda. Z "return super().tts_node(...)" iz async def se je

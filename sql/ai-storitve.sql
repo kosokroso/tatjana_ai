@@ -19,7 +19,7 @@ SET NAMES utf8mb4;
 INSERT INTO ai_products (name, category, unit, price_per_unit, price_from, stock_quantity, description, active) VALUES
 
 ('AI optimizacija spletne strani', 'ai-resitve', 'projekt', NULL, 0, 1,
- 'Priprava strani in vsebine tako, da podjetje najdejo in omenijo AI pomočniki, kot sta ChatGPT in Gemini. Zajema strukturirane podatke, jasno vsebino, lokalno vidnost za storitev in kraj, omembe na virih, ki jih AI upošteva, ter spremljanje, kje se omemba pojavi. Cena je odvisna od obsega in stanja strani.', 1),
+ 'Priprava strani in vsebine tako, da podjetje najdejo in omenijo AI pomočniki, kot so ChatGPT, Gemini, Copilot in Perplexity. Zajema strukturirane podatke, jasno vsebino, lokalno vidnost za storitev in kraj, omembe na virih, ki jih AI upošteva, ter spremljanje, kje se omemba pojavi. Cena je odvisna od obsega in stanja strani.', 1),
 
 ('Glasovni AI agent za telefon', 'ai-resitve', 'mesec', NULL, 0, 1,
  'Agent, ki sprejme klic, odgovarja na pogosta vprašanja o ponudbi in cenah iz vaše baze, zabeleži povpraševanje s kontaktom in po potrebi preveže na sodelavca. Dela tudi takrat, ko v pisarni ni nikogar. Cena je odvisna od obsega in števila klicev.', 1),
@@ -35,12 +35,12 @@ INSERT INTO ai_products (name, category, unit, price_per_unit, price_from, stock
 INSERT INTO ai_knowledge (question, answer, keywords, active) VALUES
 
 ('Po čem se AI optimizacija razlikuje od SEO?',
- 'SEO skrbi, da vas najde Google, AI optimizacija pa, da vas pozna in omeni umetna inteligenca, na primer ChatGPT. Prvo deluje na iskalni rezultat, drugo na odgovor, ki ga pomočnik napiše stranki. Smiselno je oboje, ker ljudje uporabljajo oboje.',
- 'razlika, seo, ai optimizacija, geo, primerjava, kaj je bolje, oboje, chatgpt, google', 1),
+ 'SEO skrbi, da vas najde Google, AI optimizacija pa, da vas pozna in omeni umetna inteligenca, na primer ChatGPT, Gemini ali Copilot. Prvo deluje na iskalni rezultat, drugo na odgovor, ki ga pomočnik napiše stranki. Smiselno je oboje, ker ljudje uporabljajo oboje.',
+ 'razlika, seo, ai optimizacija, geo, primerjava, kaj je bolje, oboje, chatgpt, gemini, copilot, perplexity, google', 1),
 
-('Ali mi lahko zagotovite, da nas bo ChatGPT priporočil?',
+('Ali mi lahko zagotovite, da nas bo ChatGPT ali kateri drug AI priporočil?',
  'Tega vam ne morem obljubiti in vam tudi ne bi rada. Kaj AI pomočnik navede, se spreminja in ni pod našim nadzorom. Naredimo pa tisto, kar je v naši moči: da so podatki o vas jasni, strukturirani in na virih, ki jih AI upošteva, in spremljamo, kje se omemba pojavi.',
- 'garancija, zagotovilo, obljuba, priporoči, priporoca, chatgpt, gemini, bomo prvi, rezultat, uspeh', 1),
+ 'garancija, zagotovilo, obljuba, priporoči, priporoca, chatgpt, gemini, copilot, perplexity, grok, bomo prvi, rezultat, uspeh', 1),
 
 ('Kako merite, ali AI optimizacija deluje?',
  'Spremljamo, kje in kako umetna inteligenca omenja vaše podjetje, in to zberemo v mesečno poročilo skupaj s predlogi za naprej. Tako vidite premik, ne samo opravljeno delo.',

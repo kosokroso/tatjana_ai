@@ -1,0 +1,7 @@
+﻿Paket;Storitev;Kaj zajema;Obseg;Zagon (EUR);Mesecno (EUR);Minimalna doba (mesecev);Opomba
+Pregled stanja;GEO;Pregled, kaj AI danes pove o podjetju, kaj manjka, pisno porocilo;enkratno;150;0;0;Znesek se odsteje od zagona, ce stranka nadaljuje
+GEO Start;GEO;Strukturirani podatki, popravek kljucnih strani, lokalni podatki, mesecno porocilo;do 3 storitve, 10 spremljanih poizvedb;450;90;6;Vstopni paket za manjse podjetje
+GEO Rast;GEO;GEO Start + vsebinski popravki kljucnih strani, omembe na zunanjih virih, sprotni popravki;do 8 storitev, 30 spremljanih poizvedb;900;190;6;Za podjetja z vec storitvami ali vec kraji
+SEO Start;SEO;Tehnicna optimizacija hitrosti in strukture, vsebina, lokalna vidnost, mesecno porocilo;15 kljucnih besed;500;150;6;Referencna cena, kadar stranka hoce samo SEO
+Vidnost Start;GEO + SEO;GEO Start + SEO Start v enem paketu, eno skupno porocilo;15 kljucnih besed, 10 poizvedb;750;190;6;Skupna cena, ne popust: tehnicni del in vsebina sta za oboje ista
+Vidnost Rast;GEO + SEO;GEO Rast + SEO v enem paketu, vsebina za oboje, eno skupno porocilo;30 kljucnih besed, 30 poizvedb;1200;250;6;Priporocen paket za podjetja, ki oglasujejo

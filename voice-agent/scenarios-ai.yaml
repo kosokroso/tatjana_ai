@@ -84,7 +84,7 @@ scenarios:
   # ---------------------------------------------------------------- povprasevanje
   - label: Povprasevanje za AI optimizacijo se zabelezi s kontaktom
     instructions: |
-      OSEBA: Petra Novak, vodja v podjetju s petnajstimi zaposlenimi.
+      OSEBA: , vodja v podjetju s petnajstimi zaposlenimi.
       PRVI STAVEK: "Zanima nas AI optimizacija, radi bi ponudbo."
       DEJSTVA (povej, ko te vprasa):
       - Podjetje se ukvarja z racunovodskimi storitvami
