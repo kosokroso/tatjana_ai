@@ -6,11 +6,86 @@ nadgradnja vredna dela, je v **[PROJEKT.md](PROJEKT.md)**.
 Delitev je namerna: tu kljukice, tam razlogi. Nobena točka ni na obeh mestih,
 ker se dva seznama opravil razideta in nobenemu ne zaupaš več.
 
-Zadnja posodobitev: 17. 10. 2026
+Zadnja posodobitev: 21. 10. 2026
 
 ---
 
 ## Zdaj — nepotrjeno ali odprto
+
+- [ ] **Tatjana V2 na `+386 5 7774102` z glasom ElevenLabs** (21. 10. 2026; za
+      predstavitev pri stranki 22. 10.). Postavitev in ID-ji so v PROJEKT.md,
+      razdelek 7.
+      - [X] Majin agent `CA_hTBKtHimCXjZ` prepisan s to kodo, `.env.v2` in
+            `livekit-v2.toml` narejena, delavec se prijavi kot `maja`
+            (`AGENT_IME`), dispatch pravilo nedotaknjeno
+      - [X] V2 teče z Azure `sl-SI-PetraNeural` — številka dela tudi, če
+            ElevenLabs odpove
+      - [X] **Paket Starter plačan** (21. 10. 2026). Glas "Maja"
+            (`WwFMMxYWrkm6h88c7f0n`) prek API dela, `402 paid_plan_required` je
+            izginil.
+      - [X] `TTS_PONUDNIK=elevenlabs` v `.env.v2`, `update-secrets` opravljen,
+            delavec se je znova prijavil
+      - [X] **Preizkusni klic opravljen** (21. 10. 2026, 17:19 UTC, job
+            `AJ_oTzrJXim3Xhx`, 56 s, 3 obrati). Glas pride, zveni dobro, pogovor
+            je zapisan na strežnik. Povprečen TTFB iz nadzorne plošče ElevenLabs
+            je **0,306 s** — Azure je imel 529 ms, torej govor ni počasnejši.
+      - [ ] **Pred sestankom opravi ogrevalni klic.** Prvi klic v svežem procesu
+            plača 458 ms zastoja zanke pri `silero.VAD.load()`
+            (`zaznavalnik_govora()`, `agent.py`) in 117 ms pri uvozu `anyio`.
+            Oboje je v dnevniku kot `event loop blocked`. Naslednji klici tega
+            ne plačajo, ker je zaznavalnik predpomnjen v globalni spremenljivki.
+            Pravi popravek je nalaganje v `prewarm`, a to je sprememba kode in
+            nov deploy — ne pred predstavitvijo. Pokliči enkrat pet minut prej.
+      - [ ] **Poraba kreditov.** Starter da 30k kreditov na mesec. Izmerjeno
+            razmerje je ~310 kreditov na minuto govora agenta, torej ~95 minut
+            govora; pri trominutnem klicu, kjer agent govori približno tretjino
+            časa, je to red velikosti 90 klicev. Za predstavitev dovolj, za
+            redno rabo pri več strankah ne.
+      - [X] **Ime Maja na 7774102** (`IME_ASISTENTKE=Maja` v `.env.v2`).
+      - [X] **Zamik V2** (21. 10. 2026; meritve v PROJEKT.md, razdelek 7):
+            `gpt-4.1` namesto `gpt-5.6-sol`, `gpt-live-transcribe` namesto
+            `gpt-transcribe`, VAD in `anyio` ob zagonu procesa. Deployano.
+      - [X] **Klic po menjavi modela in prepisa**: E2E 2356 ms (prej ~3225).
+      - [X] Ogrevanje predpomnilnika prompta med pozdravom (`OGREJ_PROMPT=1`),
+            uvoz `openai.resources` v `ogrej_proces()`, `ELEVEN_STABILNOST=0.75`.
+            Deployano.
+      - [X] Klic po ogrevanju: predpomnilnik dela (10,6k/10,7k), E2E ni bil
+            izmerjen zaradi prekinitve pozdrava. Uvoz ElevenLabs v ogrevanje,
+            deployano.
+      - [X] **Zvonjenje brez odgovora** popravljeno: Majino dispatch pravilo
+            dobilo `randomize`, vsak klic svojo sobo (PROJEKT.md, razdelek 7).
+      - [ ] **Klic za meritev E2E** — počakaj konec pozdrava, vsaj trije
+            obrati. Pod 2 s? Pozdrav "tukaj Maja", glas manj topel. Če je še vedno pretopel, `ELEVEN_STABILNOST=1.0` in
+            `update-secrets`.
+      - [ ] Naslednji vzvod, če ne zadošča: `VAD_TISINA` 0.4 → 0.3 (~100 ms).
+            Tveganje: rez sredi narekovanja e-pošte.
+      - [X] **`gpt-live-transcribe` vrnjen na `gpt-transcribe`** pri Maji:
+            šum je spreminjal v tuje besede, ki so jo prekinjale do tišine
+            (2 od 6 klicev). Razlaga v PROJEKT.md, razdelek 7.
+      - [X] **Tatjana dobila isti sklop** razen prepisa: `gpt-4.1`,
+            `LLM_TEMPERATURE=0.6`, `OGREJ_PROMPT=1`, deploy kode. Ni bilo po
+            eno — sklop je bil preizkušen na Maji.
+      - [X] **Klic na obe številki** (20:35–20:37): Maja ~2005 ms, Tatjana
+            ~2830 ms. Prepis čist, brez tišine. Meritve v PROJEKT.md.
+      - [ ] Maja preobčutljiva za šum (3 prekinitve, odgovorila na "Chat.").
+            Kandidat: `PREKIN_BESEDE=2` ali `PREKIN_SEK=0.8` v `.env.v2`.
+      - [ ] Tatjana: Azure TTFB ~1000 ms (prej 529). Verjetno daljše prve
+            povedi `gpt-4.1`. Krajši odgovori bi pomagali obema.
+      - [ ] `gpt-4.1` govori predolgo (~25 s na "kaj je Kreativni splet").
+            Prompt zahteva en do dva stavka.
+      - [ ] Neobvezno: ključu ElevenLabs dodaj dovoljenje `speech_to_text` in
+            izmeri Scribe v2 realtime proti `gpt-live-transcribe`.
+      - [ ] Simulacija scenarijev (`lk agent simulate`) ne teče: `quota
+            exceeded: MaxSimulationTextTurns` v obeh projektih.
+      - [X] **OpenAI na podjetjev račun** (21. 10. 2026): projekt "Tatjana KS",
+            ključ `...3cIA` v `.env` in `.env.v2`, `update-secrets` za oba
+            agenta. Strežnik ključa ne rabi — nobena PHP datoteka ga ne bere.
+      - [ ] **Dnevna omejitev na nivoju Build:** `gpt-4.1` 1,35 M žetonov na
+            dan. Pri ~11.000 žetonih prompta na zahtevek je to okoli 7–9
+            trominutnih klicev Maje na dan. Če zmanjka: `gpt-4.1-mini`
+            (20 M na dan, ~200 ms počasnejša prva beseda) ali višji nivo.
+      - [ ] Odloči, kaj z Majo za Kurivo Gorica. Njene kode v oblaku ni več,
+            repozitorija KurivoGorica na tem računalniku ni.
 
 - [ ] **Ukinitev spletnega klepeta** (17. 10. 2026; razlogi in celoten načrt v
       PROJEKT.md, razdelek 16). Kodo sem odstranil, strežnik pa še ni očiščen:
@@ -289,6 +364,9 @@ primerjaj `E2E median` na nadzorni plošči LiveKit.
 | `TTS_SAMPLE_RATE=16000` | izklopljeno | praskanje pri dolgih odgovorih |
 | `TTS_PONUDNIK=elevenlabs` | izklopljeno | glas ElevenLabs "Maja"; **rabi plačan paket** — glej spodaj |
 
+Pri Tatjani V2 (`.env.v2`, projekt `maja`) je to stikalo namen same postavitve,
+ne preizkus. Ovira je ista: paket.
+
 ### ElevenLabs — dve oviri, obe izmerjeni 12. 10. 2026
 
 1. **Model.** Vtičnik govori prek `wss://.../multi-stream-input`. Rokovanje tam
@@ -302,6 +380,48 @@ primerjaj `E2E median` na nadzorni plošči LiveKit.
 2. **Paket.** Brezplačni paket vrne
    `402 paid_plan_required: Free users cannot use library voices via the API`.
    Glas "Maja" je iz knjižnice, zato prek API ne dela, ne glede na model.
+
+### Hitrejšega modela za slovenščino ni — izmerjeno 21. 10. 2026
+
+Vprašanje je bilo, ali boljši model ElevenLabs pospeši odgovarjanje. Ne.
+Privzeti `eleven_v3_conversational` je med slovenskimi že najhitrejši.
+
+TTFB prek `POST /v1/text-to-speech/{id}/stream`, glas `Sarah` (premade, zato
+deluje tudi na Free), slovenski stavek, mediana treh vzorcev z razvijalčevega
+računalnika:
+
+| Model | TTFB | Slovenščina |
+|---|---|---|
+| `eleven_v4_turbo` | 343 ms | da |
+| `eleven_v3_conversational` | 369 ms | da |
+| `eleven_v3` | 952 ms | da |
+| `eleven_v4` | 1120 ms | da |
+| `eleven_flash_v2_5` | — | **ne**, `400 does not support language_code 'sl'` |
+| `eleven_turbo_v2_5` | — | **ne**, enako |
+| `eleven_multilingual_v2` | — | **ne**, enako |
+
+`eleven_v4_turbo` je hiter in zna slovensko, a prek vtičnice, ki jo vtičnik
+uporablja, ostaja nedosegljiv: `wss://.../text-to-speech/{id}/multi-stream-input`
+ga 21. 10. 2026 še vedno zavrne s **400**, medtem ko se `eleven_flash_v2_5` na
+isti vtičnici poveže. Ovira torej ni parameter in ni jezik, ampak model sam —
+enako kot 12. 10.
+
+`text-to-dialogue/multi-stream-input`, po kateri gresta `eleven_v3` in
+`eleven_v3_conversational`, **dela** — preverjeno 21. 10. 2026 po plačilu, z
+glasom "Maja" in natanko tistim rokovanjem, ki ga sestavi vtičnik
+(`_dialogue_multi_stream_url` v `livekit/plugins/elevenlabs/tts.py`):
+
+| Model | Prvi zvok |
+|---|---|
+| `eleven_v3_conversational` | **144 ms** |
+| `eleven_v3` | 729 ms |
+
+Ta vtičnica **nima `voice_id` v poti** — glasove sprejme v prvem sporočilu
+(`voices`). Prvi poskusi so zato vrnili `403`: kriva je bila pot, ne paket.
+
+**Zamik ni v govoru.** Pri E2E 3198 ms je TTS TTFB 529 ms, STT delay 963 ms in
+LLM TTFT 889 ms. Pospeševanje odziva je stikalo pri prepisu ali modelu, ne pri
+glasu.
 
 Preden stikalo spet vklopiš: plačaj paket, nato preveri rokovanje in šele
 potem `lk agent deploy`. Vrnitev na Azure je prazen `TTS_PONUDNIK=` in

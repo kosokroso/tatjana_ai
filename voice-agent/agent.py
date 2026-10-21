@@ -17,6 +17,7 @@ Zagon:
 """
 
 import asyncio
+import importlib
 import logging
 import os
 import random
@@ -1299,10 +1300,20 @@ def izberi_glas():
         if os.getenv("ELEVEN_API_KEY"):
             from livekit.plugins import elevenlabs
 
+            dodatno: dict = {}
+            # Višja stabilnost je manj čustven, bolj uraden glas. Pri v3 gre prek
+            # text-to-dialogue samo stability; similarity_boost vtičnik zahteva,
+            # a ga ta pot ne pošlje.
+            stabilnost = os.getenv("ELEVEN_STABILNOST")
+            if stabilnost:
+                dodatno["voice_settings"] = elevenlabs.VoiceSettings(
+                    stability=float(stabilnost), similarity_boost=0.75
+                )
             return elevenlabs.TTS(
                 voice_id=os.getenv("ELEVEN_TTS_VOICE", "WwFMMxYWrkm6h88c7f0n"),
                 model=os.getenv("ELEVEN_TTS_MODEL", "eleven_v3_conversational"),
                 language="sl",
+                **dodatno,
             )
         log.warning("TTS_PONUDNIK=elevenlabs, a ELEVEN_API_KEY ni nastavljen — uporabljam Azure")
 
@@ -1511,12 +1522,15 @@ def nastavitve_modela() -> dict:
     # modeli samo reasoning_effort="none", "low" vrne 400. Ta agent ima orodja
     # vedno, vtičnik pa vrednost sam napolni le modelom s svojega seznama —
     # novejši ostanejo brez nje. Zato privzetek tukaj in ne v .env.
+    #
+    # gpt-4.1 in starejši ne razmišljajo in oba parametra zavrnejo s 400.
+    razmislja = izbrano["model"].startswith(("gpt-5", "o"))
     for kljuc, spremenljivka, privzeto in (
         ("reasoning_effort", "LLM_NAPOR", "none"),
         ("verbosity", "LLM_OBSEZNOST", ""),
     ):
         vrednost = os.getenv(spremenljivka) or privzeto
-        if vrednost:
+        if vrednost and razmislja:
             izbrano[kljuc] = vrednost
 
     # Sistemski prompt meri okrog 8 KB in gre v vsak obrat. S stalnim ključem ga
@@ -1570,6 +1584,27 @@ def nastavljive_izboljsave() -> dict:
     return izbrano
 
 
+async def ogrej_predpomnilnik(model: llm.LLM, asistent: Agent) -> None:
+    """Pošlje prompt in orodja modelu, medtem ko asistentka še pozdravlja.
+
+    Prompt meri okrog 11.000 žetonov. Prvi obrat klica ga je obdelal brez
+    predpomnilnika in čakal 1176 ms na prvo besedo (21. 10. 2026), naslednji
+    obrati s predpomnilnikom krajše. Pozdrav traja nekaj sekund, dovolj, da
+    ponudnik prompt obdela in shrani; prvi pravi obrat ga dobi že predpomnjenega.
+    Odgovor se ne bere — tok se zapre ob prvem kosu.
+
+    Cena: enkrat polni vhodni žetoni na klic (pri gpt-4.1 okrog 2 centa).
+    """
+    try:
+        kontekst = llm.ChatContext()
+        kontekst.add_message(role="system", content=asistent.instructions)
+        async with model.chat(chat_ctx=kontekst, tools=list(asistent.tools)) as tok:
+            async for _ in tok:
+                break
+    except Exception as e:  # noqa: BLE001 — ogrevanje ne sme podreti klica
+        log.debug("ogrevanje predpomnilnika ni uspelo: %s", e)
+
+
 async def odlozi(ctx: agents.JobContext) -> None:
     """Konča klic.
 
@@ -1587,7 +1622,30 @@ async def odlozi(ctx: agents.JobContext) -> None:
 server = agents.AgentServer()
 
 
-@server.rtc_session(agent_name="tatjana")
+def ogrej_proces(proc: agents.JobProcess) -> None:
+    """Naloži, kar bi sicer prvi klic plačal s tišino.
+
+    Izmerjeno 21. 10. 2026 na prvem klicu svežega procesa: `silero.VAD.load()`
+    je zanko ustavil za 458 ms, prvi HTTP zahtevek pa še za 117 ms pri uvozu
+    `anyio`. Vse to se zgodi enkrat na proces, zato sodi v zagon procesa.
+    """
+    zaznavalnik_govora()
+    importlib.import_module("anyio._backends._asyncio")
+    # Vtičnik ob zagonu seje pokliče models.list(), ki uvozi ves openai.resources:
+    # 430 ms zastoja zanke pred pozdravom, izmerjeno 21. 10. 2026.
+    importlib.import_module("openai.resources")
+    # izberi_glas() ga uvozi šele med klicem: 274 ms zastoja pred pozdravom.
+    if os.getenv("TTS_PONUDNIK") == "elevenlabs":
+        importlib.import_module("livekit.plugins.elevenlabs")
+
+
+server.setup_fnc = ogrej_proces
+
+
+# Ime, pod katerim se delavec prijavi za dispatch. Drugi deploy iste kode
+# (Tatjana V2 v projektu maja) tece pod imenom tistega projekta, zato je
+# ime nastavljivo; brez spremenljivke ostane "tatjana".
+@server.rtc_session(agent_name=os.getenv("AGENT_IME", "tatjana"))
 async def vstopna_tocka(ctx: agents.JobContext) -> None:
     zacetek_klica = time.perf_counter()
 
@@ -1598,6 +1656,15 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
         stevilka_klicatelja(ctx),
     )
     klicatelj, identiteta = podatki_klicatelja
+
+    # Drugi deploy iste kode (Tatjana V2) se predstavi z drugim imenom, prompt
+    # in pozdrav pa pridejo z istega strežnika.
+    ime = os.getenv("IME_ASISTENTKE")
+    staro_ime = nastavitve.get("assistant_name") or ""
+    if ime and staro_ime:
+        for kljuc in ("system_prompt", "greeting"):
+            nastavitve[kljuc] = nastavitve[kljuc].replace(staro_ime, ime)
+
     # Meje klicev varujejo telefonsko porabo. Simulacija ne telefonira, poleg
     # tega v njej ni udeleženca SIP — vse seje bi se štele pod isto oznako za
     # skrito številko in po desetih bi vratar zavrnil vse nadaljnje. Prvi tak
@@ -1720,6 +1787,8 @@ prek zvoka pogosto zamenjajo.
         await odlozi(ctx)
         return
 
+    if os.getenv("OGREJ_PROMPT") == "1":
+        asyncio.create_task(ogrej_predpomnilnik(session.llm, asistent))
     await session.say(nastavitve["greeting"])
 
     # Če vratar ni odgovoril, mejo vseeno postavimo. Nedosegljiv strežnik na

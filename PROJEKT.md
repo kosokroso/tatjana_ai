@@ -3,7 +3,7 @@
 Popoln pregled projekta. Ta datoteka je vir resnice o tem, kaj sistem je, kaj
 zna, kako je zgrajen in kje smo. **Posodobi jo ob vsaki večji spremembi.**
 
-Zadnja posodobitev: 17. 10. 2026 (spletni klepet ukinjen, glej razdelek 16)
+Zadnja posodobitev: 21. 10. 2026 (druga številka Tatjana V2, glej razdelek 7)
 
 ---
 
@@ -24,9 +24,10 @@ konfiguraciji in bazi, ne v kodi.
 | Repozitorij | `https://github.com/kosokroso/tatjana_ai` (javen) |
 | Gostovanje | cPanel, `public_html/asistent/`, uporabnik `kreati02` |
 | Baza | skupna z WordPressom, tabele s predpono `ai_` |
-| Model | `gpt-5.4-mini` (telefon), `OPENAI_MODEL` iz `config.php` (splet) |
+| Model | `gpt-4.1` (telefon, obe številki, od 21. 10. 2026) |
 | Glas | Azure `sl-SI-PetraNeural`, regija `italynorth` |
 | Telefon | `+386 5 7774124` (DIDWW, Nova Gorica) — **deluje** |
+| Telefon V2 | `+386 5 7774102` (DIDWW, projekt LiveKit `maja`) — ista koda, drug glas |
 | Telefonski agent | LiveKit Cloud, `CA_PiXjcGNWErxB`, regija `eu-central` |
 
 ID-ji trunka, dispatch pravila in postopek pri DIDWW so v
@@ -304,6 +305,209 @@ Kodo poganjata dve različni mesti in `git push` ne zažene nobenega:
 Sprememba `.env` ne potrebuje `deploy` — agent se po `update-secrets` sam zažene
 znova. Sprememba `agent.py` potrebuje `deploy`, ker v oblaku teče posnetek kode
 izpred zadnjega deploya, ne tvoja mapa.
+
+### Tatjana V2 — druga številka za predstavitev (21. 10. 2026)
+
+Namen: na sestanku zaigrati dva glasova na dveh številkah brez dveh baz in dveh
+promptov. Ista koda, dvoje nastavitev.
+
+| | Tatjana | Tatjana V2 |
+|---|---|---|
+| Številka | `+386 5 7774124` | `+386 5 7774102` |
+| LiveKit projekt | `tatjana` (`p_3c3m91h1rrq`) | `maja` (`p_1bf8zg1pxmb`) |
+| Agent | `CA_PiXjcGNWErxB` | `CA_hTBKtHimCXjZ` |
+| Dispatch pravilo | `SDR_tpMPgUorXQhT` | `SDR_Ugee48V65ETc` |
+| Glas | Azure `sl-SI-PetraNeural` | ElevenLabs "Maja", `eleven_v3_conversational` |
+| Ime asistentke | Tatjana (`ASSISTANT_NAME` na strežniku) | Maja (`IME_ASISTENTKE` v `.env.v2`) |
+| Model | `gpt-4.1` (od 21. 10. zvečer) | `gpt-4.1` |
+| Prepis | `gpt-transcribe` | `gpt-transcribe` (`gpt-live-transcribe` vrnjen, glej spodaj) |
+| Nastavitve | `voice-agent/.env` | `voice-agent/.env.v2` |
+| Konfiguracija `lk` | `livekit.toml` | `livekit-v2.toml` |
+
+Deploy V2 (iz mape `voice-agent`):
+
+```powershell
+lk --project maja agent deploy --config livekit-v2.toml --secrets-file .env.v2 .
+```
+
+**Majin agent je prepisan.** Številka 7774102 je bila Maja za Kurivo Gorica.
+Projekt LiveKit `maja` na brezplačnem paketu dovoli enega agenta (`maximum number
+of agents reached (1/1)`), zato V2 ni mogel dobiti svojega mesta in je Majina
+koda v oblaku zamenjana. Majo dobiš nazaj samo z novim deployem iz repozitorija
+KurivoGorica — tega na tem računalniku ni.
+
+**Klic je zvonil brez odgovora** (21. 10. 2026, 18:13 UTC). Majino pravilo
+`SDR_Ugee48V65ETc` je tipa Callee brez `randomize`, zato je vsak klic na
+7774102 dobil sobo z istim imenom `maja__38657774102`. Agent se pošlje samo ob
+nastanku sobe: če je prejšnja soba še živela, je nov klic pristal v njej brez
+agenta. Ta klic je prišel med deployem in posel je pristal pri delavcu, ki se je
+ravno zapiral. Popravek: `lk sip dispatch update --id SDR_Ugee48V65ETc --callee
+maja_ --randomize` — vsak klic ima zdaj svojo sobo, kot pri Tatjani. Agent
+`maja` in trunki so ostali. **Med predstavitvijo ne poganjaj ne `deploy` ne
+`update-secrets`:** oba znova zaženeta delavca in klic v tistem trenutku zvoni
+v prazno.
+
+**Dispatch pravilo je ostalo nedotaknjeno.** Pravilo `SDR_Ugee48V65ETc` kliče
+agenta po imenu `maja`, zato se delavec prijavi pod tem imenom:
+`agent_name` v `agent.py` bere `AGENT_IME` in brez te spremenljivke ostane
+`tatjana`. V `.env.v2` je `AGENT_IME=maja`. Preimenovanje pravila bi bila druga
+sprememba na isti poti brez koristi.
+
+**Preklop glasu na ElevenLabs** (po plačilu paketa), iz mape `voice-agent`:
+
+```powershell
+# v .env.v2 nastavi TTS_PONUDNIK=elevenlabs, nato:
+lk --project maja agent update-secrets --config livekit-v2.toml --secrets-file .env.v2 --overwrite
+```
+
+Vrnitev na Azure je `TTS_PONUDNIK=azure` in isti ukaz. Brez deploya.
+
+**Glas ElevenLabs je vklopljen od 21. 10. 2026**, ko je bil plačan paket Starter
+(1 $ prvi mesec, 30k kreditov ≈ 30 minut govora). Model je
+`eleven_v3_conversational`; `eleven_v3` je po meritvi petkrat počasnejši,
+`eleven_v4_turbo` pa ga vtičnik ne doseže. Meritve so v
+[TODO.md](TODO.md#hitrejsega-modela-za-slovenscino-ni--izmerjeno-21-10-2026). Prvi pravi klic
+prek te poti je potrjen isti dan; povprečen TTFB iz nadzorne plošče ElevenLabs
+je 0,306 s, Azure je imel 529 ms.
+
+**Če ElevenLabs odpove, klicatelj sliši tišino.** `izberi_glas()` na Azure
+preklopi samo, kadar `ELEVEN_API_KEY` manjka — napake med klicem ne ujame.
+Vrnitev je zato ročna in traja toliko kot `update-secrets`.
+
+**Ime.** Prompt in pozdrav prideta s strežnika z imenom iz `ASSISTANT_NAME`.
+`IME_ASISTENTKE` v agentu to ime zamenja v obeh, zato isti strežnik služi obema
+številkama. Brez spremenljivke se nič ne spremeni.
+
+### Zamik V2 — izmerjeno 21. 10. 2026
+
+Cilj je bil odziv pod 2 s. Prvi klic z glasom ElevenLabs (nadzorna plošča
+LiveKit, seja `RM_EPduApBErwJ4`):
+
+| Korak | Mediana |
+|---|---|
+| STT delay | 1122 ms |
+| LLM TTFT | 1931 ms |
+| TTS TTFB | 171 ms |
+| **E2E** | **~3225 ms** |
+
+Govor ni bil problem. Model in prepis sta bila 95 % zamika, zato sta se
+zamenjala ta dva — vsak izmerjen posebej, z istim promptom in orodji kot v
+klicu, preden je šel v deploy.
+
+**Model.** TTFT s pravim promptom (~26.500 znakov, 9 orodij), mediana devetih
+vzorcev z razvijalčevega računalnika:
+
+| Model | Privzeto | `service_tier=priority` |
+|---|---|---|
+| `gpt-5.6-sol` | 1453 ms | 1038 ms |
+| `gpt-5.4-mini` | 1046 ms | 824 ms |
+| `gpt-4.1-mini` | 969 ms | 716 ms |
+| `gpt-4o-mini` | 826 ms | — |
+| `gpt-5.4-nano` | 793 ms | — |
+| **`gpt-4.1`** | **744 ms** | 822 ms |
+
+`gpt-4.1` je najhitrejši brez doplačila in med hitrimi najmočnejši. Na petih
+scenarijih z orodji s pravega strežnika (cena strani, Meta oglasi, "je to
+končna cena", delovni čas, storitev, ki je ni) je odgovoril pravilno: "od
+399 €", "po dogovoru", "izhodiščna", "tega nimam potrjenega". Odgovori so
+krajši in se končajo z vprašanjem, kar po telefonu pomaga. `gpt-4.1` ne
+razmišlja in zavrne `reasoning_effort` s 400, zato ga `nastavitve_modela()`
+pošlje samo modelom `gpt-5*` in `o*`. Temperatura je 0,6 kot ob uglaševanju.
+
+**Prepis.** Prek istega vtičnika kot v agentu, s ključnimi besedami s strežnika,
+na treh slovenskih povedih, zmanjšanih na telefonskih 8 kHz; čas od konca
+govora do končnega prepisa, skupaj s 400 ms `VAD_TISINA`:
+
+| Model | Mediana | Napake |
+|---|---|---|
+| `gpt-transcribe` (sprotno) | ~950 ms | 0 |
+| **`gpt-live-transcribe`** | **~560 ms** | 0 |
+| `gpt-4o-transcribe` | ~1050 ms | e-pošto zapiše kot naslov |
+| Azure `sl-SI` | ~970 ms | e-pošto zlepi v eno besedo |
+
+ElevenLabs Scribe ni bil izmerjen: ključ nima dovoljenja `speech_to_text`.
+
+**Ogrevanje.** `ogrej_proces()` naloži VAD in `anyio` ob zagonu procesa
+(`server.setup_fnc`), ne med prvim klicem — 458 + 117 ms manj na prvem klicu.
+
+**Simulacija scenarijev ne teče** v nobenem od obeh projektov:
+`quota exceeded: MaxSimulationTextTurns`. Vedenje je bilo zato preverjeno z
+neposrednimi klici modela in orodij, ne z `lk agent simulate`.
+
+**Klic po menjavi modela in prepisa** (seja `RM_ccedBr5VZKg8`): E2E 2356 ms,
+STT 816 ms, LLM TTFT 1176 ms, TTS 148 ms. Hitreje, a ne pod 2 s. Dnevnik je
+pokazal še dva vira:
+
+- **Hladen predpomnilnik prompta.** Prvi obrat klica pošlje ~11.000 žetonov
+  brez predpomnilnika. `ogrej_predpomnilnik()` jih pošlje med pozdravom
+  (`OGREJ_PROMPT=1`), tok zapre ob prvem kosu. Lokalno izmerjeno: prvi obrat
+  2048 → 1156 ms in 1389 → 801 ms, 10.496 žetonov iz predpomnilnika.
+  Cena je en polni vhod na klic, pri `gpt-4.1` okrog 2 centa.
+- **Uvoz `openai.resources`** ob `models.list()` vtičnika: 430 ms zastoja zanke
+  pred pozdravom. Zdaj v `ogrej_proces()`.
+
+**Klic po ogrevanju** (seja `RM_ro52aWSf5W3a`, podjetjev ključ): edini pravi
+zahtevek modela je imel 10,6k od 10,7k vhodnih žetonov iz predpomnilnika, čeprav
+je bil račun nov in predpomnilnik prazen — ogrevanje torej dela. E2E ni bil
+izmerjen: klicatelj je govoril čez pozdrav (prekrivanje 742 ms) in LiveKit
+prekinjenih obratov ne meri. `zagon_seje` je padel na 212 ms. Dnevnik je
+pokazal še uvoz `livekit.plugins.elevenlabs` (274 ms) — zdaj v `ogrej_proces()`.
+
+**`gpt-live-transcribe` je bil vrnjen na `gpt-transcribe`** (21. 10. 2026
+zvečer). V klicih je šum na liniji spreminjal v besede tujih jezikov — "はい",
+"什么", "Мне бы чтобы часу…", "นี่อยู่ที่ what the fuck", "Mensch", "Proszę",
+"Oh my God". Vsak tak fragment je štel kot govor stranke: Maja je utihnila sredi
+stavka, odgovor v pripravi se je zavrgel, in ko so fragmenti prihajali vsakih
+1–3 s, ni prišla do besede. Dva od šestih klicev sta tako obmolknila
+(`RM_tftbCVPvHqsd` po 56 s, `RM_56eJPEoPEm7b` takoj po pozdravu, tudi na jasno
+"Kakšna storitev izvajate?"). V dnevniku agenta ni bilo nobene napake. Klica na
+`gpt-transcribe` (`RM_Q4Juv3tRSq96`, `RM_EPduApBErwJ4`) imata čist slovenski
+prepis. Moja primerjava prepisa je bila na čistem posnetku brez šuma in tega
+ni mogla ujeti. Jezik `sl` gre v seji kot `languages`, a je to namig, ne meja.
+Na odgovor je Maja enkrat rekla "Tole je pa japonščina".
+
+**Tatjana dobila isti sklop** (21. 10. 2026 zvečer, brez `gpt-live-transcribe`):
+`gpt-4.1`, `LLM_TEMPERATURE=0.6`, `OGREJ_PROMPT=1` in deploy današnje kode
+(ogrevanje procesa). Glas ostaja Azure Petra, ime Tatjana. Prejšnji `.env` je v
+`voice-agent/.env.varnostna-kopija-2026-10-21`.
+
+**Meritev po vseh spremembah** (21. 10. 2026, 20:35–20:37 po lokalnem času):
+
+| | Maja `RM_eiUpCpDZwHYs` | Tatjana `RM_aUiajKn7W7v3` |
+|---|---|---|
+| Povprečen odziv | **~2005 ms** | ~2830 ms |
+| E2E po obratih | 2318, 2249, 1926 ms | 3084 ms (drugi klic 2810 ms) |
+| STT delay | 952 ms | 897 ms |
+| LLM TTFT | 886 ms | 915 ms |
+| TTS TTFB | 166 ms (ElevenLabs) | **1016 ms** (Azure) |
+| Žetoni iz predpomnilnika | 94,2k od 98,1k | 21,4k od 21,7k |
+
+Prepis pri obeh čist slovenski, brez tujih besed, brez tišine; `koncaj_pogovor`
+je pri obeh klic pravilno končal. Maja je pred tem imela ~3225 ms, Tatjana
+~3200 ms (17. 9.).
+
+Pri Tatjani je zdaj najdaljši korak glas. Azure je imel 17. 9. mediano 529 ms,
+zdaj ~1000 ms. Verjetna razlaga (ni preverjena): `gpt-4.1` piše daljše prve
+povedi, Azure pa sintetizira celo poved, preden pošlje prvi zvok; ElevenLabs
+besedilo sprejema sproti.
+
+Maja je preobčutljiva za šum. V klicu je imela 3 prekinitve, kratki fragmenti
+("Chat.", "Hm.", "Imala soft.") so jo ustavili sredi stavka, na "Chat." je celo
+odgovorila. Klicatelj je to v klicu rekel sam: "vsak šum, ko ga naredim, se
+kar ustaviš".
+
+**Opažanje, ki ni popravljeno:** `gpt-4.1` je na "Kaj je Kreativni splet?"
+govoril ~25 s, čeprav prompt zahteva en do dva stavka. Daljši monolog je daljše
+okno za prekinitve.
+
+**Glas bolj uraden.** Pri `eleven_v3_conversational` gre prek
+`text-to-dialogue` samo `stability`, vse drugo vtičnik zavrže. Višja je manj
+čustvena. `ELEVEN_STABILNOST=0.75`; na čas do prvega zvoka ne vpliva (izmerjeno
+~150 ms pri 0,5 in 1,0).
+
+**Pravilo "po eno stikalo" je tu kršeno namerno.** Trije posegi so šli skupaj,
+ker je bil vsak prej izmerjen posebej in ker Tatjana na 7774124 ostaja
+nespremenjena kot primerjava. Na Tatjano jih prenašaj po enega.
 
 ---
 
