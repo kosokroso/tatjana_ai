@@ -402,6 +402,48 @@ def _povzetek_vsebuje_ime(povzetek: str, name: str) -> bool:
     return bool(deli) and any(d in povzetek for d in deli)
 
 
+# Toliko obratov stranke z narekovanjem naslova mora biti, preden se
+# povpraševanje sme oddati z nepotrjeno e-pošto: prvo narekovanje in dva popravka.
+NAREKOVANJ_PRED_NEPOTRJENO = 3
+
+
+# Prosi asistentka stranko za podatek, ki ga bo ta narekovala? Takrat je premor
+# sredi stavka ("Moje ime je ... Tone") ali med črkami normalen in asistentka ne
+# sme vskočiti. Dva pogoja: glagol prošnje IN vrsta podatka.
+_PROSNJA = re.compile(r"\b(povej\w*|poved\w*|povest\w*|diktir\w*|zaupa\w*|navedi\w*)\b", re.IGNORECASE)
+_PODATEK = re.compile(
+    r"\b(ime|imena|priimek|priimka|e-pošt\w*|telefonsk\w*|številk\w*|črk\w*|naslov\w*)\b",
+    re.IGNORECASE,
+)
+
+
+def prosi_za_podatek(besedilo: str) -> bool:
+    """Ali asistentka s tem stavkom prosi stranko za ime, e-pošto ali številko."""
+    b = besedilo or ""
+    return bool(_PROSNJA.search(b) and _PODATEK.search(b))
+
+
+def je_narekovanje_eposte(besedilo: str) -> bool:
+    """Ali stranka v tem obratu narekuje e-poštni naslov ali ga črkuje."""
+    b = (besedilo or "").lower()
+    if "afna" in b or "@" in b:
+        return True
+    # "S, T in A" ali "T I N A": vsaj tri posamezne črke v istem obratu.
+    return len([w for w in re.findall(r"[a-zčšž]+", b) if len(w) == 1]) >= 3
+
+
+def opomba_nepotrjene_eposte(slisano: str, naslov: str, telefon: str, opomba: str | None) -> str:
+    """Opomba za povpraševanje, oddano z naslovom, ki ga stranka ni potrdila.
+
+    Strežnik zavrne opombo, daljšo od 500 znakov, in z njo celo povpraševanje.
+    """
+    glava = f'E-POŠTA NI POTRJENA. Slišano: "{(slisano or "").strip()}"'
+    if naslov:
+        glava += f" (sestavljeno: {naslov})"
+    glava += f". Pokličite stranko na {telefon} in naslov preverite."
+    return (glava + (" " + opomba.strip() if opomba and opomba.strip() else ""))[:500]
+
+
 def _zgodovina(context: RunContext) -> list:
     """Dosedanji potek pogovora.
 
@@ -610,6 +652,10 @@ class TelefonskiAsistent(Agent):
             # "janez.novak@gmail.com" kot eno besedo in afne ne izgovori.
             # Zadržimo samo zadnjo nedokončano besedo — zamik je ena beseda, ne
             # cel odgovor.
+            #
+            # Naslov podjetja gre z besedami: stranki ga ni treba preverjati,
+            # črkovan pa bi bil dolg kot naslov stranke.
+            nase = (self.eposta_podjetja,) if self.eposta_podjetja else ()
             ostanek = ""
             async for kos in text:
                 popravljen = samo_latinica(kos)
@@ -620,9 +666,9 @@ class TelefonskiAsistent(Agent):
                 if meja == -1:
                     continue
                 zdaj, ostanek = ostanek[: meja + 1], ostanek[meja + 1 :]
-                yield izgovori_znamke(izgovori_eposte(zdaj))
+                yield izgovori_znamke(izgovori_eposte(zdaj, nase))
             if ostanek:
-                yield izgovori_znamke(izgovori_eposte(ostanek))
+                yield izgovori_znamke(izgovori_eposte(ostanek, nase))
 
         # Agent.default.tts_node je asinhroni generator, osnovna tts_node pa
         # navadna metoda. Z "return super().tts_node(...)" iz async def se je
@@ -899,6 +945,7 @@ class TelefonskiAsistent(Agent):
         product: str | None = None,
         quantity: str | None = None,
         note: str | None = None,
+        eposta_nepotrjena: bool = False,
     ) -> dict:
         """Odda povpraševanje, da podjetje stranki pripravi ponudbo. Uporabi
         šele, ko imaš ime, telefonsko številko in e-pošto, in ko je stranka
@@ -924,6 +971,10 @@ class TelefonskiAsistent(Agent):
                 konca: kraj, panoga, želene funkcije, obseg, rok, obstoječa stran,
                 proračun. Ne povzemaj v eno poved — sodelavec mora iz tega pripraviti
                 ponudbo brez dodatnega klica. Kar izpustiš, je izgubljeno.
+            eposta_nepotrjena: True samo, ko stranka naslova tudi po dveh
+                popravkih ni potrdila. V email takrat vpiši naslov, kot si ga
+                nazadnje slišala; povpraševanje gre s telefonsko številko in
+                sodelavec stranko pokliče, da naslov preveri.
         """
         # Povzetek in potrditev sta edino, kar loči zapisano povpraševanje od
         # napačno slišanega. Pravilo je bilo doslej samo v promptu in ga je model
@@ -1005,9 +1056,46 @@ class TelefonskiAsistent(Agent):
         self._zabelezi_orodje()
         await mašilo(context, "zapis", self._masilo_stanje)
 
-        naslov, napaka = self._preveri_eposto(email)
-        if napaka:
-            return napaka
+        if eposta_nepotrjena:
+            # Po telefonu se "s" pred "t" izgubi (linija reže nad 3,4 kHz) in
+            # 21. 10. 2026 je Stina trikrat slišala "Tina" ter povpraševanja ni
+            # mogla oddati. Povpraševanje ne sme propasti zaradi naslova, kadar
+            # imamo telefon — a šele po dveh popravkih, sicer bi model bližnjico
+            # izbral namesto črkovanja.
+            narekovanj = sum(
+                1 for v in _zgodovina(context)
+                if getattr(v, "role", None) == "user" and je_narekovanje_eposte(besedilo_sporocila(v))
+            )
+            if _zgodovina(context) and narekovanj < NAREKOVANJ_PRED_NEPOTRJENO:
+                return {
+                    "success": False,
+                    "data": None,
+                    "error": "Naslov še ni bil dvakrat popravljen.",
+                    "naslednji_korak": (
+                        "Prosi stranko, naj del pred afno pove po črkah, počasi, "
+                        "na primer 'S, T, I, N, A'. V polje email vpiši natanko to, "
+                        "kar pove."
+                    ),
+                }
+            naslov, _ = popravi_naslov(email or "")
+            domena = (getattr(self, "eposta_podjetja", "") or "").rpartition("@")[2]
+            # Strežnik zahteva veljaven naslov; kadar iz slišanega ni mogoče
+            # sestaviti nobenega, gre nadomestni na domeno podjetja in opomba pove zakaj.
+            zapisan = naslov or (f"eposta.ni.potrjena@{domena}" if domena else "")
+            if not zapisan:
+                return {
+                    "success": False,
+                    "data": None,
+                    "error": "Iz slišanega ni mogoče sestaviti naslova.",
+                    "naslednji_korak": "Prosi stranko, naj naslov pove še enkrat po črkah.",
+                }
+            note = opomba_nepotrjene_eposte(email, naslov, telefon, note)
+            log.info("povpraševanje z nepotrjeno e-pošto: %r -> %r", email, zapisan)
+            naslov = zapisan
+        else:
+            naslov, napaka = self._preveri_eposto(email)
+            if napaka:
+                return napaka
 
         vsebina = {"name": name, "phone": telefon, "email": naslov, "confirmed": True}
         for kljuc, vrednost in (("product", product), ("quantity", quantity), ("note", note)):
@@ -1019,9 +1107,15 @@ class TelefonskiAsistent(Agent):
         # zakopano sredi sistemskega prompta. Brez tega je klic po oddanem
         # povpraševanju obvisel v tišini, dokler ni odložila stranka.
         if odgovor.get("success"):
+            sporocilo = (
+                "povej številko povpraševanja in da jo sodelavec pokliče na telefon, "
+                "da preveri e-poštni naslov — NE reci, da ponudbo pošljemo po e-pošti, "
+                if eposta_nepotrjena
+                else "povej številko povpraševanja in da ponudbo pošljemo po e-pošti, "
+            )
             odgovor["naslednji_korak"] = (
                 "Po vrsti in ne vse naenkrat: "
-                "1) povej številko povpraševanja in da ponudbo pošljemo po e-pošti, "
+                "1) " + sporocilo +
                 "nato v istem odgovoru vprašaj, ali potrebuje še kaj; "
                 "2) orodje koncaj_pogovor pokliči SAMO potem, ko je stranka odgovorila, "
                 "da ne potrebuje nič več. Nikoli ga ne pokliči v istem odgovoru, v "
@@ -1722,6 +1816,35 @@ imenom in e-pošto. Ob potrditvi jo ponovi po skupinah s premori, ker se števke
 prek zvoka pogosto zamenjajo.
 """
 
+    # Po telefonu se "s" pred "t" izgubi: 21. 10. 2026 je "Stina" trikrat postala
+    # "Tina" in povpraševanje ni bilo oddano. Črkovanje po črkah preživi linijo,
+    # eposta.py ga zna sestaviti ("S, T in A", "es te i en a", "T I N A").
+    navodila += """
+
+## Kako napišeš e-poštni naslov, ko ga bereš nazaj
+Zapiši ga v običajni obliki z afno kot znakom: janez.novak@gmail.com. Sistem ga
+pred govorom sam prebere po črkah, da ga stranka lahko preveri. Ne razpisuj ga z
+besedami ("janez pika novak afna gmail pika com") in ne črkuj ga sama.
+
+Po telefonu prepis besedo "pika" pogosto zapiše kot "ika", "tika" ali "ilka",
+začetni "s" pa izgubi. Ko v narekovanju naslova slišiš "stina ilka mavri", je to
+najverjetneje stina.mavri — zapiši piko. Stranka bo naslov slišala po črkah in
+napako popravila.
+
+## Ko stranka reče, da je e-poštni naslov napačen
+Ne prosi je, naj naslov samo ponovi. Prosi jo, naj del pred afno pove po
+črkah, počasi, na primer "S, T, I, N, A".
+Po telefonu se nekatere črke, posebej s na začetku besede, izgubijo.
+V polje email vpiši natanko to, kar je povedala, tudi "S T I N A pika M A V R I";
+naslov sestavi sistem in ti ga vrne, da ga prebereš nazaj.
+
+Če naslova tudi po dveh popravkih ne potrdi, ne vztrajaj. Povej, da
+povpraševanje oddaš s telefonsko številko in da jo sodelavec pokliče ter naslov
+preveri. Preberi povzetek (ime, kaj potrebuje, da jo pokličemo), počakaj na
+potrditev in pokliči submit_inquiry z eposta_nepotrjena=True ter naslovom, kot
+si ga nazadnje slišala.
+"""
+
     session = AgentSession(
         stt=izberi_prepis(nastavitve.get("stt_keywords") or []),
         # 0,3 je zvenelo kot posnetek: model je vedno izbral najbolj pricakovano
@@ -1818,6 +1941,35 @@ prek zvoka pogosto zamenjajo.
             tisina["naloga"] = None
 
     session.on("user_state_changed", ob_spremembi_stanja)
+
+    # Ko asistentka prosi za ime, e-pošto ali črkovanje, klicatelj med besedami
+    # in črkami pogosto premolkne dlje od običajnega premora ("Moje ime je ...
+    # Tone", "S, T, I ... N, A"). 22. 10. 2026 ga je Maja zato sredi podatkov
+    # ustavila z "Kar počasi" in "Nadaljujte". Čakanje podaljšamo samo ob taki
+    # prošnji, ne za ves klic: globalno višji VAD_TISINA bi upočasnil vsak odgovor.
+    cakaj_podatek = float(os.getenv("PODATKI_CAKAJ", "1.6"))
+    osnova_min = float(os.getenv("KONEC_MIN") or 0.5)
+    osnova_max = float(os.getenv("KONEC_MAX") or 3.0)
+    cakanje = {"podatek": False}
+
+    def ob_novem_sporocilu(dogodek) -> None:
+        sporocilo = getattr(dogodek, "item", None)
+        if cakaj_podatek <= 0 or getattr(sporocilo, "role", None) != "assistant":
+            return
+        potreben = prosi_za_podatek(besedilo_sporocila(sporocilo))
+        if potreben == cakanje["podatek"]:
+            return
+        cakanje["podatek"] = potreben
+        try:
+            session.update_options(endpointing_opts={
+                "min_delay": cakaj_podatek if potreben else osnova_min,
+                "max_delay": max(osnova_max, cakaj_podatek + 1.0) if potreben else osnova_max,
+            })
+            log.info("čakanje na konec govora: %s", "podaljšano" if potreben else "običajno")
+        except Exception as e:  # noqa: BLE001 — klic mora teči naprej
+            log.warning("čakanja ni bilo mogoče spremeniti: %s", e)
+
+    session.on("conversation_item_added", ob_novem_sporocilu)
 
     async def ustavi_nadzor_tisine() -> None:
         tekoca = tisina["naloga"]

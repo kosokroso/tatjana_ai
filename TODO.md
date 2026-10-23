@@ -67,12 +67,48 @@ Zadnja posodobitev: 21. 10. 2026
             eno — sklop je bil preizkušen na Maji.
       - [X] **Klic na obe številki** (20:35–20:37): Maja ~2005 ms, Tatjana
             ~2830 ms. Prepis čist, brez tišine. Meritve v PROJEKT.md.
-      - [ ] Maja preobčutljiva za šum (3 prekinitve, odgovorila na "Chat.").
-            Kandidat: `PREKIN_BESEDE=2` ali `PREKIN_SEK=0.8` v `.env.v2`.
-      - [ ] Tatjana: Azure TTFB ~1000 ms (prej 529). Verjetno daljše prve
-            povedi `gpt-4.1`. Krajši odgovori bi pomagali obema.
-      - [ ] `gpt-4.1` govori predolgo (~25 s na "kaj je Kreativni splet").
-            Prompt zahteva en do dva stavka.
+      - [X] Maja preobčutljiva za šum: `PREKIN_BESEDE=2` v `.env.v2` (22. 10.).
+      - [ ] Maja še vedno odgovori na enobesedne smeti ("Chat.") — rešitev je
+            koda, ki prezre obrat brez prave besede.
+      - [X] **`gpt-4.1` vrnjen na `gpt-5.6-sol`** na obeh (22. 10.): kvaril je
+            narekovanje e-pošte. Razlogi in primerjava v PROJEKT.md, razdelek 7.
+      - [X] **E-pošta "Stina" → "Tina"**: črkovanje ob popravku in oddaja z
+            `eposta_nepotrjena` po dveh popravkih. Deployano na obe.
+      - [ ] **Klic z narekovanjem e-pošte** po deployu: popravek naslova, nato
+            dva neuspešna popravka → mora oddati s telefonom; v e-pošti
+            podjetju mora biti opomba "E-POŠTA NI POTRJENA". Klic 22. 10. 06:13
+            (`RM_iuqfFNCCzC66`, povpraševanje 559) te poti ni preizkusil:
+            naslov je bil potrjen v prvem popravku, "stina" je prepis tokrat
+            slišal.
+      - [X] **"mavri" in "mauri" se slišita enako — rešeno** (22. 10.):
+            asistentka del pred afno prebere po golih črkah ("M, A, V, R, I"
+            proti "M, A, U, R, I"). Sidra in imena črk zavrnjena. PROJEKT.md,
+            razdelek 7.
+      - [X] Prvi klic s črkovanjem (560) ga ni sprožil: model je pisal naslov
+            brez `@`. Popravljeno z `IZGOVORJEN_NASLOV` in navodilom (22. 10.).
+      - [X] "pika" → "ika"/"tika"/"ilka" v `ZNAKI` in navodilu (22. 10.).
+      - [X] **Črkovano branje deluje po telefonu** (22. 10., `RM_p2r99v2rcgPa`,
+            07:03): klicatelj je v "P, R, I, M, O, Z, pika, M, A, R, K, O, V, E, C"
+            takoj ujel napačen priimek. Po dveh popravkih je povpraševanje **561**
+            oddano z nepotrjeno e-pošto (`primos.makhovec@gmail.com`) in opombo.
+            Že ob 06:52 (sidra) je ujel "U" v "mauri".
+      - [X] Prošnja za črkovanje usklajena z golimi črkami (22. 10.).
+      - [X] **Skakanje v besedo ob narekovanju**: daljše čakanje samo po prošnji za
+            podatek (`PODATKI_CAKAJ=1.6`), `VAD_TISINA` ostaja 0.4. Deployano.
+      - [ ] Klic po tem: ali Maja počaka, ko si pri imenu ali črkah premolkneš;
+            ali običajni odgovori ostajajo hitri. Po potrebi `PODATKI_CAKAJ` 2.0.
+      - [ ] Popravi naslova v povpraševanjih **559** (verjetno `mauri`) in
+            **560** (verjetno `stinatika...`) na `stina.mavri@gmail.com`.
+      - [ ] **Asistentka skoči v besedo**, ko klicatelj sredi stavka premolkne
+            ("Moje ime je … Tone"). `VAD_TISINA=0.4`. Glej odgovor 22. 10.
+      - [ ] Razmisli o `PREKIN_BESEDE=2` tudi za Tatjano: branje po črkah je
+            daljše, zato je prekinitev od šuma dražja kot prej.
+      - [ ] Neobvezno, Luka 22. 10. ni zahteval: "Se lahko prekinem, prosim."
+            (mišljeno "te lahko prekinem") je model razumel kot slovo in
+            končal klic (`RM_E2LCFrME9MK7`). Varovalka zavrne slovo samo pri
+            vprašanju z vprašajem.
+      - [ ] Pospešitev `gpt-5.6-sol` s `service_tier=priority` (1453 → 1038 ms
+            v preizkusu). Sprememba `nastavitve_modela()` in deploy.
       - [ ] Neobvezno: ključu ElevenLabs dodaj dovoljenje `speech_to_text` in
             izmeri Scribe v2 realtime proti `gpt-live-transcribe`.
       - [ ] Simulacija scenarijev (`lk agent simulate`) ne teče: `quota
@@ -80,12 +116,12 @@ Zadnja posodobitev: 21. 10. 2026
       - [X] **OpenAI na podjetjev račun** (21. 10. 2026): projekt "Tatjana KS",
             ključ `...3cIA` v `.env` in `.env.v2`, `update-secrets` za oba
             agenta. Strežnik ključa ne rabi — nobena PHP datoteka ga ne bere.
-      - [ ] **Dnevna omejitev na nivoju Build:** `gpt-4.1` 1,35 M žetonov na
-            dan. Pri ~11.000 žetonih prompta na zahtevek je to okoli 7–9
-            trominutnih klicev Maje na dan. Če zmanjka: `gpt-4.1-mini`
-            (20 M na dan, ~200 ms počasnejša prva beseda) ali višji nivo.
-      - [ ] Odloči, kaj z Majo za Kurivo Gorica. Njene kode v oblaku ni več,
-            repozitorija KurivoGorica na tem računalniku ni.
+      - [ ] **Dnevna omejitev na nivoju Build:** `gpt-5.6-sol` 1,35 M žetonov
+            na dan, skupna za obe številki. Pri ~11.000 žetonih prompta na
+            zahtevek je to okoli 7–9 trominutnih klicev na dan. Če zmanjka:
+            višji nivo (Launch, 100 $ nakupa).
+      - [ ] Odloči, kaj z Majo za Kurivo Gorica. Njene kode v oblaku ni več;
+            obnovi se iz `Desktop\ClaudeMemory\KurivoGorica\repo\asistent`.
 
 - [ ] **Ukinitev spletnega klepeta** (17. 10. 2026; razlogi in celoten načrt v
       PROJEKT.md, razdelek 16). Kodo sem odstranil, strežnik pa še ni očiščen:

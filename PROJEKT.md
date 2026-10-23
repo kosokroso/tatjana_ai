@@ -24,7 +24,7 @@ konfiguraciji in bazi, ne v kodi.
 | Repozitorij | `https://github.com/kosokroso/tatjana_ai` (javen) |
 | Gostovanje | cPanel, `public_html/asistent/`, uporabnik `kreati02` |
 | Baza | skupna z WordPressom, tabele s predpono `ai_` |
-| Model | `gpt-4.1` (telefon, obe številki, od 21. 10. 2026) |
+| Model | `gpt-5.6-sol` (telefon, obe številki; `gpt-4.1` 21.–22. 10. 2026 vrnjen, razdelek 7) |
 | Glas | Azure `sl-SI-PetraNeural`, regija `italynorth` |
 | Telefon | `+386 5 7774124` (DIDWW, Nova Gorica) — **deluje** |
 | Telefon V2 | `+386 5 7774102` (DIDWW, projekt LiveKit `maja`) — ista koda, drug glas |
@@ -319,7 +319,7 @@ promptov. Ista koda, dvoje nastavitev.
 | Dispatch pravilo | `SDR_tpMPgUorXQhT` | `SDR_Ugee48V65ETc` |
 | Glas | Azure `sl-SI-PetraNeural` | ElevenLabs "Maja", `eleven_v3_conversational` |
 | Ime asistentke | Tatjana (`ASSISTANT_NAME` na strežniku) | Maja (`IME_ASISTENTKE` v `.env.v2`) |
-| Model | `gpt-4.1` (od 21. 10. zvečer) | `gpt-4.1` |
+| Model | `gpt-5.6-sol` | `gpt-5.6-sol` (`gpt-4.1` vrnjen 22. 10., glej spodaj) |
 | Prepis | `gpt-transcribe` | `gpt-transcribe` (`gpt-live-transcribe` vrnjen, glej spodaj) |
 | Nastavitve | `voice-agent/.env` | `voice-agent/.env.v2` |
 | Konfiguracija `lk` | `livekit.toml` | `livekit-v2.toml` |
@@ -333,8 +333,10 @@ lk --project maja agent deploy --config livekit-v2.toml --secrets-file .env.v2 .
 **Majin agent je prepisan.** Številka 7774102 je bila Maja za Kurivo Gorica.
 Projekt LiveKit `maja` na brezplačnem paketu dovoli enega agenta (`maximum number
 of agents reached (1/1)`), zato V2 ni mogel dobiti svojega mesta in je Majina
-koda v oblaku zamenjana. Majo dobiš nazaj samo z novim deployem iz repozitorija
-KurivoGorica — tega na tem računalniku ni.
+koda v oblaku zamenjana. Majo dobiš nazaj z novim deployem iz repozitorija
+KurivoGorica (`Desktop\ClaudeMemory\KurivoGorica\repo\asistent\voice-agent` ima
+`.env` in `livekit.toml` z istim agentom):
+`lk --project maja agent deploy --secrets-file .env .` iz te mape.
 
 **Klic je zvonil brez odgovora** (21. 10. 2026, 18:13 UTC). Majino pravilo
 `SDR_Ugee48V65ETc` je tipa Callee brez `randomize`, zato je vsak klic na
@@ -496,9 +498,100 @@ Maja je preobčutljiva za šum. V klicu je imela 3 prekinitve, kratki fragmenti
 odgovorila. Klicatelj je to v klicu rekel sam: "vsak šum, ko ga naredim, se
 kar ustaviš".
 
-**Opažanje, ki ni popravljeno:** `gpt-4.1` je na "Kaj je Kreativni splet?"
-govoril ~25 s, čeprav prompt zahteva en do dva stavka. Daljši monolog je daljše
-okno za prekinitve.
+**`gpt-4.1` je 22. 10. 2026 vrnjen na `gpt-5.6-sol`.** Bil je hitrejši, a je
+pokvaril narekovanje e-pošte. V pravem klicu (`RM_bp3hDovVKhfp`, sodelavka Stina)
+je izpuščal dele naslova ("tina afna gmail pika com" brez "mavri"), črkoval,
+čeprav prompt to prepoveduje, in besedo "pika" zlepil v naslov
+("tina.pikamavri"). Na istem pogovoru, trikrat vsakemu modelu: `gpt-5.6-sol` je
+naslov po jasnem črkovanju prebral pravilno 3 od 3, `gpt-4.1` 1 od 3. Govoril je
+tudi predolgo (~25 s na "Kaj je Kreativni splet?"). Cena vrnitve je ~0,5–0,7 s
+na obrat. Pospešitev brez menjave modela: `service_tier=priority` (preizkus:
+1453 → 1038 ms), terja spremembo kode.
+
+**"Stina" je postala "Tina" — povpraševanje ni šlo skozi.** Telefonska linija
+prenaša do ~3,4 kHz, glas "s" ima večino energije nad 4 kHz, zato se pred "t"
+izgubi. Prepis je "Stina" kot besedo in "T I N A" brez premorov zapisal brez
+"S"; "S, T in A" s premori in "s kot Slovenija" sta "S" ohranila. `eposta.py`
+zna vse te oblike ("es kot Slovenija", "S, T in A", "es te i en a"). Ker je
+e-pošta obvezna v agentu in na strežniku, povpraševanje ni bilo oddano. Zdaj
+(22. 10. 2026):
+
+- navodilo v `vstopna_tocka`: ob popravku prosi za črkovanje, vsako črko z
+  besedo ("es kot Slovenija");
+- po dveh popravkih `submit_inquiry(eposta_nepotrjena=True)`: odda s telefonom,
+  naslovom, kot je bil slišan, in opombo `E-POŠTA NI POTRJENA … Pokličite
+  stranko`. Koda to dovoli šele po treh obratih z narekovanjem
+  (`NAREKOVANJ_PRED_NEPOTRJENO`), sicer vrne navodilo za črkovanje. Kadar iz
+  slišanega ni mogoče sestaviti naslova, gre `eposta.ni.potrjena@<domena podjetja>`,
+  ker strežnik zahteva veljaven naslov. Opomba je odrezana na 500 znakov — daljšo
+  strežnik zavrne skupaj s povpraševanjem.
+
+Preverjeno: `test_varovalke.py` (`preveri_nepotrjeno_eposto`), `test_eposta.py`
+in trikrat `gpt-5.6-sol` na Stininem pogovoru — vsakič je prosil za črkovanje,
+po dveh popravkih ponudil oddajo s telefonom in poklical orodje z
+`eposta_nepotrjena: true`. Pravi klic po deployu še ni bil.
+
+**Asistentka naslov prebere nazaj po golih črkah** (22. 10. 2026):
+"S, T, I, N, A, pika, M, A, V, R, I afna gmail pika com". To razveljavlja
+prejšnje pravilo "nikoli ne črkuje" za branje nazaj. Razlog zanj je bil glas,
+ki je 11. 10. črke bral angleško ("ti", "aj"); 22. 10. sta oba glasova (Maja
+ElevenLabs, Tatjana Azure) na vzorcu brala slovensko (Luka je poslušal).
+
+Isti dan preizkušeno in zavrnjeno (Luka): sidrne besede ("es kot Slovenija, te
+kot Triglav") — predolge; imena črk ("es, te, i") — Slovenec tako ne črkuje.
+
+Zakaj: klic ob 06:13 (`RM_iuqfFNCCzC66`, povpraševanje **559**). Prepis je
+zapisal `stina.mauri@gmail.com`, ker se "v" pred "r" izgovori kot [u].
+Asistentka je naslov prebrala z besedami, "mauri" in "mavri" pa zvenita enako,
+zato je stranka napačen naslov potrdila. **Branje z besedami takega naslova ne
+more ujeti nikoli** — ujame ga samo črkovanje.
+
+Zdaj `izgovori_eposte` (`_po_crkah`) del pred afno prebere po črkah, domeno
+pa še naprej z besedami ("afna gmail pika com"): domena je
+iz kratkega seznama in jo `_popravi_domeno` popravi, zato bi bilo črkovanje pri
+njej samo dolgo. Naslov podjetja se ne črkuje — `tts_node` ga poda v
+`brez_crkovanja`, ker ga stranka ne preverja.
+
+Prebrano mora `popravi_naslov` znati sestaviti nazaj, sicer bi stranka, ki
+ponovi za asistentko, dobila drug naslov. Test `prebrano nazaj da isti naslov`
+to drži.
+
+**Asistentka ne skače v besedo, ko klicatelj narekuje podatke** (22. 10. 2026).
+Med črkovanjem in pri "Moje ime je … Tone" klicatelj premolkne dlje od
+`VAD_TISINA=0.4` in Maja je vskočila ("Kar počasi", "Nadaljujte", "Dobro,").
+Globalen dvig `VAD_TISINA` na 0,6 bi upočasnil vsak odgovor za 0,2 s, zato ga ni.
+Namesto tega `ob_novem_sporocilu` po vsakem stavku asistentke pokliče
+`session.update_options(endpointing_opts=…)`: če stavek prosi za podatek
+(`prosi_za_podatek`: glagol prošnje + ime, priimek, e-pošta, telefon, črke,
+naslov), je `min_delay` 1,6 s in `max_delay` 4,0 s (`PODATKI_CAKAJ`, 0 izklopi);
+po naslednjem stavku, ki ni prošnja, se vrne na običajno. Preverjeno na stavkih
+iz klicev 22. 10.: "Mi poveste še ime in e-poštni naslov" da,
+"Kar povejte, kaj vas zanima" ne. Pravega klica še ni bilo. Podaljšanje velja
+tudi, ko asistentka bere naslov nazaj ("Je naslov pravilen?" ga ne sproži).
+
+Navodilo modelu za črkovanje je usklajeno z branjem: "S, T, I, N, A" in ne več
+"es kot Slovenija".
+
+Branje je daljše kot z besedami. Zato je pomembno, da asistentke med branjem ne
+prekine šum — Maja ima `PREKIN_BESEDE=2`, Tatjana ga nima.
+
+**Prvi klic s črkovanjem ga ni sprožil** (`RM_HLZUiN6RXGtp`, povpraševanje
+**560**, naslov napačen). Model je naslov napisal v govorjeni obliki
+("stinaikmavri afna gmail pika com"), `izgovori_eposte` pa je iskal samo obliko
+z `@`. Zdaj `IZGOVORJEN_NASLOV` govorjeno obliko najprej prevede v zapisano, v
+navodilu pa model piše naslov z afno kot znakom. Zaporedja navadnih besed pred
+afno nalašč ne ujame ("Slišala sem janez afna …") — raje brez črkovanja kot
+napačen naslov.
+
+**"pika" se po telefonu izgubi kot "ika", "tika", "ilka"** (trije klici 22. 10.).
+Začetni "p" je šibak kot "s". `ZNAKI` jih zdaj bere kot piko, model ima isto v
+navodilu. Napačna razlaga je poceni, ker gre naslov nazaj po črkah; izpuščena
+pika naslov tiho pokvari. Robni primer: naslov, ki se res začne s "tika@", se ne
+sestavi in asistentka ga vpraša znova.
+
+**Maja: `PREKIN_BESEDE=2`** (22. 10. 2026). Prekine jo šele govor z vsaj dvema
+besedama; "Chat." ali "Hm." je ne ustavi več, "Ne." prav tako ne. Odgovora na
+enobesedne smeti ne prepreči.
 
 **Glas bolj uraden.** Pri `eleven_v3_conversational` gre prek
 `text-to-dialogue` samo `stability`, vse drugo vtičnik zavrže. Višja je manj

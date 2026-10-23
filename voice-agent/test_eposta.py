@@ -69,32 +69,77 @@ preveri("pravi", je_naslov("a@b.si"), True)
 preveri("brez pike", je_naslov("a@b"), False)
 
 print("izgovori_eposte")
-# Nikoli po črkah: slovenski glas je imena črk bral kot angleško abecedo.
+# Del pred afno po golih črkah, domena z besedami.
 preveri(
-    "naslov z besedami",
+    "ime po črkah, domena z besedami",
     izgovori_eposte("Ponudbo pošljemo na janez@gmail.com, prav?"),
-    "Ponudbo pošljemo na janez afna gmail pika com, prav?",
-)
-preveri(
-    "pika v imenu",
-    izgovori_eposte("janez.novak@gmail.com"),
-    "janez pika novak afna gmail pika com",
-)
-preveri(
-    "naslov podjetja enako",
-    izgovori_eposte("Pišite na luka@kreativnisplet.si."),
-    "Pišite na luka afna kreativnisplet pika si.",
+    "Ponudbo pošljemo na J, A, N, E, Z afna gmail pika com, prav?",
 )
 preveri(
     "podčrtaj, vezaj in števke",
     izgovori_eposte("brus_72@t-2.net"),
-    "brus podčrtaj 72 afna t vezaj 2 pika net",
+    "B, R, U, S, podčrtaj, 7, 2 afna t vezaj 2 pika net",
 )
 preveri(
-    "nobena črka sama zase",
-    any(len(b) == 1 and b.isalpha() for b in izgovori_eposte("marko.zupan@gmail.com").split()),
-    False,
+    "naslov podjetja ostane z besedami",
+    izgovori_eposte("Pišite na luka@kreativnisplet.si.", ("luka@kreativnisplet.si",)),
+    "Pišite na luka afna kreativnisplet pika si.",
 )
 preveri("besedilo brez naslova", izgovori_eposte("Pokličite na 05 300 10 10."), "Pokličite na 05 300 10 10.")
+
+# Zakaj črkovanje sploh obstaja (klic 22. 10. 2026, povpraševanje 559): "mavri"
+# in "mauri" z besedami zvenita enako in stranka je napačen naslov potrdila.
+preveri(
+    "homofon se sliši različno",
+    (", V, " in izgovori_eposte("stina.mavri@gmail.com")
+     and ", U, " in izgovori_eposte("stina.mauri@gmail.com")),
+    True,
+)
+# Sidrne besede ("es kot Slovenija") so bile zavrnjene (Luka, 22. 10. 2026): predolgo.
+preveri("brez sidrnih besed", " kot " in izgovori_eposte("marko.zupan@gmail.com"), False)
+
+# Model naslova pogosto ne zapiše z afno, ampak tako, kot ga bo izgovoril.
+# Brez te poti črkovanje ne steče (klic 22. 10. 2026, RM_HLZUiN6RXGtp).
+preveri(
+    "govorjena oblika se vseeno črkuje",
+    izgovori_eposte("Slišala sem »stinaikmavri afna gmail pika com«. Je to pravilno?"),
+    "Slišala sem »S, T, I, N, A, I, K, M, A, V, R, I afna gmail pika com«. Je to pravilno?",
+)
+preveri(
+    "govorjena oblika s piko",
+    "A, pika, M" in izgovori_eposte("stina pika mavri afna gmail pika com"),
+    True,
+)
+preveri(
+    "govorjen naslov podjetja ostane z besedami",
+    izgovori_eposte("Pišite na info afna kreativnisplet pika si.", ("info@kreativnisplet.si",)),
+    "Pišite na info afna kreativnisplet pika si.",
+)
+# Zaporedja navadnih besed ne ujamemo: raje brez črkovanja kot napačen naslov.
+preveri(
+    "uvodne besede ne pridejo v naslov",
+    izgovori_eposte("Slišala sem janez afna gmail pika com.").startswith("Slišala sem "),
+    True,
+)
+
+# "pika", kot jo zapiše prepis po telefonu (klici 22. 10. 2026).
+for _slisano in ("stina tika mavri", "stina ilka mavri", "stina ika mavri"):
+    preveri(
+        f"'{_slisano}' je pika",
+        popravi_naslov(f"{_slisano} afna gmail pika com")[0],
+        "stina.mavri@gmail.com",
+    )
+preveri(
+    "govorjena oblika z 'ilka' se črka cela",
+    izgovori_eposte("stina ilka mavri afna gmail pika com").startswith("S, T, I, N, A, pika"),
+    True,
+)
+
+# Kar asistentka prebere, mora znati sestaviti nazaj.
+preveri(
+    "prebrano nazaj da isti naslov",
+    popravi_naslov(izgovori_eposte("stina.mavri@gmail.com"))[0],
+    "stina.mavri@gmail.com",
+)
 
 print("\nvse v redu")
