@@ -138,7 +138,9 @@ def popravi_naslov(besedilo: str) -> tuple[str, str]:
     return naslov, "sestavljeno iz narekovanja"
 
 
-def izgovori_eposte(besedilo: str, brez_crkovanja: tuple[str, ...] = ()) -> str:
+def izgovori_eposte(
+    besedilo: str, brez_crkovanja: tuple[str, ...] = (), male_crke: bool = False
+) -> str:
     """Naslove v besedilu pripravi za glas.
 
     Brez tega Azurin glas "janez.novak@gmail.com" prebere kot eno besedo in
@@ -151,11 +153,15 @@ def izgovori_eposte(besedilo: str, brez_crkovanja: tuple[str, ...] = ()) -> str:
 
     `brez_crkovanja` so naslovi podjetja. Te asistentka samo navede ("pišite na
     info afna ..."), stranki jih ni treba preverjati, črkovanje pa bi bilo dolgo.
+
+    `male_crke`: "s, t, i" namesto "S, T, I". Velike črke ElevenLabs glas Bella bere
+    po angleško ("ess", "ej", "aj"); male jih izgovori slovensko (Luka, 24. 10. 2026,
+    naslov sasa.perkon). Azure Petra bere velike prav, zato je to nastavitev po glasu.
     """
     neckovani = {n.strip().lower() for n in brez_crkovanja if n and n.strip()}
     besedilo = IZGOVORJEN_NASLOV.sub(_v_zapisano, besedilo)
     return NASLOV_V_BESEDILU.sub(
-        lambda u: _izgovor(u.group(0), u.group(0).lower() not in neckovani), besedilo
+        lambda u: _izgovor(u.group(0), u.group(0).lower() not in neckovani, male_crke), besedilo
     )
 
 
@@ -165,13 +171,13 @@ def _v_zapisano(ujeto: "re.Match[str]") -> str:
     return naslov or ujeto.group(0)
 
 
-def _izgovor(naslov: str, crkuj: bool = True) -> str:
+def _izgovor(naslov: str, crkuj: bool = True, male_crke: bool = False) -> str:
     lokalno, _, domena = naslov.lower().rpartition("@")
-    prvi = _po_crkah(lokalno) if crkuj else _z_besedami(lokalno)
+    prvi = _po_crkah(lokalno, male_crke) if crkuj else _z_besedami(lokalno)
     return f"{prvi} afna {_z_besedami(domena)}"
 
 
-def _po_crkah(del_naslova: str) -> str:
+def _po_crkah(del_naslova: str, male_crke: bool = False) -> str:
     """"mavri" -> "M, A, V, R, I".
 
     Vejice so tu zato, da glas med črkami naredi premor; brez njih je izgovor
@@ -180,7 +186,7 @@ def _po_crkah(del_naslova: str) -> str:
     deli = []
     for znak in del_naslova:
         if znak.isalpha():
-            deli.append(znak.upper())
+            deli.append(znak if male_crke else znak.upper())
         elif znak in LOCILA_IZGOVOR:
             deli.append(LOCILA_IZGOVOR[znak])
         elif znak.strip():

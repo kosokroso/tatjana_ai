@@ -3,5 +3,7 @@
 # in klici so padali, ceprav se koda ni spremenila. Nadgradnja je odlocitev,
 # ne stranski ucinek deploya: lokalno preizkusi, nato dvigni tu.
 livekit-agents[openai,azure,silero,elevenlabs]==1.8.1
+# Krisp BVC za telefon (odstranjevanje ozadja in odmeva); vklop z ODSTRANI_SUM=1.
+livekit-plugins-noise-cancellation==0.3.2
 python-dotenv~=1.0
 httpx~=0.27

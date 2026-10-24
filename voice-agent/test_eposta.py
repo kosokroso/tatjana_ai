@@ -142,4 +142,21 @@ preveri(
     "stina.mavri@gmail.com",
 )
 
+# Male črke za ElevenLabs (velike bere po angleško); Azure ostane pri velikih.
+preveri(
+    "male črke",
+    izgovori_eposte("sasa.perkon@gmail.com", male_crke=True),
+    "s, a, s, a, pika, p, e, r, k, o, n afna gmail pika com",
+)
+preveri(
+    "velike črke privzeto",
+    izgovori_eposte("sasa.perkon@gmail.com"),
+    "S, A, S, A, pika, P, E, R, K, O, N afna gmail pika com",
+)
+preveri(
+    "male črke se berejo nazaj",
+    popravi_naslov(izgovori_eposte("sasa.perkon@gmail.com", male_crke=True))[0],
+    "sasa.perkon@gmail.com",
+)
+
 print("\nvse v redu")

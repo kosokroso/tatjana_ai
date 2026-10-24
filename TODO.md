@@ -103,6 +103,20 @@ Zadnja posodobitev: 21. 10. 2026
             ("Moje ime je … Tone"). `VAD_TISINA=0.4`. Glej odgovor 22. 10.
       - [ ] Razmisli o `PREKIN_BESEDE=2` tudi za Tatjano: branje po črkah je
             daljše, zato je prekinitev od šuma dražja kot prej.
+      - [X] **Maja na zvočniku ne odgovori** (23. 10., `RM_txmHGraaQZL6`): lasten
+            pozdrav in ozadje ušla v mikrofon, zaznava govora ni ugasnila, obrat
+            se ni končal (7 s prekrivanja). `VAD_PRAG=0.65` in `ODSTRANI_SUM=1`
+            (Krisp BVCTelephony, `livekit-plugins-noise-cancellation==0.3.2`) na
+            Maji, 24. 10. Tatjana ima kodo, a brez vklopa.
+      - [X] **Izgovorjava črk pri branju naslova** (24. 10.): male črke (`CRKE_MALE=1`)
+            na obeh številkah, ker Bella velike bere po angleško.
+      - [ ] **Klic z narekovanjem e-pošte na Tatjani**: ali Petra male črke
+            izgovarja slovensko. Če ne, `CRKE_MALE` iz `.env` + `update-secrets`.
+      - [ ] **Klic na zvočniku z govorom v ozadju** na Maji: ali odgovori. Če je
+            zdaj preslišala tihega klicatelja, `VAD_PRAG` nazaj na 0.5 (šum
+            ostane). Cene BVC na vašem paketu LiveKit nisem preveril; poglej
+            porabo v nadzorni plošči.
+      - [ ] Če deluje, `ODSTRANI_SUM=1` še v `.env` (Tatjana) + `update-secrets`.
       - [ ] Neobvezno, Luka 22. 10. ni zahteval: "Se lahko prekinem, prosim."
             (mišljeno "te lahko prekinem") je model razumel kot slovo in
             končal klic (`RM_E2LCFrME9MK7`). Varovalka zavrne slovo samo pri
@@ -120,6 +134,16 @@ Zadnja posodobitev: 21. 10. 2026
             na dan, skupna za obe številki. Pri ~11.000 žetonih prompta na
             zahtevek je to okoli 7–9 trominutnih klicev na dan. Če zmanjka:
             višji nivo (Launch, 100 $ nakupa).
+      - [ ] **Glas "Maja" (`WwFMMxYWrkm6h88c7f0n`) je lastnik umaknil iz knjižnice
+            ElevenLabs** (obvestilo 24. 10. 2026). Deluje do **~21. 10. 2027**
+            (`disable_at_unix` 1824319434, 365 dni). Do takrat nič ne odpove;
+            pred tem izberi ali ustvari nov slovenski glas in poslušaj na pravi
+            liniji. Menjava je `ELEVEN_TTS_VOICE` v `.env.v2` + `update-secrets`.
+            **24. 10. 2026: Maja zaenkrat govori z glasom Bella**
+            (`hpp4J3VqNfWAUOO0d1Us`, ElevenLabs, ni več glas "Maja"). Bella je
+            privzeti glas ElevenLabs in ga lastnik ne more umakniti. Klica z njo
+            še ni bilo. Ime asistentke ostaja Maja (`IME_ASISTENTKE`). Alternativa:
+            lasten glas z Voice Design (API ključ to dovoli).
       - [ ] Odloči, kaj z Majo za Kurivo Gorica. Njene kode v oblaku ni več;
             obnovi se iz `Desktop\ClaudeMemory\KurivoGorica\repo\asistent`.
 

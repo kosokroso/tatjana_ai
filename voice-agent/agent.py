@@ -27,7 +27,7 @@ import time
 import httpx
 from dotenv import load_dotenv
 from livekit import agents
-from livekit.agents import Agent, AgentSession, RunContext, function_tool, llm
+from livekit.agents import Agent, AgentSession, RunContext, function_tool, llm, room_io
 from livekit.plugins import azure, openai, silero
 
 from eposta import izgovori_eposte, popravi_naslov
@@ -656,6 +656,8 @@ class TelefonskiAsistent(Agent):
             # Naslov podjetja gre z besedami: stranki ga ni treba preverjati,
             # črkovan pa bi bil dolg kot naslov stranke.
             nase = (self.eposta_podjetja,) if self.eposta_podjetja else ()
+            # Male črke za ElevenLabs: velike bere po angleško (glej eposta.py).
+            male = os.getenv("CRKE_MALE") == "1"
             ostanek = ""
             async for kos in text:
                 popravljen = samo_latinica(kos)
@@ -666,9 +668,9 @@ class TelefonskiAsistent(Agent):
                 if meja == -1:
                     continue
                 zdaj, ostanek = ostanek[: meja + 1], ostanek[meja + 1 :]
-                yield izgovori_znamke(izgovori_eposte(zdaj, nase))
+                yield izgovori_znamke(izgovori_eposte(zdaj, nase, male))
             if ostanek:
-                yield izgovori_znamke(izgovori_eposte(ostanek, nase))
+                yield izgovori_znamke(izgovori_eposte(ostanek, nase, male))
 
         # Agent.default.tts_node je asinhroni generator, osnovna tts_node pa
         # navadna metoda. Z "return super().tts_node(...)" iz async def se je
@@ -1573,6 +1575,29 @@ async def straza(ctx: agents.JobContext, session: AgentSession, sekund_max: int,
 _zaznavalnik = None
 
 
+def odstranjevanje_suma():
+    """Krisp BVC za telefon: odstrani ozadje in odmev, preden pride do zaznave govora.
+
+    23. 10. 2026 je Maja na zvočniku slišala lasten pozdrav in govor v ozadju kot
+    govor stranke; zaznava govora ni nikoli ugasnila, obrat se ni končal in
+    odgovora ni bilo (`RM_txmHGraaQZL6`, 7 s prekrivanja). `VAD_PRAG` ozadja ne
+    loči od klicatelja, to zmore samo filtriranje pred zaznavo.
+
+    Vklop z `ODSTRANI_SUM=1`. Napaka pri nalaganju klic le izpusti — brez šuma
+    klic dela, kot je delal prej.
+    """
+    if os.getenv("ODSTRANI_SUM") != "1":
+        return None
+    try:
+        from livekit.plugins import noise_cancellation
+
+        log.info("odstranjevanje šuma: BVCTelephony")
+        return noise_cancellation.BVCTelephony()
+    except Exception as e:  # noqa: BLE001 — klic mora teči tudi brez filtra
+        log.warning("odstranjevanja šuma ni mogoče vklopiti: %s", e)
+        return None
+
+
 def zaznavalnik_govora():
     """Zazna, kdaj je sogovornik nehal govoriti. Naloži se enkrat na proces.
 
@@ -1883,9 +1908,13 @@ si ga nazadnje slišala.
     asistent.eposta_podjetja = (nastavitve.get("business_email") or "").strip()
 
     zacetek = time.perf_counter()
+    sum_ = odstranjevanje_suma()
     await session.start(
         room=ctx.room,
         agent=asistent,
+        **({"room_options": room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(noise_cancellation=sum_)
+        )} if sum_ else {}),
     )
     meritev("zagon_seje", zacetek)
 

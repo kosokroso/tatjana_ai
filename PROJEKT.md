@@ -317,7 +317,7 @@ promptov. Ista koda, dvoje nastavitev.
 | LiveKit projekt | `tatjana` (`p_3c3m91h1rrq`) | `maja` (`p_1bf8zg1pxmb`) |
 | Agent | `CA_PiXjcGNWErxB` | `CA_hTBKtHimCXjZ` |
 | Dispatch pravilo | `SDR_tpMPgUorXQhT` | `SDR_Ugee48V65ETc` |
-| Glas | Azure `sl-SI-PetraNeural` | ElevenLabs "Maja", `eleven_v3_conversational` |
+| Glas | Azure `sl-SI-PetraNeural` | ElevenLabs Bella (od 24. 10. 2026; prej "Maja", umaknjena iz knjižnice), `eleven_v3_conversational` |
 | Ime asistentke | Tatjana (`ASSISTANT_NAME` na strežniku) | Maja (`IME_ASISTENTKE` v `.env.v2`) |
 | Model | `gpt-5.6-sol` | `gpt-5.6-sol` (`gpt-4.1` vrnjen 22. 10., glej spodaj) |
 | Prepis | `gpt-transcribe` | `gpt-transcribe` (`gpt-live-transcribe` vrnjen, glej spodaj) |
@@ -588,6 +588,25 @@ Začetni "p" je šibak kot "s". `ZNAKI` jih zdaj bere kot piko, model ima isto v
 navodilu. Napačna razlaga je poceni, ker gre naslov nazaj po črkah; izpuščena
 pika naslov tiho pokvari. Robni primer: naslov, ki se res začne s "tika@", se ne
 sestavi in asistentka ga vpraša znova.
+
+**Male črke pri branju naslova** (24. 10. 2026, `CRKE_MALE=1`). Naslov
+`sasa.perkon` je bil pravilno razumljen in zapisan, a ga je Bella izgovorila po
+angleško: velike črke ("S, A, S, A") glasovi berejo kot angleška imena črk.
+Male ("s, a, s, a") zvenijo slovensko (Luka poslušal vzorce A/B/C na Belli). Slovenska
+imena črk ("es, a, es") niso potrebna. Vklopljeno na obeh številkah; za Tatjano
+(Azure Petra) je bila velika oblika prej prav, malo sem vklopil na Lukovo prošnjo,
+ker je razumevanje e-pošte ključno. Če Petra male črke izgovarja slabše,
+`CRKE_MALE` iz `.env` in `update-secrets`.
+
+**Zvočnik: Maja sliši sebe in ozadje** (24. 10. 2026). V klicu `RM_txmHGraaQZL6`
+je pozdrav ušel nazaj v mikrofon ("Ja. Kako lahko pomagam?" je konec njenega
+pozdrava, ne klicatelja) in govor v ozadju je držal zaznavo govora ves čas: 24 s
+"govora stranke" v 62 s klica, 7011 ms prekrivanja. Model je odgovor pripravil
+(26 žetonov), sistem ga je zavrgel, ker se obrat ni končal. `VAD_PRAG` ozadja ne
+loči od klicatelja. Zato Maja: `VAD_PRAG=0.65` in `ODSTRANI_SUM=1`
+(`odstranjevanje_suma()`, Krisp BVCTelephony pred zaznavo govora). Napaka pri
+nalaganju klic le izpusti. Tatjana ima kodo brez vklopa. Preizkusa na zvočniku še
+ni bilo, plačljivosti BVC nismo preverili.
 
 **Maja: `PREKIN_BESEDE=2`** (22. 10. 2026). Prekine jo šele govor z vsaj dvema
 besedama; "Chat." ali "Hm." je ne ustavi več, "Ne." prav tako ne. Odgovora na
