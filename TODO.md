@@ -116,7 +116,8 @@ Zadnja posodobitev: 21. 10. 2026
             zdaj preslišala tihega klicatelja, `VAD_PRAG` nazaj na 0.5 (šum
             ostane). Cene BVC na vašem paketu LiveKit nisem preveril; poglej
             porabo v nadzorni plošči.
-      - [ ] Če deluje, `ODSTRANI_SUM=1` še v `.env` (Tatjana) + `update-secrets`.
+      - [X] `ODSTRANI_SUM=1` vklopljen tudi na Tatjani (24. 10., Luka zahteval, preden je bil
+            preizkušen na Maji). Če kaj poslabša, odstrani iz `.env` + `update-secrets`.
       - [ ] Neobvezno, Luka 22. 10. ni zahteval: "Se lahko prekinem, prosim."
             (mišljeno "te lahko prekinem") je model razumel kot slovo in
             končal klic (`RM_E2LCFrME9MK7`). Varovalka zavrne slovo samo pri
