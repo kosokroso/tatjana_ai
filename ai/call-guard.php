@@ -11,14 +11,19 @@
  * datoteka preživi in jo vidijo vse replike hkrati.
  *
  * Dve dejanji:
- *   { "action": "start", "caller": "+38641234567" }
- *       -> { "allow": true,  "max_seconds": 600 }
+ *   { "action": "start", "caller": "+38641234567", "agent": "maja" }
+ *       -> { "allow": true,  "max_seconds": 600, "krisp_sekund_mesec": 1840 }
  *       -> { "allow": false, "reason": "dnevna_meja_minut" }
- *   { "action": "end", "caller": "+38641234567", "seconds": 143 }
+ *   { "action": "end", "caller": "+38641234567", "seconds": 143, "agent": "maja", "krisp": true }
  *       -> { "ok": true }
+ *
+ * `agent` in `krisp` sta neobvezna: stari agent ju ne pošlje in vse dela kot prej.
+ * `krisp_sekund_mesec` je poraba odstranjevanja glasov v ozadju tega agenta v
+ * tekočem mesecu; po njej agent izbere plačljiv ali brezplačen filter.
  */
 
 require __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../tools/core/KrispPoraba.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
@@ -61,13 +66,20 @@ $meje = new CallLimits(
 
 $oznaka = CallLimits::oznaka($klicatelj);
 
+$agent = is_string($telo['agent'] ?? null) ? strtolower(trim($telo['agent'])) : '';
+$krisp = new KrispPoraba(LOG_DIR . '/klici');
+
 if ($dejanje === 'start') {
     $razlog = $meje->zavrnitev($oznaka);
     if ($razlog !== null) {
         error_log('call-guard: klic zavrnjen (' . $razlog . ')');
         odgovori(200, ['allow' => false, 'reason' => $razlog]);
     }
-    odgovori(200, ['allow' => true, 'max_seconds' => $meje->maxSecondsPerCall()]);
+    $odgovor = ['allow' => true, 'max_seconds' => $meje->maxSecondsPerCall()];
+    if (KrispPoraba::jeVeljavenAgent($agent)) {
+        $odgovor['krisp_sekund_mesec'] = $krisp->sekundVMesecu($agent);
+    }
+    odgovori(200, $odgovor);
 }
 
 if ($dejanje === 'end') {
@@ -76,6 +88,9 @@ if ($dejanje === 'end') {
     // vrednost v enem zahtevku porabila celo dnevno kapico.
     $sekund = max(0, min($sekund, 4 * 3600));
     $meje->zabelezi($oznaka, $sekund);
+    if (!empty($telo['krisp'])) {
+        $krisp->dodaj($agent, $sekund);
+    }
     odgovori(200, ['ok' => true]);
 }
 

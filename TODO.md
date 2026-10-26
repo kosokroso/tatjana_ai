@@ -116,6 +116,19 @@ Zadnja posodobitev: 21. 10. 2026
             zdaj preslišala tihega klicatelja, `VAD_PRAG` nazaj na 0.5 (šum
             ostane). Cene BVC na vašem paketu LiveKit nisem preveril; poglej
             porabo v nadzorni plošči.
+      - [X] **Samodejni umik Krisp → NC** (26. 10.): vratar (`ai/call-guard.php`,
+            `tools/core/KrispPoraba.php`) šteje sekunde klicev s Krispom po agentu in
+            mesecu; agent ob začetku klica dobi `krisp_sekund_mesec` in nad
+            `KRISP_MEJA_MIN` (privzeto 90) vzame brezplačni `NC()`. Agent je
+            deployan na obe, **strežnik še ni**: push, nato cPanel Update from
+            Remote → Deploy HEAD Commit. Do takrat poraba ni znana in agent ostaja
+            pri BVCTelephony, kot doslej. Na Ship (1.000 min) `KRISP_MEJA_MIN=900`.
+      - [ ] **Krisp na paketu Build: 100 min/mesec** (obračun: "100 incl. Krisp background
+            minutes"; `BVCTelephony` šteje kot *voice isolation*, ki je po dokumentaciji
+            LiveKit vedno dodatno plačljiv: Ship 1.000 min vključenih, nato 0,0012 $/min).
+            Dokumentacija ne pove, kaj se zgodi nad 100 min na Build. Spremljaj
+            Settings → Billing obeh projektov. Rezerva: `noise_cancellation.NC()`
+            (brezplačen, odstrani promet in ventilatorje, ne pa glasov v ozadju).
       - [X] `ODSTRANI_SUM=1` vklopljen tudi na Tatjani (24. 10., Luka zahteval, preden je bil
             preizkušen na Maji). Če kaj poslabša, odstrani iz `.env` + `update-secrets`.
       - [ ] Neobvezno, Luka 22. 10. ni zahteval: "Se lahko prekinem, prosim."

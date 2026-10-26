@@ -608,6 +608,17 @@ loči od klicatelja. Zato Maja: `VAD_PRAG=0.65` in `ODSTRANI_SUM=1`
 nalaganju klic le izpusti. Tatjana ima kodo brez vklopa. Preizkusa na zvočniku še
 ni bilo, plačljivosti BVC nismo preverili.
 
+**Krisp ima mesečno kvoto, zato samodejni umik** (26. 10. 2026). `BVCTelephony`
+je glasovna izolacija in je po dokumentaciji LiveKit vedno plačljiva; Build jih
+vključuje 100 min/mesec, Ship 1.000 (nato 0,0012 $/min), kaj se zgodi nad mejo na
+Build pa dokumentacija ne pove. Brezplačni `NC()` odstrani promet in ventilatorje,
+ne pa glasov v ozadju. `KrispPoraba` na strežniku šteje sekunde klicev s Krispom
+po agentu (`AGENT_IME`) in mesecu (`logs/klici/krisp-YYYY-MM-<agent>.txt`);
+`call-guard.php` ob `start` vrne `krisp_sekund_mesec`, agent pa nad `KRISP_MEJA_MIN`
+(privzeto 90, Ship 900, 0 = brez meje) izbere `NC()` in porabe ne šteje več. Brez
+odgovora strežnika ostane `BVCTelephony`. Števec je po projektu LiveKit, ne po
+strežniku: Tatjana in Maja imata vsaka svojih 100 minut.
+
 **Maja: `PREKIN_BESEDE=2`** (22. 10. 2026). Prekine jo šele govor z vsaj dvema
 besedama; "Chat." ali "Hm." je ne ustavi več, "Ne." prav tako ne. Odgovora na
 enobesedne smeti ne prepreči.

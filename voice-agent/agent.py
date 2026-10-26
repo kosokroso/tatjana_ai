@@ -78,7 +78,9 @@ async def poklici_orodje(pot: str, vsebina: dict) -> dict:
         }
 
 
-async def vprasaj_vratarja(dejanje: str, klicatelj: str, sekund: int = 0) -> dict:
+async def vprasaj_vratarja(
+    dejanje: str, klicatelj: str, sekund: int = 0, krisp: bool = False
+) -> dict:
     """Vpraša strežnik, ali sme klic naprej, in mu sporoči, koliko je trajal.
 
     Števci morajo živeti na gostovanju in ne tukaj. Ta agent teče v LiveKit
@@ -86,9 +88,10 @@ async def vprasaj_vratarja(dejanje: str, klicatelj: str, sekund: int = 0) -> dic
     diskom — števec v agentu bi se vrnil na nič ravno takrat, ko bi bil najbolj
     potreben, in več replik hkrati bi štelo vsaka zase.
     """
-    vsebina = {"action": dejanje, "caller": klicatelj}
+    vsebina = {"action": dejanje, "caller": klicatelj, "agent": ime_agenta()}
     if dejanje == "end":
         vsebina["seconds"] = sekund
+        vsebina["krisp"] = krisp
 
     try:
         r = await odjemalec().post(f"{TOOLS_BASE_URL}/ai/call-guard.php", json=vsebina)
@@ -1575,7 +1578,35 @@ async def straza(ctx: agents.JobContext, session: AgentSession, sekund_max: int,
 _zaznavalnik = None
 
 
-def odstranjevanje_suma():
+def ime_agenta() -> str:
+    """Ime, pod katerim se agent prijavi; po njem strežnik loči porabo Krisp."""
+    return os.getenv("AGENT_IME", "tatjana")
+
+
+def izberi_filter_suma(porabljeno_sekund: int | None):
+    """BVCTelephony, dokler je v paketu LiveKit še vključenih minut, nato NC.
+
+    BVCTelephony je glasovna izolacija in je po dokumentaciji LiveKit vedno
+    plačljiva; na paketu Build je vključenih 100 minut na mesec in dokumentacija
+    ne pove, kaj se zgodi nad mejo (brez kartice doplačila ni mogoče zaračunati).
+    NC je brezplačen, a odstrani samo promet in ventilatorje, ne glasov v ozadju.
+    Boljši filter z napako v sredi klica je slabši od slabšega, ki dela.
+
+    `KRISP_MEJA_MIN` je meja v minutah (privzeto 90 za Build; na Ship 900).
+    0 pomeni brez meje. Neznana poraba (strežnik ne odgovori ali stara različica
+    vratarja) pusti BVCTelephony: tako je teklo doslej.
+    """
+    meja = float(os.getenv("KRISP_MEJA_MIN", "90"))
+    if meja > 0 and porabljeno_sekund is not None and porabljeno_sekund >= meja * 60:
+        log.warning(
+            "Krisp: porabljenih %.0f min od %.0f, preklop na brezplačni NC",
+            porabljeno_sekund / 60, meja,
+        )
+        return "NC"
+    return "BVC"
+
+
+def odstranjevanje_suma(filter_suma: str = "BVC"):
     """Krisp BVC za telefon: odstrani ozadje in odmev, preden pride do zaznave govora.
 
     23. 10. 2026 je Maja na zvočniku slišala lasten pozdrav in govor v ozadju kot
@@ -1591,6 +1622,8 @@ def odstranjevanje_suma():
     try:
         from livekit.plugins import noise_cancellation
 
+        if filter_suma == "NC":
+            return noise_cancellation.NC()
         log.info("odstranjevanje šuma: BVCTelephony")
         return noise_cancellation.BVCTelephony()
     except Exception as e:  # noqa: BLE001 — klic mora teči tudi brez filtra
@@ -1797,12 +1830,17 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
 
     meritev("priprava_klica", zacetek_klica)
 
+    krisp_uporabljen = {"bvc": False}
+
     # Trajanje se sporoči ob koncu, ne ob začetku: klic, ki se prekine po treh
     # sekundah, ne sme šteti enako kot desetminutni.
     async def ob_koncu() -> None:
         if simulacija:
             return
-        await vprasaj_vratarja("end", klicatelj, int(time.perf_counter() - zacetek_klica))
+        await vprasaj_vratarja(
+            "end", klicatelj, int(time.perf_counter() - zacetek_klica),
+            krisp=krisp_uporabljen["bvc"],
+        )
 
     ctx.add_shutdown_callback(ob_koncu)
 
@@ -1908,7 +1946,11 @@ si ga nazadnje slišala.
     asistent.eposta_podjetja = (nastavitve.get("business_email") or "").strip()
 
     zacetek = time.perf_counter()
-    sum_ = odstranjevanje_suma()
+    porabljeno = vratar.get("krisp_sekund_mesec")
+    filter_suma = izberi_filter_suma(porabljeno if isinstance(porabljeno, int) else None)
+    sum_ = odstranjevanje_suma(filter_suma)
+    # Šteje se samo, če je bil filter plačljiv (BVC); NC je brezplačen.
+    krisp_uporabljen["bvc"] = bool(sum_) and filter_suma == "BVC"
     await session.start(
         room=ctx.room,
         agent=asistent,

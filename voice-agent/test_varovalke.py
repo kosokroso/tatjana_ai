@@ -13,6 +13,7 @@ from agent import (
     _je_potrditev,
     _je_vprasanje,
     _povzetek_vsebuje_ime,
+    izberi_filter_suma,
     je_narekovanje_eposte,
     je_podatek_stranke,
     je_samo_pritrditev,
@@ -129,6 +130,26 @@ def preveri_prosnjo_za_podatek() -> None:
         assert not prosi_za_podatek(besedilo), besedilo
 
 
+def preveri_izbiro_filtra() -> None:
+    import os
+
+    # Build: 100 minut vključenih, meja 90. Nad njo brezplačen NC, da klic ne odpove.
+    os.environ.pop("KRISP_MEJA_MIN", None)
+    assert izberi_filter_suma(0) == "BVC"
+    assert izberi_filter_suma(89 * 60) == "BVC"
+    assert izberi_filter_suma(90 * 60) == "NC"
+    assert izberi_filter_suma(500 * 60) == "NC"
+    # Poraba neznana (stari vratar, strežnik ne odgovori): kot doslej.
+    assert izberi_filter_suma(None) == "BVC"
+    # Ship: 1000 min vključenih, meja 900; 0 izklopi mejo.
+    os.environ["KRISP_MEJA_MIN"] = "900"
+    assert izberi_filter_suma(500 * 60) == "BVC"
+    assert izberi_filter_suma(900 * 60) == "NC"
+    os.environ["KRISP_MEJA_MIN"] = "0"
+    assert izberi_filter_suma(10**9) == "BVC"
+    os.environ.pop("KRISP_MEJA_MIN", None)
+
+
 def preveri_nepotrjeno_eposto() -> None:
     # Obrati iz klica RM_bp3hDovVKhfp (21. 10. 2026), kjer "Stina" ni mogla oddati.
     for besedilo in (
@@ -155,6 +176,7 @@ def preveri_nepotrjeno_eposto() -> None:
 
 
 if __name__ == "__main__":
+    preveri_izbiro_filtra()
     preveri_prosnjo_za_podatek()
     preveri_nepotrjeno_eposto()
     preveri_pritrditve()
