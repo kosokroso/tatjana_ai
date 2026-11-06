@@ -3,7 +3,7 @@
 Popoln pregled projekta. Ta datoteka je vir resnice o tem, kaj sistem je, kaj
 zna, kako je zgrajen in kje smo. **Posodobi jo ob vsaki večji spremembi.**
 
-Zadnja posodobitev: 21. 10. 2026 (druga številka Tatjana V2, glej razdelek 7)
+Zadnja posodobitev: 6. 11. 2026 (uskladitev razdelka 8 z voice-agent/.env)
 
 ---
 
@@ -637,10 +637,10 @@ nespremenjena kot primerjava. Na Tatjano jih prenašaj po enega.
 ## 8. Kje smo
 
 ### Deluje
-- [x] Besedilni klepet in glasovni asistent na spletni strani
 - [x] Vsa štiri orodja, 26/26 testov
 - [x] Povpraševanja v bazo + obvestilo prek SMTP
-- [x] Azure slovenski glas — cene in telefonske številke izgovori pravilno
+- [x] Azure slovenski glas na `7774124` — cene in telefonske številke
+      izgovori pravilno; `7774102` uporablja ElevenLabs (razdelek 7)
 - [x] **Telefon deluje.** Številka registrirana, klic pride skozi, agent se javi
 - [x] **Agent teče v LiveKit Cloud** — ni več odvisen od razvijalčevega računalnika
 - [x] Agent prebere številko klicatelja iz povezave (`sip.phoneNumber`)
@@ -648,6 +648,9 @@ nespremenjena kot primerjava. Na Tatjano jih prenašaj po enega.
 - [x] Skrbniška stran: povpraševanja, storitve, pogovori
 - [x] Namestitveni čarovnik za nove stranke
 - [x] Zaščita preverjena proti 14 vrstam napada
+
+Besedilni klepet in glasovni asistent na strani sta **ukinjena**
+(17. 10. 2026). Načrt za novega je v razdelku 16.
 
 ### Glasovna pot — izmerjeno
 
@@ -675,14 +678,21 @@ Izboljšave glasovne poti so v `voice-agent/.env`. Privzetki v kodi so stanje
 `b777fc8`, za katero je potrjeno, da zveni dobro; vsako stikalo je bilo
 vklopljeno posebej in preizkušeno s klici.
 
+Stanje spodaj je prebrano iz `voice-agent/.env` 6. 11. 2026. Obe številki
+imata iste vrednosti modela in prepisa (`.env` in `.env.v2`).
+
 | Stikalo | Stanje | Cilja na |
 |---|---|---|
-| `LLM_MODEL=gpt-5.4-mini` | **vklopljeno** | razumevanje in slovenščina |
+| `LLM_MODEL=gpt-5.6-sol` | **vklopljeno** | razumevanje in slovenščina |
 | `LLM_TEMPERATURE=auto` | **vklopljeno** | model temperature ne sprejme |
-| `LLM_NAPOR=minimal` | **vklopljeno** | razmislek pred odgovorom je slišna tišina |
+| `LLM_NAPOR=none` | **vklopljeno** | razmislek pred odgovorom je slišna tišina |
 | `PREDCASNO=1` | **vklopljeno** | LLM TTFT |
+| `OGREJ_PROMPT=1` | **vklopljeno** | TTFT prvega odgovora; prompt se ogreje med pozdravom |
 | `STT_SPROTNO=1` | **vklopljeno** | STT delay; prepis teče med govorom |
-| `STT_MODEL=gpt-transcribe` | izklopljeno | novejši; edini odklene `keywords` iz kataloga |
+| `STT_MODEL=gpt-transcribe` | **vklopljeno** | novejši; edini odklene `keywords` iz kataloga |
+| `ODSTRANI_SUM=1` | **vklopljeno** | zvočnik: filtrira ozadje pred zaznavo govora, česar `VAD_PRAG` ne zmore |
+| `CRKE_MALE=1` | **vklopljeno** | ElevenLabs bere velike črke po angleško (`eposta.py`) |
+| `VAD_PRAG=0.5` | **vklopljeno** | občutljivost zaznave govora |
 | `STT_PONUDNIK=azure` | izklopljeno | hitrejši prepis, slabša slovenščina |
 | `KONEC_MIN`, `PREKIN_SEK` | izklopljeno | čakanje in prekinjanje |
 | `TTS_SAMPLE_RATE=16000` | izklopljeno | praskanje pri dolgih odgovorih |
@@ -725,8 +735,9 @@ je napisan in vrnjen, vrne se z `git revert f9b64d1`.
 
 ### Odprta vprašanja
 - Javni ali zasebni repozitorij. Zdaj javen, ker cPanel Git zasebnega ni zmogel klonirati. Skrivnosti v njem ni (preverjena celotna zgodovina), a kodo, ki jo nameravaš prodajati, lahko kdorkoli prekopira. V zgodovini je gostiteljsko ime projekta LiveKit (commit `2ef41d6`); skrivnost ni, a olajša iskanje trunka, ki sprejema od koderkoli.
-- Ali je `gpt-4o-mini` dovolj dober za slovenščino, ali je vreden večji model.
-- Ali je Azure prepis vreden menjave: hitrejši je, a `gpt-4o-transcribe` slovenščino verjetno razume bolje.
+- Ali je Azure prepis vreden menjave: hitrejši je, a slovenščino razume
+  slabše. Zdaj teče `gpt-transcribe`; vprašanje modela je zaprto z
+  `gpt-5.6-sol`.
 
 ---
 
