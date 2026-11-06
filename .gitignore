@@ -15,3 +15,6 @@ Thumbs.db
 
 # Vzorci glasov za primerjavo na uho. Niso del izdelka.
 glasovi/
+
+# Arhivi: polni zip vsebuje config.php in .env, zato ne sme v git.
+*.zip

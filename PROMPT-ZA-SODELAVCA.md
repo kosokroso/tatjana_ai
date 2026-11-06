@@ -25,6 +25,69 @@ Pravilen odgovor je skoraj vedno nekaj vrstic v `config.php` in vsebina baze,
 nikoli koda. Vzdrževanje opravlja Luka, ne stranke — ne gradi funkcij za
 samopostrežno urejanje, gradi tako, da je uvedba nove stranke hitra.
 
+## Če kode še nimaš
+
+```bash
+git clone https://github.com/kosokroso/tatjana_ai
+```
+
+Repozitorij je javen, žetona ne potrebuješ. Če si dobil zip, je v njem isto
+stanje brez zgodovine.
+
+Trije deli niso in ne bodo v gitu. Brez njih se ne zažene nič:
+
+| Kaj manjka | Kaj vsebuje | Od kod |
+|---|---|---|
+| `config.php` | baza, OpenAI, Azure, SMTP, `TOOL_SECRET`, ime podjetja | predloga je `config.example.php`; prave vrednosti ima Luka |
+| `voice-agent/.env` | ključi agenta, model, prepis, glas, meje | predloga je `voice-agent/.env.example` |
+| `voice-agent/livekit.toml` | veže mapo na agenta v oblaku | naredi ga `lk agent config --id <ID agenta>` |
+
+Lokalno ni ne MySQL ne projekta LiveKit. Lokalno torej poženeš samo preverbo
+sintakse (`php -l <datoteka>`) in enotska testa agenta
+(`cd voice-agent; python test_varovalke.py; python test_eposta.py`). Vse ostalo
+teče proti živi bazi in živemu agentu, za kar rabiš dostope od Luke.
+
+**Ne poganjaj `lk agent deploy`, dokler se z Luko ne dogovoriš.** V oblaku sta
+dve živi telefonski številki; deploy ju zamenja takoj in brez vprašanja.
+
+## Kaj Tatjana ni
+
+- **Ni spletni klepet.** Ukinjen 17. 10. 2026. Predlog, ki se opira na
+  `ai/chat.php` ali `widget.js`, se opira na kodo, ki je ni.
+- **Ni izdelek za samopostrežno urejanje.** Vzdrževanje opravlja Luka. Funkcije,
+  ki jih mora znati končna stranka sama, niso cilj.
+- **Ni večnajemniška.** Ena namestitev je ena stranka. Načrt za eno namestitev z
+  več strankami je `PROJEKT.md`, razdelek 9.3.
+- **Ne pripravlja ponudb in ne potrjuje cen.** Namerno, ker je cena odvisna od
+  obsega.
+- **Ne teče na ogrodju in brez Composerja.** Shared hosting brez SSH do
+  upravitelja odvisnosti.
+- **Ne ugiba.** Brez vira v bazi pove, da bo odgovor potrdil sodelavec.
+
+## Kako predlagaš svojo idejo
+
+1. **Prestati mora eno vprašanje:** deluje to tudi za mizarja in avtoservis, ali
+   samo za Kreativni Splet? Če velja samo za eno stranko, gre v `config.php` ali
+   v bazo, ne v kodo.
+2. **Poglej, ali je že na seznamu.** `PROJEKT.md`, razdelek 9, ima nadgradnje z
+   razlogi in oceno dela; `TODO.md` ima odprta opravila. Marsikatera ideja je
+   tam skupaj s pojasnilom, zakaj je odložena — to pojasnilo je hitrejše od
+   ponovnega razmišljanja.
+3. **Spremembo vedenja poskusi najprej v `ai/system-prompt.txt`.** Če mora
+   veljati zanesljivo, spada v kodo (četrto načelo zgoraj).
+4. **Pred in po spremembi poženi oba nabora scenarijev** in primerjaj:
+
+```bash
+lk agent simulate --scenarios scenarios.yaml --agent-name tatjana --concurrency 2
+```
+
+```bash
+lk agent simulate --scenarios scenarios-napadi.yaml --agent-name tatjana --concurrency 2
+```
+
+5. **Idejo zapiši v `TODO.md` z razlogom**, ne samo kodo. Luka mora čez pol leta
+   razumeti, zakaj je nekaj tam.
+
 ## Preberi, preden karkoli spremeniš
 
 V tem vrstnem redu:
@@ -58,6 +121,36 @@ V tem vrstnem redu:
    kodi, ne v promptu. Seznam je v `PROJEKT.md`, razdelek 8 — vsako je bilo
    najprej v promptu in je vsaj enkrat odpovedalo.
 
+## Skrivnosti — brez izjeme
+
+**Repozitorij je javen.** Kar enkrat commitaš, je javno in ostane v zgodovini,
+tudi če datoteko pozneje izbrišeš. Čiščenje zahteva prepis zgodovine
+(`git filter-repo` + `push --force`), kar podre cPanel deploy, ki iz tega
+repozitorija vleče kodo. Zato je edina zanesljiva pot, da skrivnost tja nikoli
+ne pride.
+
+- **Nikoli ne commitaj** `config.php`, `voice-agent/.env`, `voice-agent/.env.v2`
+  ali `voice-agent/livekit*.toml`. Vse so v `.gitignore` — ne obidi ga z
+  `git add -f` in ne odstranjuj vrstic iz `.gitignore`.
+- **Pred vsakim commitom preglej seznam datotek** (`git status`). Če je med njimi
+  datoteka, ki je prej ni bilo, preveri, kaj je v njej.
+- **Prave vrednosti ne gredo v nobeno datoteko repozitorija** — ne v kodo, ne v
+  test, ne v scenarij, ne v dokumentacijo, ne v komentar in ne v sporočilo
+  commita. Nova konstanta gre v `config.example.php` z nadomestno vrednostjo,
+  nov ključ v `voice-agent/.env.example` z praznim mestom.
+- **Ključa ne izpisuj** v odgovor v pogovoru, v `echo`, v `var_dump` ali v
+  dnevnik. `Logger` osebne podatke maskira; ključev naj ne dobi v roke.
+- **Ključa ne pošiljaj tretji storitvi** — ne v pastebin, ne v drugo orodje AI,
+  ne v CI. Tudi zip za Drive je tretja storitev: vanj gredo samo sledene
+  datoteke (`git ls-files`), nikoli `config.php` ali `.env`.
+- **Če ključ vseeno uide, ga zamenjaj.** Brisanje commita ne pomaga: zgodovina
+  je razširjena po klonih in predpomnilnikih. Zamenjava je edini popravek.
+- **Luka pogosto prilepi gesla in ključe naravnost v pogovor.** Uporabi jih za
+  nalogo, opozori ga, naj jih zamenja, in jih ne zapiši nikamor.
+- Nastavitve na strežnik ne gredo prek gita: `config.php` je iz deploya izvzet
+  in se naloži ročno prek File Managerja, `voice-agent/.env` pa prek
+  `lk agent update-secrets`.
+
 ## Način dela, ki ga Luka pričakuje
 
 - **Vse v slovenščini:** pogovor, koda, komentarji, sporočila commitov,
@@ -71,8 +164,6 @@ V tem vrstnem redu:
 - **Glasovna stikala vklapljaj po eno** in vsako preizkusi s klicem. Devet
   hkratnih sprememb glasovne poti je klic poslabšalo in krivca ni bilo mogoče
   najti; pot je bilo treba vrniti na `b777fc8` in graditi znova.
-- **Luka pogosto prilepi gesla in ključe naravnost v pogovor.** Opozori ga, naj
-  jih zamenja, in jih nikoli ne zapiši v datoteko v repozitoriju.
 - **Commit in push opravi Luka sam.** Pripravi spremembe in izpiši ukaze.
   Sporočila commitov končaj z
   `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
