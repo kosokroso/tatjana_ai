@@ -221,8 +221,10 @@ z znakom za novo vrstico omogočila vrivanje glav in zlorabo strežnika za neže
    in v `bootstrap.php` vrstico `require_once` za novo datoteko.
 3. **Dovoljenje.** V `config.php` dodaj ime v `ALLOWED_TOOLS`.
 4. **Endpoint.** Ustvari `tools/delivery-estimate.php` — tri vrstice, prepiši iz obstoječega.
-5. **Definicija za AI.** V `ai/tool-definitions.json` dodaj opis v slovenščini,
-   v `ai/chat.php` pa preslikavo v `TOOL_NAME_MAP`.
+5. **Definicija za AI.** Telefonski agent bere opise iz docstringov v
+   `voice-agent/agent.py` — tam dodaj orodje z dekoratorjem `@function_tool`.
+   `ai/tool-definitions.json` je ostal od ukinjenega klepeta in ga bo uporabil
+   novi (PROJEKT.md, razdelek 16); dokler ta ne obstaja, nanj ni odvisnosti.
 
 Če tool potrebuje podatke, ki jih adapter še ne zna prebrati, dodaj metodo v
 `AdapterInterface` in jo implementiraj v **vseh** adapterjih.

@@ -3,7 +3,8 @@
 Popoln pregled projekta. Ta datoteka je vir resnice o tem, kaj sistem je, kaj
 zna, kako je zgrajen in kje smo. **Posodobi jo ob vsaki večji spremembi.**
 
-Zadnja posodobitev: 6. 11. 2026 (uskladitev razdelka 8 z voice-agent/.env)
+Zadnja posodobitev: 6. 11. 2026 (uskladitev z stanjem datotek; odstranjena
+predstavitvena stran in odvečne datoteke)
 
 ---
 
@@ -20,7 +21,7 @@ konfiguraciji in bazi, ne v kodi.
 
 | | |
 |---|---|
-| Živi naslov | `https://kreativnisplet.si/asistent/` — koren pokaže `asistent.html`; živijo samo `tools/`, `ai/` (agent-config, call-guard, log-conversation) in `admin/` |
+| Živi naslov | `https://kreativnisplet.si/asistent/` — koren vrne 403, javne strani ni; živijo samo `tools/`, `ai/` (agent-config, call-guard, log-conversation) in `admin/` |
 | Repozitorij | `https://github.com/kosokroso/tatjana_ai` (javen) |
 | Gostovanje | cPanel, `public_html/asistent/`, uporabnik `kreati02` |
 | Baza | skupna z WordPressom, tabele s predpono `ai_` |
@@ -133,6 +134,8 @@ stranko se spremenijo tri vrstice.
 ### Koren
 | Datoteka | Kaj dela |
 |---|---|
+| `config.example.php` | Predloga nastavitev z razlago vsake konstante. |
+| `favicon.ico`, `apple-touch-icon.png` | Ikoni. Po odstranitvi predstavitvene strani ju uporablja samo `admin/` (pet strani) — ne briši ju. |
 | `setup.php` | Namestitveni čarovnik. **Po namestitvi izbriši.** Sam se izklopi, ko `config.php` obstaja. |
 | `data-view.php` | Razvojni pregled baze, stanja strežnika in preizkus pošiljanja. Zaklenjen s `DATA_VIEW_KEY`. |
 | `bootstrap.php` | Naloži konfiguracijo in razrede, vrne pripravljen `ToolRegistry`. Zazna BOM. |
@@ -164,6 +167,7 @@ stranko se spremenijo tri vrstice.
 | `implementations/KnowledgeTool.php` | Odgovori na vprašanja, ki jih ni v katalogu. |
 | `implementations/AppointmentTool.php` | Prosti termini in rezervacija. |
 | `core/Logger.php` | Dnevnik klicev in pogovorov z maskiranjem osebnih podatkov. |
+| `core/KrispPoraba.php` | Mesečni števec sekund s Krispom, po agentu. Podlaga za samodejni umik (razdelek 7). |
 | `core/Mailer.php` | Lasten odjemalec SMTP — `mail()` je na gostovanju izklopljen. |
 | `core/SlovenianDate.php` | Slovenska imena dni in mesecev, relativni datumi. |
 | `adapters/DirectMySQLAdapter.php` | MySQL prek pripravljenih stavkov, s predpono tabel. |
@@ -172,7 +176,7 @@ stranko se spremenijo tri vrstice.
 | `implementations/OrderTool.php` | Stanje projekta s preverjanjem lastnika. |
 | `implementations/BusinessInfoTool.php` | Delovni čas, roki, plačilo. |
 | `implementations/InquiryTool.php` | Oddaja povpraševanja + obvestilo po SMTP. |
-| `product-lookup.php`, `order-lookup.php`, `business-info.php`, `submit-inquiry.php` | HTTP endpointi, po tri vrstice. |
+| `product-lookup.php`, `order-lookup.php`, `business-info.php`, `submit-inquiry.php`, `knowledge-lookup.php`, `appointment.php` | HTTP endpointi, po tri vrstice. Imena morajo biti v `ALLOWED_TOOLS`. |
 
 ### `admin/` — skrbniška stran
 | Datoteka | Kaj dela |
@@ -189,9 +193,16 @@ stranko se spremenijo tri vrstice.
 - `voice-agent/agent.py` — telefonski agent (LiveKit Agents, Python)
 - `voice-agent/Dockerfile` — slika za LiveKit Cloud; `download-files` teče ob gradnji, da se Silero ne prenaša ob vsakem hladnem zagonu
 - `voice-agent/livekit.toml` — veže mapo na oblačnega agenta. **Ni v gitu** (vezan na računalnik, razkriva gostiteljsko ime projekta). Ustvari ga `lk agent config --id CA_PiXjcGNWErxB`
-- `sql/schema.sql` — samo struktura, brez podatkov
+- `voice-agent/eposta.py` — branje in črkovanje e-poštnih naslovov po telefonu
+- `voice-agent/scenarios.yaml` — 17 preizkusnih pogovorov za `lk agent simulate`
+- `voice-agent/scenarios-ai.yaml` — ločen nabor za kampanjo o AI storitvah
+- `voice-agent/scenarios-napadi.yaml` — 16 napadalnih scenarijev (razdelek 6)
+- `voice-agent/test_eposta.py`, `voice-agent/test_varovalke.py` — enotski testi agenta
+- `voice-agent/.env.v2`, `voice-agent/livekit-v2.toml` — nastavitve druge številke (razdelek 7)
+- `sql/schema.sql` — samo struktura, brez podatkov; `ai-storitve.sql`,
+  `storitve-znanje.sql`, `nero.sql`, `delovni-cas-24-7.sql` so vsebina za uvoz
 - `data/business-info.json` — roki in pogoji plačila
-- `tests/test-tools.sh` — 26 testov orodij prek HTTP
+- `tests/test-tools.sh` — 27 testov orodij prek HTTP; `tests/test-krisp.php` — števec Krispa
 - `docs/setup.md`, `docs/telefon.md`, `docs/tools-api.md`
 
 ---
@@ -226,6 +237,9 @@ Vse tabele s predpono iz `DB_PREFIX` (privzeto `ai_`).
 
 Štetje klicev denarnice ne varuje: en klic z dolgo zgodovino stane toliko kot
 deset kratkih. Zato dnevni proračun **žetonov**.
+
+Te meje po ukinitvi klepeta nihče več ne sproža; žetonski proračun bere samo
+`cron/opozorila.php`. Tabela ostaja, ker jo novi klepet (razdelek 16) podeduje.
 
 ### Telefon ima svoje meje
 
@@ -637,7 +651,8 @@ nespremenjena kot primerjava. Na Tatjano jih prenašaj po enega.
 ## 8. Kje smo
 
 ### Deluje
-- [x] Vsa štiri orodja, 26/26 testov
+- [x] Vseh šest orodij; `tests/test-tools.sh` 27/27 (pokriva štiri — za
+      `knowledge-lookup` in `appointment` testa prek HTTP ni)
 - [x] Povpraševanja v bazo + obvestilo prek SMTP
 - [x] Azure slovenski glas na `7774124` — cene in telefonske številke
       izgovori pravilno; `7774102` uporablja ElevenLabs (razdelek 7)
@@ -729,9 +744,10 @@ Seznam opravil — odprto, varnost, pred zagonom, nadgradnje — je v
 **[TODO.md](TODO.md)**. Tam so kljukice, tu razlogi. Nobena točka ni na obeh
 mestih, ker se dva seznama opravil razideta in nobenemu ne zaupaš več.
 
-Trenutno najbolj pereče: prekinitev klica po `3b2a8a2` ni potrjena z dnevnikom,
-asistentka pa za telefonsko številko še vedno sprašuje, čeprav jo ima — popravek
-je napisan in vrnjen, vrne se z `git revert f9b64d1`.
+Oboje, kar je tu stalo kot najbolj pereče, je opravljeno: prekinitev klica po
+`3b2a8a2` je potrjena in branje številke klicatelja je vrnjeno. Zdaj sta najbolj
+pereča čist izid obeh naborov scenarijev in napoved "lahko preverim" brez klica
+orodja; kljukici sta v `TODO.md`.
 
 ### Odprta vprašanja
 - Javni ali zasebni repozitorij. Zdaj javen, ker cPanel Git zasebnega ni zmogel klonirati. Skrivnosti v njem ni (preverjena celotna zgodovina), a kodo, ki jo nameravaš prodajati, lahko kdorkoli prekopira. V zgodovini je gostiteljsko ime projekta LiveKit (commit `2ef41d6`); skrivnost ni, a olajša iskanje trunka, ki sprejema od koderkoli.
@@ -746,16 +762,22 @@ je napisan in vrnjen, vrne se z `git revert f9b64d1`.
 Razvrščeno po tem, koliko vsaka prinese glede na vloženo delo. Prve tri so
 temelj: brez njih je vsaka nadaljnja izboljšava ugibanje.
 
-### 9.1 Nabor preizkusnih pogovorov — brez tega ne gre naprej
+### 9.1 Nabor preizkusnih pogovorov — NAREJEN, ČAKA NA ČIST IZID
 
 **Težava:** vsako spremembo prompta, modela ali prepisa zdaj presodi en ročni
 telefonski klic in občutek. Zato se je 17. 9. zgodilo, da je devet hkratnih
 sprememb poslabšalo klic in ugotoviti se ni dalo, katera je kriva.
 
-**Kaj:** 30 do 50 zapisanih slovenskih pogovorov s pričakovanim izidom —
-vprašanje o ceni mora sprožiti orodje, vprašanje o tujem projektu mora biti
-zavrnjeno, povpraševanje mora imeti vsa tri polja. Skripta jih požene skozi
-`ai/chat.php` (ukinjen, glej razdelek 16; zdaj `lk agent simulate`) in prešteje odstopanja.
+**Kaj:** zapisani slovenski pogovori s pričakovanim izidom — vprašanje o ceni
+mora sprožiti orodje, vprašanje o tujem projektu mora biti zavrnjeno,
+povpraševanje mora imeti vsa tri polja. Poganja jih `lk agent simulate`, ne
+več `ai/chat.php` (ukinjen, razdelek 16).
+
+**Stanje:** nabori obstajajo — `voice-agent/scenarios.yaml` (17 pogovorov),
+`scenarios-ai.yaml` (kampanja) in `scenarios-napadi.yaml` (16 napadov,
+razdelek 6). Kar manjka, je **čist izid**: zagon do nič odstopanj in scenarij
+za številko klicatelja, ki ga simulacija brez udeleženca SIP ne pokrije.
+Opravila so v `TODO.md`.
 
 **Zakaj prvo:** šele s tem se da odgovoriti, ali je večji model vreden denarja,
 ali Azure prepis slovenščino res razume slabše, ali je nov prompt boljši. Brez
@@ -858,8 +880,10 @@ da bi kdo opazil.
 
 ## 10. Strošek
 
-**Klepet in glas na strani:** delčki centa na pogovor pri `gpt-4o-mini`. Azure
-ima 500.000 znakov mesečno brezplačno.
+Številke spodaj so izmerjene pri `gpt-4o-mini` (september 2026). Telefon zdaj
+teče na `gpt-5.6-sol`, zato je vrstica **Model** zastarela navzgor in ni znova
+izmerjena; vse ostalo od modela ni odvisno. Azure ima 500.000 znakov mesečno
+brezplačno, ElevenLabs na drugi številki se plača posebej.
 
 **Telefon**, ob predpostavki triminutnega klica:
 
@@ -953,7 +977,7 @@ s PAT v URL-ju.
 BASE_URL=https://kreativnisplet.si/asistent bash tests/test-tools.sh
 ```
 
-Vseh 26 testov mora biti zelenih. Posebej zadnja dva: `GET` na tool mora vrniti
+Vseh 27 testov mora biti zelenih. Posebej zadnja dva: `GET` na tool mora vrniti
 405, mapa `logs/` ne sme biti dosegljiva.
 
 Asistenta preizkusi s klicem na telefonsko številko ali z `lk agent simulate`. Če pri vprašanju o
@@ -1065,8 +1089,9 @@ po zasnovi: čim več dela lokalno in na strežniku, model samo kjer je nujen.
 
 ### Kaj je bilo odstranjeno
 `index.html`, `widget.js`, `ai/chat.php`, `ai/speak.php`, `ai/transcribe.php`,
-`ai/OpenAIClient.php`. Koren `/asistent/` v `.htaccess` pokaže statično `asistent.html` (opis Tatjane, številka za klic),
-`Options -Indexes` izklopi izpis mape.
+`ai/OpenAIClient.php`. Predstavitvena stran `asistent.html` je odstranjena
+6. 11. 2026, z njo `DirectoryIndex` iz `.htaccess`: koren `/asistent/` zdaj vrne
+403, `Options -Indexes` pa izklopi izpis mape.
 
 ### Kaj ostane in se ne sme premakniti
 `tools/*.php`, `ai/agent-config.php`, `ai/call-guard.php`, `ai/log-conversation.php`,
@@ -1083,7 +1108,9 @@ ostanejo dosegljive stare `chat.php`, `speak.php` in `transcribe.php`, ki
 1. **Deploy in ročno brisanje na strežniku:** cPanel Update from Remote → Deploy
    HEAD Commit; nato v File Managerju izbriši `index.html`, `widget.js`,
    `ai/chat.php`, `ai/speak.php`, `ai/transcribe.php`, `ai/OpenAIClient.php`.
-   Preveri, da vsi vrnejo 404 in da `/asistent/` pokaže `asistent.html`.
+   Preveri, da vsi vrnejo 404 in da `/asistent/` vrne 403.
+   Odstrani tudi `asistent.html` — datoteka je 6. 11. 2026 izbrisana iz
+   repozitorija, rsync pa je na strežniku ne pobriše.
 2. **Preveri, da telefon dela:** en testni klic; `tests/test-tools.sh` zelen.
 3. **Na glavni strani (WordPress) odstrani povezave in vgrajeni `widget.js`**
    (meni, gumbi, morebitna vgradnja `#tatjana-chat`). Brez tega ostane mrtva povezava.

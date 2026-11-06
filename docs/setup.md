@@ -131,13 +131,14 @@ Ukinjeno 17. 10. 2026. `widget.js` ne obstaja več; glej PROJEKT.md, razdelek 16
 
 ## Koliko stane
 
-Vsako vprašanje sproži enega ali dva klica na OpenAI. Pri `gpt-4o-mini` je to
-delčki centa na pogovor. Glas doda prepis in sintezo; Azure ima brezplačnih
-500.000 znakov mesečno.
+Telefon je edina pot do asistentke (klepet je ukinjen). Triminutni klic stane
+okoli 0,09 €; razčlenitev po postavkah je v PROJEKT.md, razdelek 10. Azure ima
+brezplačnih 500.000 znakov mesečno, ElevenLabs na drugi številki se plača posebej.
 
-Varovala v kodi: omejitve na minuto in dan na IP, skupna dnevna kapica in dnevni
-proračun žetonov. Zadnji šteje dejanski strošek, ne števila klicev — en klic z
-dolgo zgodovino stane toliko kot deset kratkih. Porabo vidiš na `data-view.php`.
+Varovala v kodi: meje telefonskih klicev v `ai/call-guard.php` (trajanje, dnevne
+minute, klici iste številke) in dnevni proračun žetonov. Zadnji šteje dejanski
+strošek, ne števila klicev — en klic z dolgo zgodovino stane toliko kot deset
+kratkih. Porabo vidiš na `data-view.php`.
 
 Mesečna omejitev pri OpenAI je zadnja obramba, če bi ključ kdaj ušel. Nastavi jo.
 

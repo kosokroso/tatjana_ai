@@ -103,7 +103,7 @@ dvakrat. Druga številka (Tatjana V2) ima svoje datoteke `.env.v2` in
 BASE_URL=https://kreativnisplet.si/asistent bash tests/test-tools.sh
 ```
 
-Vseh 26 mora biti zelenih. Lokalno (Windows, PHP 8.4) preveriš samo sintakso in
+Vseh 27 mora biti zelenih. Lokalno (Windows, PHP 8.4) preveriš samo sintakso in
 unit logiko:
 
 ```powershell

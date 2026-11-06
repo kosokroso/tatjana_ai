@@ -6,7 +6,7 @@ nadgradnja vredna dela, je v **[PROJEKT.md](PROJEKT.md)**.
 Delitev je namerna: tu kljukice, tam razlogi. Nobena točka ni na obeh mestih,
 ker se dva seznama opravil razideta in nobenemu ne zaupaš več.
 
-Zadnja posodobitev: 21. 10. 2026
+Zadnja posodobitev: 6. 11. 2026
 
 ---
 
@@ -167,11 +167,15 @@ Zadnja posodobitev: 21. 10. 2026
       - [ ] v File Managerju izbriši `index.html`, `widget.js`, `ai/chat.php`,
             `ai/speak.php`, `ai/transcribe.php`, `ai/OpenAIClient.php`
             (rsync ne briše; do takrat stari endpointi še trošijo ključe)
-      - [ ] preveri 404 na teh datotekah in prikaz `asistent.html` na `/asistent/`
+      - [ ] preveri 404 na teh datotekah; `/asistent/` vrne 403, ker je
+            `asistent.html` 6. 11. 2026 odstranjena skupaj z `DirectoryIndex`
+            (na strežniku jo izbriši ročno — rsync ne briše)
       - [ ] testni klic na telefon + `tests/test-tools.sh`
       - [ ] odstrani povezavo in vgradnjo `widget.js` na WordPress strani
       - [ ] počisti `config.php` (`CHAT_ALLOWED_ORIGINS`, govor za splet)
-      - [ ] posodobi `PROMPT-ZA-SODELAVCA.md` in PROJEKT.md razdelek 10
+      - [x] posodobi `PROMPT-ZA-SODELAVCA.md` in PROJEKT.md razdelek 10
+            (6. 11. 2026; `POVZETEK-ZA-AI.md` je nov, `PROMPT-ZA-SODELAVCA.md`
+            je skrčen na kazalce)
 - [ ] **Novi klepet na strani (pozneje):** poceni, večinoma lokalno ali brez
       modela. Zasnova v PROJEKT.md, razdelek 16, točka 5.
 
@@ -238,11 +242,12 @@ Zadnja posodobitev: 21. 10. 2026
 - [X] **Številke stranke ne primerja s številko podjetja.** Klic je dobil "zadnje
       tri številke se ne ujemajo s Kreativnim spletom". Model ima telefon
       podjetja v promptu in ga je primerjal z narekovano številko.
-- [ ] **`VAD_TISINA=0.4` kot pri Maji — šele po meritvi.** Z `turn_detection="vad"`
-      je 0.2 spet veljavna in hitrejša. Dvigni samo, če se narekovanje e-pošte
-      še reže na več obratov, in nič drugega hkrati.
-- [ ] **Maja ima isti `~=1.6`.** Ob naslednjem deployu dobi 1.8 in model za konec
-      obrata — ne pade (ima 0.4), a bo počasnejša. Prenesi ista popravka.
+- [x] **`VAD_TISINA=0.4` kot pri Maji.** V `voice-agent/.env` in `.env.v2` je
+      0.4. Če se narekovanje e-pošte več ne reže, je 0.2 spet hitrejša izbira —
+      a spuščaj samo to in nič drugega hkrati.
+- [x] **Maja ima isti `~=1.6`.** `requirements.txt` je zdaj pribit na
+      `livekit-agents[openai,azure,silero,elevenlabs]==1.8.1`, ista datoteka velja
+      za obe številki.
 - [ ] **Preveri popravke z resničnim klicem.** Zahteva `lk agent deploy`.
       1. Pogovor o storitvi, ki je ni v ponudbi, prek desetega obrata, vmes "ja".
       2. Narekuj e-pošto trikrat, kot da je prepis padel.
@@ -262,9 +267,9 @@ Zadnja posodobitev: 21. 10. 2026
 - [ ] **Odčitaj novo `E2E median`** na nadzorni plošči LiveKit. Zadnja meritev je
       3198 ms, izpred zamenjave modela in vklopa sprotnega prepisa. Brez nove
       številke ne veva, kje smo.
-- [ ] **Poskusi `STT_MODEL=gpt-transcribe`.** Novejši od `gpt-4o-transcribe` in
-      edini razen realtime različice sprejme `keywords` — šele z njim usmerjanje
-      prepisa na imena tvojih storitev zares deluje.
+- [x] **Poskusi `STT_MODEL=gpt-transcribe`.** Vklopljen v `.env` in `.env.v2`.
+      Usmerjanje prepisa prek `keywords` je s tem odklenjeno; ali so imena
+      storitev dejansko naložena, še ni preverjeno.
 - [x] **Preveri, da se telefonski pogovori beležijo.** Po prvem klicu odpri
       `admin/pogovori.php` — vsak obrat mora imeti oznako `telefon`.
       Če oznake ni, `ai/log-conversation.php` ni bil deployan.
@@ -272,8 +277,6 @@ Zadnja posodobitev: 21. 10. 2026
       `agent.py` (telefon) opisujejo ista orodja pod drugimi imeni:
       `search_products` proti `search_services`, `lookup_order` proti
       `lookup_project`. Vsaka sprememba parametrov je zdaj dve spremembi.
-- [ ] **Odloči o modelu za spletni klepet.** Telefon teče na `gpt-5.4-mini`,
-      splet na `OPENAI_MODEL` iz `config.php`. Razhajata se.
 
 - [X] **Potrdi, da asistentka odloži slušalko.** `3b2a8a2` je v oblaku, a z
       dnevnikom ni preverjen. Pusti odprt `lk agent logs`, pokliči, oddaj
