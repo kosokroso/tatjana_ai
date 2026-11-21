@@ -6,11 +6,25 @@ nadgradnja vredna dela, je v **[PROJEKT.md](PROJEKT.md)**.
 Delitev je namerna: tu kljukice, tam razlogi. Nobena točka ni na obeh mestih,
 ker se dva seznama opravil razideta in nobenemu ne zaupaš več.
 
-Zadnja posodobitev: 6. 11. 2026
+Zadnja posodobitev: 19. 11. 2026
 
 ---
 
 ## Zdaj — nepotrjeno ali odprto
+
+- [ ] **Popravki 19. 11. 2026, neobjavljeni v `main`** (razlogi v
+      PROJEKT.md, razdelki 3, 13, 14 in 15). Na strežniku jih še ni.
+      - [x] `tools/*.php` brez `TOOL_SECRET` vrnejo 401 (`tools/core/Endpoint.php`)
+      - [x] `config.example.php`: vrnjeno ime `CALL_RECORDING_NOTICE`
+      - [x] `setup.php` usklajen s `config.example.php` (`ALLOWED_TOOLS`, `CALL_*`,
+            obvestilo o snemanju, sklanjatev imena, opozorila, termini, predpona
+            za `ai_knowledge` in `ai_appointments`)
+      - [x] `setup.php`: domene za klepet se ne zapišejo več kot surova PHP koda iz
+            skritega polja (vrivanje kode v `config.php`), 20. 11.
+      - [x] `tests/test-tools.sh`: glava `X-Tool-Secret`, 28 testov, noben ne zapiše
+      - [ ] Merge v `main`, push, cPanel **Update from Remote** → **Deploy HEAD Commit**
+      - [ ] `tests/test-tools.sh` s `TOOL_SECRET` proti živi strani: 28/28
+      - [ ] Testni klic na obe številki: asistentka mora orodja klicati kot prej
 
 - [ ] **Tatjana V2 na `+386 5 7774102` z glasom ElevenLabs** (21. 10. 2026; za
       predstavitev pri stranki 22. 10.). Postavitev in ID-ji so v PROJEKT.md,
@@ -42,6 +56,9 @@ Zadnja posodobitev: 6. 11. 2026
             časa, je to red velikosti 90 klicev. Za predstavitev dovolj, za
             redno rabo pri več strankah ne.
       - [X] **Ime Maja na 7774102** (`IME_ASISTENTKE=Maja` v `.env.v2`).
+      - [X] **19. 11. 2026 nazaj na Tatjana** na 7774102 (`IME_ASISTENTKE=Tatjana`,
+            samo v oblaku; PROJEKT.md, razdelek 7).
+      - [ ] Testni klic na 7774102: pozdrav mora reči "tukaj Tatjana".
       - [X] **Zamik V2** (21. 10. 2026; meritve v PROJEKT.md, razdelek 7):
             `gpt-4.1` namesto `gpt-5.6-sol`, `gpt-live-transcribe` namesto
             `gpt-transcribe`, VAD in `anyio` ob zagonu procesa. Deployano.

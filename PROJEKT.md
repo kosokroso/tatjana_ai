@@ -3,8 +3,8 @@
 Popoln pregled projekta. Ta datoteka je vir resnice o tem, kaj sistem je, kaj
 zna, kako je zgrajen in kje smo. **Posodobi jo ob vsaki večji spremembi.**
 
-Zadnja posodobitev: 6. 11. 2026 (uskladitev z stanjem datotek; odstranjena
-predstavitvena stran in odvečne datoteke)
+Zadnja posodobitev: 19. 11. 2026 (orodja zahtevajo `TOOL_SECRET`, usklajen
+`setup.php`, popravljeni testi orodij)
 
 ---
 
@@ -120,6 +120,11 @@ Preslikava stolpcev ERP-ja v naše ključe spada v adapter, nikoli v orodje.
 `tools/*.php` so dosegljivi prek HTTP s skupno skrivnostjo `TOOL_SECRET`. Telefonski
 agent teče drugje (LiveKit, VPS) in kliče iste endpointe — zato se poslovna logika
 ne prepisuje v Pythonu.
+
+Brez skrivnosti vrnejo 401 (od 19. 11. 2026). Prej je skrivnost le preskočila
+omejitev na IP, orodja pa so bila odprta za vsakogar — tudi oddaja povpraševanja z
+e-poštnim obvestilom podjetju in rezervacija termina. Po HTTP jih kliče samo
+telefonski agent; ukinjeni klepet jih je klical neposredno v PHP.
 
 ### Kaj določa identiteto asistenta
 Sistemski prompt (`ai/system-prompt.txt`) **nima nikjer vpisanega imena podjetja**.
@@ -332,7 +337,7 @@ promptov. Ista koda, dvoje nastavitev.
 | Agent | `CA_PiXjcGNWErxB` | `CA_hTBKtHimCXjZ` |
 | Dispatch pravilo | `SDR_tpMPgUorXQhT` | `SDR_Ugee48V65ETc` |
 | Glas | Azure `sl-SI-PetraNeural` | ElevenLabs Bella (od 24. 10. 2026; prej "Maja", umaknjena iz knjižnice), `eleven_v3_conversational` |
-| Ime asistentke | Tatjana (`ASSISTANT_NAME` na strežniku) | Maja (`IME_ASISTENTKE` v `.env.v2`) |
+| Ime asistentke | Tatjana (`ASSISTANT_NAME` na strežniku) | Tatjana od 19. 11. 2026 (`IME_ASISTENTKE=Tatjana` v oblaku; prej Maja) |
 | Model | `gpt-5.6-sol` | `gpt-5.6-sol` (`gpt-4.1` vrnjen 22. 10., glej spodaj) |
 | Prepis | `gpt-transcribe` | `gpt-transcribe` (`gpt-live-transcribe` vrnjen, glej spodaj) |
 | Nastavitve | `voice-agent/.env` | `voice-agent/.env.v2` |
@@ -393,6 +398,14 @@ Vrnitev je zato ročna in traja toliko kot `update-secrets`.
 **Ime.** Prompt in pozdrav prideta s strežnika z imenom iz `ASSISTANT_NAME`.
 `IME_ASISTENTKE` v agentu to ime zamenja v obeh, zato isti strežnik služi obema
 številkama. Brez spremenljivke se nič ne spremeni.
+
+Od 19. 11. 2026 se obe številki predstavita kot Tatjana (Luka). Na V2 je samo en
+ključ zamenjan v oblaku, brez `--overwrite`:
+`lk --project maja agent update-secrets --id CA_hTBKtHimCXjZ --secrets IME_ASISTENTKE=Tatjana`.
+V lokalnem `.env.v2` ključa `IME_ASISTENTKE` ni; poln `update-secrets --overwrite`
+iz te datoteke bi ga odstranil, ime pa bi zaradi strežnika vseeno ostalo Tatjana.
+`AGENT_IME=maja` ostane: po tem imenu dispatch pravilo `SDR_Ugee48V65ETc` pokliče
+agenta, zato bi preimenovanje utišalo številko.
 
 ### Zamik V2 — izmerjeno 21. 10. 2026
 
@@ -651,8 +664,9 @@ nespremenjena kot primerjava. Na Tatjano jih prenašaj po enega.
 ## 8. Kje smo
 
 ### Deluje
-- [x] Vseh šest orodij; `tests/test-tools.sh` 27/27 (pokriva štiri — za
-      `knowledge-lookup` in `appointment` testa prek HTTP ni)
+- [x] Vseh šest orodij; `tests/test-tools.sh` ima od 19. 11. 2026 28 testov in
+      rabi `TOOL_SECRET` (pokriva štiri orodja — za `knowledge-lookup` in
+      `appointment` testa prek HTTP ni)
 - [x] Povpraševanja v bazo + obvestilo prek SMTP
 - [x] Azure slovenski glas na `7774124` — cene in telefonske številke
       izgovori pravilno; `7774102` uporablja ElevenLabs (razdelek 7)
@@ -968,17 +982,26 @@ s PAT v URL-ju.
 | Asistentka zveni sekano, čeprav je hitra | Samostojen medmet ("mhm") v premoru pogovor razseka na tri kose. Mašilo mora biti prva beseda odgovora, ne ločeno predvajanje pred njim. |
 | "iz Kreativni Splet" | Ime podjetja ni sklanjano. Nastavi `BUSINESS_NAME_RODILNIK` in `BUSINESS_NAME_MESTNIK`; samodejno sklanjanje slovenščine ni zanesljivo. |
 | Heredoc v Bashu požre `\` in PHP ali Python ne prevede | Pisanje datotek s `cat > f <<'EOF'` odstrani eno poševnico. Izogni se dvojnim poševnicam ali piši po vrsticah. |
+| Nova namestitev: `knowledge-lookup` in `appointment` vrneta 404 | `setup.php` je od 26. 9. do 19. 11. 2026 pisal star `ALLOWED_TOOLS` in brez novih konstant. Ob vsaki novi konstanti v `config.example.php` popravi tudi predlogo v `setup.php`. |
+| `define('', …)` v `config.example.php` | Zamenjava besedila je izbrisala ime `CALL_RECORDING_NOTICE` (`a1e7411`). PHP 8.4 tako vrstico tiho sprejme, nova namestitev pa je ostala brez obvestila o snemanju. |
 
 ---
 
 ## 14. Kako testiram
 
 ```bash
+read -rs TOOL_SECRET && export TOOL_SECRET   # ista vrednost kot v config.php
 BASE_URL=https://kreativnisplet.si/asistent bash tests/test-tools.sh
 ```
 
-Vseh 27 testov mora biti zelenih. Posebej zadnja dva: `GET` na tool mora vrniti
-405, mapa `logs/` ne sme biti dosegljiva.
+Vseh 28 testov mora biti zelenih. Zadnji štirje so varnostni: `GET` na tool vrne
+405, mapa `logs/` ni dosegljiva, zahtevek brez skrivnosti in z napačno skrivnostjo
+vrne 401.
+
+Testi tečejo proti živi bazi, zato noben ne zapiše povpraševanja: klic
+`submit-inquiry` je brez potrditve ali z natanko enim neveljavnim poljem. Do
+19. 11. 2026 sta dva testa pričakovala uspešno oddajo brez potrditve in od
+26. 9. (`6895e7f`) padala.
 
 Asistenta preizkusi s klicem na telefonsko številko ali z `lk agent simulate`. Če pri vprašanju o
 ceni **ne pokliče orodja**, je odgovor izmišljen — to je najhujša napaka in jo
@@ -1063,9 +1086,10 @@ Po velikosti tveganja:
    prepisujejo. Zaščita visi na eni datoteki: brez `.htaccess` ali ob prehodu na
    nginx bi bili dnevniki javni.
 5. **`TOOL_SECRET` je eno samo geslo za vsa orodja po HTTP.** Kdor ga ima, lahko
-   bere katalog in piše v dnevnik; vpogled v projekt zahteva dva ujemajoča se
-   podatka, zato sam ključ ne zadošča. Ukrep: zamenjava ob vsaki menjavi
-   sodelavca.
+   bere katalog, oddaja povpraševanja, zaseda termine in piše v dnevnik; vpogled
+   v projekt zahteva dva ujemajoča se podatka, zato sam ključ ne zadošča. Brez
+   ključa orodja vrnejo 401 (od 19. 11. 2026). Ukrep: zamenjava ob vsaki menjavi
+   sodelavca — v `config.php` in v obeh `.env` agenta hkrati.
 6. **Čiščenje po 14 dneh se sproži naključno**, pri približno vsakem petdesetem
    zapisu. Pri majhnem prometu lahko star dnevnik ostane dlje, kot pravi
    politika hrambe. Ukrep: izbris prek `cron`.

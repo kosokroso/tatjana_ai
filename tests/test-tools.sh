@@ -1,17 +1,35 @@
 #!/usr/bin/env bash
 #
-# Preveri vse tri toole prek HTTP.
+# Preveri orodja prek HTTP.
 #
 # Uporaba:
-#   BASE_URL=https://tvoja-domena.si/voice-ai bash tests/test-tools.sh
+#   BASE_URL=https://kreativnisplet.si/asistent TOOL_SECRET=... bash tests/test-tools.sh
+#
+# Da skrivnost ne ostane v zgodovini ukazov:
+#   read -rs TOOL_SECRET && export TOOL_SECRET
+#   BASE_URL=https://kreativnisplet.si/asistent bash tests/test-tools.sh
+#
+# TOOL_SECRET je ista vrednost kot v config.php na strežniku; brez nje orodja
+# vrnejo 401.
+#
+# Testi tečejo proti živi bazi. Noben ne zapiše povpraševanja: vsak klic
+# submit-inquiry je brez potrditve ali pa ima eno polje neveljavno. Test s
+# "confirmed":true in samimi veljavnimi polji bi zapisal pravo vrstico v
+# ai_inquiries in poslal obvestilo podjetju — takega ne dodajaj.
 #
 # Privzeto testira lokalni strežnik. Za lepši izpis namesti jq (ni obvezno).
 
 set -u
 
 BASE_URL="${BASE_URL:-http://localhost/voice-ai}"
+TOOL_SECRET="${TOOL_SECRET:-}"
 PASSED=0
 FAILED=0
+
+if [ -z "$TOOL_SECRET" ]; then
+  echo "Manjka TOOL_SECRET (ista vrednost kot v config.php). Brez nje orodja vrnejo 401." >&2
+  exit 2
+fi
 
 if command -v jq >/dev/null 2>&1; then
   PRETTY="jq ."
@@ -26,10 +44,14 @@ test_call() {
   local response
   response=$(curl -s -X POST "$BASE_URL/tools/$endpoint" \
     -H "Content-Type: application/json" \
+    -H "X-Tool-Secret: $TOOL_SECRET" \
     -d "$payload")
 
+  # Zavrnjena skrivnost je vedno napaka testa, tudi kjer test pričakuje
+  # success=false — sicer bi napačna skrivnost te teste "prestala".
   local got
   case "$response" in
+    *'"error_code":"unauthorized"'*) got="zavrnjena skrivnost" ;;
     *'"success":true'*)  got="true" ;;
     *'"success":false'*) got="false" ;;
     *)                   got="neveljaven odgovor" ;;
@@ -75,14 +97,18 @@ test_call "načini plačila"   business-info.php '{"info_type":"payments"}'     
 test_call "neveljaven tip"   business-info.php '{"info_type":"skrivnosti"}'       false
 echo
 
-echo "submit-inquiry"
-test_call "polno povprasevanje"      submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111","email":"test@example.com","product":"napredna spletna stran"}' true
-test_call "obvezni trije podatki"    submit-inquiry.php '{"name":"Testni Test","phone":"+38641000111","email":"test@example.com"}'                true
-test_call "manjka telefon"           submit-inquiry.php '{"name":"Testni Test","email":"test@example.com"}'                                       false
-test_call "manjka ime"               submit-inquiry.php '{"phone":"041 000 111","email":"test@example.com"}'                                      false
-test_call "manjka e-posta"           submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111"}'                                            false
-test_call "prekratka stevilka"       submit-inquiry.php '{"name":"Testni Test","phone":"041","email":"test@example.com"}'                         false
-test_call "neveljavna e-posta"       submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111","email":"ni-email"}'                         false
+# Od 6895e7f (26. 9. 2026) InquiryTool brez "confirmed" ne zapiše nič. Prej sta
+# tu stala testa s pričakovanim success=true brez potrditve in sta od takrat
+# padala. Pravila za polja se preverijo s "confirmed":true in natanko enim
+# neveljavnim poljem: preverba pade pred zapisom v bazo.
+echo "submit-inquiry (nič ne zapiše)"
+test_call "brez potrditve se ne odda"  submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111","email":"test@example.com","product":"napredna spletna stran"}' false
+test_call "manjka ime"                 submit-inquiry.php '{"phone":"041 000 111","email":"test@example.com","confirmed":true}'                      false
+test_call "manjka telefon"             submit-inquiry.php '{"name":"Testni Test","email":"test@example.com","confirmed":true}'                       false
+test_call "manjka e-posta"             submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111","confirmed":true}'                            false
+test_call "prekratka stevilka"         submit-inquiry.php '{"name":"Testni Test","phone":"041","email":"test@example.com","confirmed":true}'         false
+test_call "neveljavna e-posta"         submit-inquiry.php '{"name":"Testni Test","phone":"041 000 111","email":"ni-email","confirmed":true}'         false
+test_call "nadomestek namesto imena"   submit-inquiry.php '{"name":"ime priimek","phone":"041 000 111","email":"test@example.com","confirmed":true}' false
 echo
 
 echo "varnost"
@@ -104,6 +130,26 @@ else
   FAILED=$((FAILED + 1))
 fi
 
+NOSECRET_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/tools/product-lookup.php" \
+  -H "Content-Type: application/json" -d '{"query":"spletna stran"}')
+if [ "$NOSECRET_STATUS" = "401" ]; then
+  echo "  OK    brez skrivnosti zavrnjeno (401)"
+  PASSED=$((PASSED + 1))
+else
+  echo "  NAPAKA brez skrivnosti bi moral vrniti 401, vrnil je $NOSECRET_STATUS"
+  FAILED=$((FAILED + 1))
+fi
+
+WRONG_STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/tools/business-info.php" \
+  -H "Content-Type: application/json" -H "X-Tool-Secret: napacna-skrivnost" -d '{"info_type":"hours"}')
+if [ "$WRONG_STATUS" = "401" ]; then
+  echo "  OK    napačna skrivnost zavrnjena (401)"
+  PASSED=$((PASSED + 1))
+else
+  echo "  NAPAKA napačna skrivnost bi morala vrniti 401, vrnila je $WRONG_STATUS"
+  FAILED=$((FAILED + 1))
+fi
+
 echo
 echo "Uspešno: $PASSED   Neuspešno: $FAILED"
 
@@ -111,6 +157,7 @@ echo
 echo "Primer polnega odgovora (product-lookup):"
 curl -s -X POST "$BASE_URL/tools/product-lookup.php" \
   -H "Content-Type: application/json" \
+  -H "X-Tool-Secret: $TOOL_SECRET" \
   -d '{"query":"spletna stran","action":"get_price"}' | $PRETTY
 
 [ "$FAILED" -eq 0 ]

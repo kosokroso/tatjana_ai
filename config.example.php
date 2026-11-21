@@ -53,12 +53,12 @@ define('LOG_MASK_PII', true);
 define('LOG_RETENTION_DAYS', 14);
 
 // ---------------------------------------------------------------
-// Rate limiting (na IP, na minuto). Velja samo za HTTP klice od zunaj.
-// Chat backend kliče toole neposredno v PHP, zato ga to ne omejuje.
+// Omejitve na IP za spletni klepet. Klepet je ukinjen (17. 10. 2026); te
+// vrednosti bere ai/guard.php, ki ga bo podedoval novi klepet.
+// Orodja v tools/ omejitve na IP nimajo: brez TOOL_SECRET vrnejo 401.
 // ---------------------------------------------------------------
-define('RATE_LIMIT_PER_MINUTE', 60);
 
-// Chat endpoint je strožji, ker vsak klic stane pri OpenAI.
+// Vsak klic klepeta stane pri OpenAI.
 define('CHAT_RATE_LIMIT_PER_MINUTE', 20);
 // Dnevna omejitev na IP in skupna dnevna kapica za chat.
 // Skupna kapica je trda zgornja meja stroška pri OpenAI: ko je dosezena,
@@ -101,10 +101,11 @@ define('CALL_MAX_ANONYMOUS', 40);
 
 
 // ---------------------------------------------------------------
-// Skupna skrivnost za strežnik-na-strežnik klice (kasnejši glasovni sloj).
-// Klic z glavo "X-Tool-Secret: <vrednost>" preskoči rate limit.
+// Skupna skrivnost za telefonskega agenta, glava "X-Tool-Secret: <vrednost>".
+// Brez nje tools/*.php, ai/agent-config.php, ai/call-guard.php in
+// ai/log-conversation.php vrnejo 401. Isti niz gre v voice-agent/.env.
 // Generiraj naključen niz, npr.: bin2hex(random_bytes(24))
-// Pusti prazno, da je funkcija izklopljena.
+// Prazno = vse to je zaprto in telefon ne dela.
 // ---------------------------------------------------------------
 define('TOOL_SECRET', '');
 
@@ -164,7 +165,8 @@ define('TOOL_DEFINITIONS_FILE', __DIR__ . '/ai/tool-definitions.json');
 // Koliko krogov tool callinga dovolimo v enem odgovoru, preden prekinemo.
 define('MAX_TOOL_ROUNDS', 4);
 
-// Dovoljeni izvori za chat endpoint (CORS). Prazno = samo isti izvor.
+// Dovoljeni izvori za chat endpoint (CORS), npr. ['https://primer.si'].
+// Prazno = brez preverjanja izvora (razvojni način, glej ai/guard.php).
 define('CHAT_ALLOWED_ORIGINS', []);
 
 // ---------------------------------------------------------------
@@ -216,12 +218,14 @@ define('TRANSFER_PHONE', '');
 
 // Obvestilo o snemanju klica, dodano pozdravu na telefonu.
 //
-// LiveKit klice snema (enable_recording v zahtevi za posel). V EU snemanje brez
-// obvestila ni dopustno, zato mora klicatelj to slisati, preden kaj pove.
-// Velja samo za telefon; spletni klepet se ne snema.
+// LiveKit Cloud klic posname, kadar je v projektu vklopljen Agent observability
+// (PROJEKT.md, razdelek 15). V EU snemanje brez obvestila ni dopustno, zato mora
+// klicatelj to slisati, preden kaj pove.
 //
-// Prazno = brez obvestila. Takrat snemanje izklopi tudi v LiveKitu.
-define('', 'Klic se snema zaradi kakovosti storitve.');
+// Prazno = brez obvestila. Snemanja to NE izklopi: agent ga ne nastavlja
+// (session.start brez record), zato ga v tem primeru izklopi v nastavitvah
+// projekta LiveKit.
+define('CALL_RECORDING_NOTICE', 'Klic se snema zaradi kakovosti storitve.');
 define('BUSINESS_PHONE', '+386 31 455 881');
 define('BUSINESS_EMAIL', 'info@kreativnisplet.si');
 

@@ -38,7 +38,7 @@ V obeh primerih je **redna varnostna kopija edina prava zaščita**. V bazi, kje
 ima drug uporabnik vse pravice, tabel ni mogoče narediti neizbrisljivih. Cron:
 
 ```
-mysqldump -u UPORABNIK -pGESLO BAZA ai_products ai_customers ai_orders ai_business_hours ai_inquiries > ~/backups/asistent-$(date +\%F).sql
+mysqldump -u UPORABNIK -pGESLO BAZA ai_products ai_customers ai_orders ai_business_hours ai_inquiries ai_knowledge ai_appointments > ~/backups/asistent-$(date +\%F).sql
 ```
 
 Mapa `~/backups` mora biti **zunaj** `public_html`, sicer je izvoz baze dosegljiv
@@ -88,14 +88,17 @@ ceno — brez nje asistent izhodiščno ceno pove kot končno.
 
 ## 5. Preverjanje
 
-Orodja, brez stroška pri OpenAI:
+Orodja, brez stroška pri OpenAI. `TOOL_SECRET` je vrednost iz `config.php`, ki jo
+je zgeneriral čarovnik:
 
 ```bash
+read -rs TOOL_SECRET && export TOOL_SECRET
 BASE_URL=https://domena.si/asistent bash tests/test-tools.sh
 ```
 
-Vsi testi morajo biti zeleni. Posebej zadnja dva: `GET` na tool mora vrniti 405 in
-mapa `logs/` ne sme biti dosegljiva prek brskalnika.
+Vsi testi morajo biti zeleni. Zadnji štirje so varnostni: `GET` na tool vrne 405,
+mapa `logs/` ni dosegljiva prek brskalnika, zahtevek brez skrivnosti in z napačno
+skrivnostjo vrne 401. Noben test ne zapiše povpraševanja.
 
 Pošiljanje e-pošte preizkusiš na `data-view.php` (ključ je v `config.php` pod
 `DATA_VIEW_KEY`).

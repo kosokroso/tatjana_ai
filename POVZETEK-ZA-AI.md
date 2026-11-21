@@ -4,7 +4,7 @@ Prilepi vse od vrstice `---` naprej v katerikoli AI agent. Pove, kaj Tatjana je,
 kaj dela in kje tečejo njeni deli. Podrobnosti so v `PROJEKT.md` (razlogi in
 stanje) in `TODO.md` (kljukice).
 
-Stanje na 6. 11. 2026.
+Stanje na 19. 11. 2026.
 
 ---
 
@@ -68,7 +68,7 @@ Klicatelj (telefon, DIDWW)
 | Model | `gpt-5.6-sol` |
 | Prepis | `gpt-transcribe` |
 | Številka 1 (Tatjana) | `+386 5 7774124`, glas Azure `sl-SI-PetraNeural` |
-| Številka 2 (Tatjana V2 / Maja) | `+386 5 7774102`, glas ElevenLabs Bella, `eleven_v3_conversational` |
+| Številka 2 (Tatjana V2) | `+386 5 7774102`, glas ElevenLabs Bella, `eleven_v3_conversational`; predstavi se kot Tatjana (do 19. 11. 2026 kot Maja) |
 
 Obe številki tečeta na isti kodi in isti bazi; razlikujeta se samo po
 nastavitvah (`voice-agent/.env` in `.env.v2`). Druga številka obstaja zato, da

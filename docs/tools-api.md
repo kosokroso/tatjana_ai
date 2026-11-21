@@ -2,6 +2,11 @@
 
 Vsi tooli so dosegljivi kot `POST` na `/tools/<ime>.php` in vračajo JSON.
 
+Vsak zahtevek mora imeti glavo `X-Tool-Secret` z vrednostjo `TOOL_SECRET` iz
+`config.php`; brez nje je odgovor 401 `unauthorized`. Po HTTP jih kliče samo
+telefonski agent (`voice-agent/agent.py` glavo pošlje pri vsakem zahtevku).
+V primerih spodaj je skrivnost v spremenljivki `$TOOL_SECRET`.
+
 ## Skupna oblika odgovora
 
 ```json
@@ -14,7 +19,7 @@ Vsi tooli so dosegljivi kot `POST` na `/tools/<ime>.php` in vračajo JSON.
 | `invalid_input` | 400 | Manjka ali je napačen parameter | Vpraša stranko za manjkajoči podatek |
 | `not_found` | 404 | Ni zadetka | Pove, da tega nima, in ponudi alternativo |
 | `unknown_tool` | 404 | Tool ne obstaja ali ni v `ALLOWED_TOOLS` | Napaka v konfiguraciji, ne v pogovoru |
-| `rate_limited` | 429 | Preveč zahtevkov z istega IP | Počaka |
+| `unauthorized` | 401 | Manjka glava `X-Tool-Secret` ali je napačna | Napaka v nastavitvi agenta (`.env`), ne v pogovoru |
 | `system_error` | 500 | Baza ali ERP ne odgovori | Preusmeri stranko na telefon |
 | `method_not_allowed` | 405 | Ni bil uporabljen POST | — |
 | `https_required` | 403 | `REQUIRE_HTTPS` je vklopljen, zahtevek pa ni šifriran | — |
@@ -32,11 +37,12 @@ pri drugem stranke ne sme zavajati in jo mora poslati na telefon.
 |---|---|---|
 | `query` | da | prosto besedilo, do 120 znakov |
 | `action` | ne | `search` (privzeto), `get_price`, `check_stock` |
-| `category` | ne | `drva`, `peleti`, `briketi` |
+| `category` | ne | `spletne-strani`, `trzenje`, `oblikovanje`, `vzdrzevanje`, `ai-resitve` |
 
 ```bash
 curl -X POST https://domena.si/voice-ai/tools/product-lookup.php \
   -H "Content-Type: application/json" \
+  -H "X-Tool-Secret: $TOOL_SECRET" \
   -d '{"query":"bukova drva","action":"get_price"}'
 ```
 
@@ -96,6 +102,7 @@ zabeležijo z oznako `verification_failed`.
 ```bash
 curl -X POST https://domena.si/voice-ai/tools/order-lookup.php \
   -H "Content-Type: application/json" \
+  -H "X-Tool-Secret: $TOOL_SECRET" \
   -d '{"order_id":"10005","verify":"041 234 567"}'
 ```
 
@@ -137,6 +144,7 @@ zato ne smejo priti v pogovor.
 ```bash
 curl -X POST https://domena.si/voice-ai/tools/business-info.php \
   -H "Content-Type: application/json" \
+  -H "X-Tool-Secret: $TOOL_SECRET" \
   -d '{"info_type":"hours"}'
 ```
 
@@ -169,7 +177,8 @@ To datoteko lahko ureja podjetje samo, brez posega v kodo.
 
 ## POST /tools/submit-inquiry.php
 
-Odda povpraševanje stranke, da jo podjetje pokliče nazaj. Edini tool, ki piše.
+Odda povpraševanje stranke, da jo podjetje pokliče nazaj. Piše v bazo, enako kot
+`appointment` z `action: book`.
 
 **Zahtevek**
 
@@ -177,15 +186,21 @@ Odda povpraševanje stranke, da jo podjetje pokliče nazaj. Edini tool, ki piše
 |---|---|---|
 | `name` | **da** | Ime in priimek stranke, do 120 znakov |
 | `phone` | **da** | Telefon za povratni klic; mora vsebovati vsaj 8 števk |
-| `email` | ne | Preveri se s `FILTER_VALIDATE_EMAIL` |
+| `email` | **da** | Preveri se s `FILTER_VALIDATE_EMAIL` |
+| `confirmed` | **da** | `true` šele, ko je stranka povzetek potrdila; brez tega se nič ne zapiše |
 | `product` | ne | Kaj stranka želi, z njenimi besedami |
 | `quantity` | ne | Količina, kot jo je povedala: "3 kubike", "2 paleti" |
 | `note` | ne | Ozek dovoz, želeni teden ipd., do 500 znakov |
 
+Nadomestki namesto podatka ("ime priimek", "neznano", "test@test.com" …) se
+zavrnejo. Primer spodaj z `confirmed: true` in veljavnimi polji zapiše pravo
+povpraševanje — proti živi strani ga ne poganjaj.
+
 ```bash
 curl -X POST https://domena.si/voice-ai/tools/submit-inquiry.php \
   -H "Content-Type: application/json" \
-  -d '{"name":"Janez Novak","phone":"041 234 567","product":"bukova drva","quantity":"3 kubike"}'
+  -H "X-Tool-Secret: $TOOL_SECRET" \
+  -d '{"name":"Janez Novak","phone":"041 234 567","email":"janez@example.com","product":"spletna stran","confirmed":true}'
 ```
 
 **Odgovor**
@@ -195,7 +210,7 @@ curl -X POST https://domena.si/voice-ai/tools/submit-inquiry.php \
   "success": true,
   "data": {
     "id": 501,
-    "message": "Povpraševanje je zabeleženo pod številko 501. Podjetje se javi stranki na navedeno telefonsko številko."
+    "message": "Povpraševanje je zabeleženo pod številko 501. Podjetje pripravi ponudbo in jo pošlje na navedeni e-poštni naslov."
   },
   "error": null
 }

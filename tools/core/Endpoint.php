@@ -3,7 +3,7 @@
  * HTTP ovoj okoli toolov.
  *
  * Vsaka datoteka v /tools/*.php je samo tri vrstice — vso skupno logiko
- * (metoda, HTTPS, rate limit, branje JSON, oblika odgovora) opravi ta razred.
+ * (metoda, HTTPS, skupna skrivnost, branje JSON, oblika odgovora) opravi ta razred.
  */
 final class Endpoint
 {
@@ -25,14 +25,15 @@ final class Endpoint
             self::send(ToolResponse::error('Zahtevana je povezava HTTPS.', 'https_required', 403));
         }
 
+        // Pred ALLOWED_TOOLS, da klicatelj brez skrivnosti ne izve niti, katera
+        // orodja so vklopljena.
+        if (!self::hasValidSecret()) {
+            self::send(ToolResponse::error('Neveljavna skrivnost.', 'unauthorized', 401));
+        }
+
         $allowed = defined('ALLOWED_TOOLS') ? ALLOWED_TOOLS : [];
         if (!in_array($toolName, $allowed, true)) {
             self::send(ToolResponse::error('Tool ni na voljo.', 'unknown_tool', 404));
-        }
-
-        if (!self::passesRateLimit()) {
-            header('Retry-After: 60');
-            self::send(ToolResponse::error('Preveč zahtevkov. Poskusi čez minuto.', 'rate_limited', 429));
         }
 
         $input = self::readJsonBody();
@@ -50,24 +51,22 @@ final class Endpoint
     }
 
     /**
-     * Klici strežnik-na-strežnik (kasnejši glasovni sloj) nosijo skupno
-     * skrivnost in gredo mimo omejitve — sicer bi en sam daljši pogovor,
-     * ki sproži več toolov, zadel limit, ker prihajajo vsi z istega IP.
+     * Orodja so bila doslej odprta za vsakogar; skrivnost je le preskočila
+     * omejitev na IP. Kdorkoli je tako lahko oddajal povpraševanja (z
+     * e-poštnim obvestilom podjetju) in zasedal termine. Po HTTP jih kliče
+     * samo telefonski agent, ki skrivnost pošlje pri vsakem zahtevku; ukinjeni
+     * spletni klepet jih je klical neposredno v PHP. Zato zdaj brez skrivnosti
+     * ni odgovora.
+     *
+     * Prazna TOOL_SECRET pomeni zaprto, ne odprto — enako kot pri
+     * ai/agent-config.php in ai/call-guard.php.
      */
-    private static function passesRateLimit(): bool
+    private static function hasValidSecret(): bool
     {
-        $secret = defined('TOOL_SECRET') ? TOOL_SECRET : '';
+        $secret = defined('TOOL_SECRET') ? (string) TOOL_SECRET : '';
         $given  = $_SERVER['HTTP_X_TOOL_SECRET'] ?? '';
-        if ($secret !== '' && is_string($given) && hash_equals($secret, $given)) {
-            return true;
-        }
 
-        $limiter = new RateLimiter(
-            LOG_DIR . '/ratelimit',
-            defined('RATE_LIMIT_PER_MINUTE') ? RATE_LIMIT_PER_MINUTE : 60
-        );
-
-        return $limiter->allow($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        return $secret !== '' && is_string($given) && hash_equals($secret, $given);
     }
 
     /**

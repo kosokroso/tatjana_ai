@@ -83,7 +83,57 @@ function preveriVnos(array $v): array
         }
     }
 
+    [, $napacniIzvori] = preberiIzvore((string) ($v['origins'] ?? ''));
+    foreach ($napacniIzvori as $izvor) {
+        $n[] = 'Domena "' . $izvor . '" ni veljaven izvor. Vpiši jo v obliki https://primer.si.';
+    }
+
     return $n;
+}
+
+/**
+ * Domene za klepet iz polja "origins" kot seznam izvorov (https://primer.si).
+ *
+ * Seznam gre v config.php kot PHP koda, zato se vsak izvor preveri in nato
+ * zapiše kot niz v enojnih narekovajih. Do 20. 11. 2026 je seznam prišel iz
+ * skritega polja obrazca kot že sestavljena PHP koda: kdor je poslal svoj
+ * obrazec, je lahko v config.php vstavil poljubno kodo. Ker je bilo skrito polje
+ * sestavljeno iz prejšnjega zahtevka, so se domene ob prvi oddaji tudi izgubile.
+ *
+ * @return array{0: string[], 1: string[]} veljavni izvori, zavrnjeni vnosi
+ */
+function preberiIzvore(string $vnos): array
+{
+    $veljavni = [];
+    $napacni  = [];
+
+    foreach (array_filter(array_map('trim', explode(',', $vnos)), static fn($s) => $s !== '') as $kos) {
+        $d = parse_url($kos);
+        if (!is_array($d)) {
+            $napacni[] = $kos;
+            continue;
+        }
+
+        $shema = strtolower((string) ($d['scheme'] ?? ''));
+        $gost  = strtolower((string) ($d['host'] ?? ''));
+        $pot   = (string) ($d['path'] ?? '');
+
+        // Samo shema, gostitelj in vrata: brskalnik v glavi Origin pošlje
+        // natanko to, ai/guard.php pa primerja z vpisanim izvorom.
+        if (!in_array($shema, ['http', 'https'], true)
+            || !preg_match('/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/', $gost)
+            || ($pot !== '' && $pot !== '/')
+            || isset($d['query']) || isset($d['fragment'])
+            || isset($d['user']) || isset($d['pass'])
+        ) {
+            $napacni[] = $kos;
+            continue;
+        }
+
+        $veljavni[] = $shema . '://' . $gost . (isset($d['port']) ? ':' . (int) $d['port'] : '');
+    }
+
+    return [array_values(array_unique($veljavni)), $napacni];
 }
 
 function poveziBazo(array $v): PDO
@@ -110,8 +160,15 @@ function ustvariTabele(PDO $pdo, string $prefix): int
         throw new RuntimeException('Datoteke sql/schema.sql ni mogoče prebrati.');
     }
 
+    // Seznam mora zajeti vse tabele iz sheme. Tabela, ki tu manjka, bi pri drugi
+    // predponi ostala z ai_ in adapter je ne bi našel (tako je bilo z
+    // knowledge in appointments od 26. 9. do 19. 11. 2026).
     if ($prefix !== 'ai_') {
-        $sql = preg_replace('/\bai_(products|customers|orders|inquiries|business_hours)\b/', $prefix . '$1', $sql);
+        $sql = preg_replace(
+            '/\bai_(products|customers|orders|inquiries|business_hours|knowledge|appointments)\b/',
+            $prefix . '$1',
+            $sql
+        );
     }
 
     // Komentarji ven, nato razrez po podpičju. Shema ne vsebuje podpičij
@@ -138,6 +195,10 @@ function zapisiConfig(array $v): void
 
     $q = static fn($s) => "'" . str_replace(["\\", "'"], ["\\\\", "\\'"], (string) $s) . "'";
 
+    // Iz vnosa tega zahtevka, nikoli iz skritega polja: glej preberiIzvore().
+    [$izvori]  = preberiIzvore((string) ($v['origins'] ?? ''));
+    $izvoriPhp = '[' . implode(', ', array_map($q, $izvori)) . ']';
+
     $config = <<<PHP
 <?php
 /**
@@ -157,7 +218,7 @@ define('DB_CHARSET', 'utf8mb4');
 define('DB_PREFIX', {$q($v['db_prefix'] ?: 'ai_')});
 
 define('ADAPTER', 'DirectMySQLAdapter');
-define('ALLOWED_TOOLS', ['product-lookup', 'order-lookup', 'business-info', 'submit-inquiry']);
+define('ALLOWED_TOOLS', ['product-lookup', 'order-lookup', 'business-info', 'submit-inquiry', 'knowledge-lookup', 'appointment']);
 
 // ---------------------------------------------------------------- dnevniki
 define('LOG_DIR', __DIR__ . '/logs');
@@ -165,15 +226,16 @@ define('LOG_MASK_PII', true);
 define('LOG_RETENTION_DAYS', 14);
 
 // ---------------------------------------------------------------- omejitve
+// Za spletni klepet (ukinjen; bere jih ai/guard.php, proracun tudi cron).
 // Stetje klicev ustavi naval, dnevni proracun zetonov pa dejanski strosek:
 // en klic z dolgo zgodovino stane toliko kot deset kratkih.
-define('RATE_LIMIT_PER_MINUTE', 60);
 define('CHAT_RATE_LIMIT_PER_MINUTE', 20);
 define('CHAT_RATE_LIMIT_PER_DAY', 100);
 define('CHAT_MAX_PER_DAY_TOTAL', 500);
 define('DAILY_TOKEN_BUDGET', 200000);
 
-// Skupna skrivnost za glasovnega agenta. Zgenerirana ob namestitvi.
+// Skupna skrivnost za telefonskega agenta. Zgenerirana ob namestitvi; isti niz
+// vpisi v voice-agent/.env (TOOL_SECRET). Brez nje orodja vrnejo 401.
 define('TOOL_SECRET', {$q($skrivnost)});
 
 define('REQUIRE_HTTPS', true);
@@ -199,21 +261,44 @@ define('SYSTEM_PROMPT_FILE',    __DIR__ . '/ai/system-prompt.txt');
 define('TOOL_DEFINITIONS_FILE', __DIR__ . '/ai/tool-definitions.json');
 define('MAX_TOOL_ROUNDS', 4);
 
-// Domene, s katerih je klepet lahko vgrajen. Prazno = samo isti izvor.
-define('CHAT_ALLOWED_ORIGINS', {$v['origins_php']});
+// Domene, s katerih je klepet lahko vgrajen. Prazno = brez preverjanja izvora
+// (ai/guard.php).
+define('CHAT_ALLOWED_ORIGINS', {$izvoriPhp});
 
 define('BUSINESS_INFO_FILE', __DIR__ . '/data/business-info.json');
 
 // ---------------------------------------------------------------- podjetje
 define('ASSISTANT_NAME', {$q($v['assistant_name'] ?: 'Asistent')});
 define('BUSINESS_NAME',  {$q($v['business_name'])});
+// Sklanjatev za pozdrav ("iz Kreativnega spleta"). Prazno = osnovna oblika povsod.
+define('BUSINESS_NAME_RODILNIK', {$q(trim((string) ($v['business_name_rodilnik'] ?? '')))});
+define('BUSINESS_NAME_MESTNIK',  {$q(trim((string) ($v['business_name_mestnik'] ?? '')))});
 define('BUSINESS_PHONE', {$q($v['business_phone'] ?? '')});
 define('BUSINESS_EMAIL', {$q($v['business_email'] ?? '')});
 define('BUSINESS_DESCRIPTION', {$q($v['business_description'] ?? '')});
 
+// ---------------------------------------------------------------- telefon
+// Meje klicev (ai/call-guard.php). 0 = brez omejitve.
+define('CALL_MAX_SECONDS', 600);
+define('CALL_DAILY_MINUTES', 120);
+define('CALL_MAX_PER_CALLER', 10);
+define('CALL_MAX_ANONYMOUS', 40);
+
+// Preveza na cloveka; prazno = izklopljeno. Pri DIDWW celoten SIP URI
+// odhodnega trunka (glej config.example.php).
+define('TRANSFER_PHONE', '');
+
+// Obvestilo o snemanju v pozdravu. Snemanja ne izklopi: to je nastavitev
+// projekta LiveKit (glej config.example.php).
+define('CALL_RECORDING_NOTICE', 'Klic se snema zaradi kakovosti storitve.');
+
 // ---------------------------------------------------------------- povprasevanja
 define('INQUIRY_EMAIL_TO',   {$q($v['inquiry_to'] ?? '')});
 define('INQUIRY_EMAIL_FROM', {$q($v['smtp_user'] ?? '')});
+
+// Opozorila iz cron/opozorila.php. Prazno = INQUIRY_EMAIL_TO.
+define('ALERT_EMAIL', '');
+define('INQUIRY_ALERT_DAYS', 2);
 
 // SMTP: marsikateri shared hosting ima mail() izklopljen.
 define('SMTP_HOST',   {$q($v['smtp_host'] ?? '')});
@@ -221,6 +306,12 @@ define('SMTP_PORT',   {$q($v['smtp_port'] ?: '465')});
 define('SMTP_SECURE', {$q($v['smtp_secure'] ?: 'ssl')});
 define('SMTP_USER',   {$q($v['smtp_user'] ?? '')});
 define('SMTP_PASS',   {$q($v['smtp_pass'] ?? '')});
+
+// ---------------------------------------------------------------- termini
+// Prosti termini se izpeljejo iz ai_business_hours in zasedenih vrstic.
+define('APPOINTMENT_MINUTES', 30);
+define('APPOINTMENT_DAYS_AHEAD', 14);
+define('APPOINTMENT_LEAD_MIN', 120);
 
 // ---------------------------------------------------------------- dostopi
 define('ADMIN_PASSWORD_HASH', {$q($hash)});
@@ -307,6 +398,10 @@ $vseVredu   = !in_array(false, array_column($preverbe, 1), true);
         <li><strong>Izbriši <code>setup.php</code> s strežnika.</strong> Dokler je tam,
             je pot do prepisa nastavitev odprta vsakomur, ki bi kdaj izbrisal
             <code>config.php</code>.</li>
+        <li>Vpiši <code>TOOL_SECRET</code> iz <code>config.php</code> v <code>voice-agent/.env</code>
+            telefonskega agenta. Brez nje agent ne dobi ne prompta ne orodij.</li>
+        <li>V cPanelu nastavi dnevni cron za opozorila:
+            <code>/usr/local/bin/php <?= h(__DIR__) ?>/cron/opozorila.php</code></li>
         <li>Vnesi storitve v <a href="admin/storitve.php">skrbniško stran</a> — cene, opise
             in oznako "od". Asistent bere izključno od tam.</li>
         <li>Popravi delovni čas v tabeli <code>ai_business_hours</code>, če se razlikuje od
@@ -376,6 +471,12 @@ $vseVredu   = !in_array(false, array_column($preverbe, 1), true);
         <p class="namig">Tako se predstavi stranki.</p></div>
       <div><label for="business_name">Ime podjetja</label>
         <input id="business_name" name="business_name" value="<?= v($vnos, 'business_name') ?>" required></div>
+      <div><label for="business_name_rodilnik">Ime podjetja v rodilniku</label>
+        <input id="business_name_rodilnik" name="business_name_rodilnik" value="<?= v($vnos, 'business_name_rodilnik') ?>" placeholder="Kreativnega spleta">
+        <p class="namig">Za pozdrav "… iz Kreativnega spleta". Prazno = osnovna oblika.</p></div>
+      <div><label for="business_name_mestnik">Ime podjetja v mestniku</label>
+        <input id="business_name_mestnik" name="business_name_mestnik" value="<?= v($vnos, 'business_name_mestnik') ?>" placeholder="Kreativnem spletu">
+        <p class="namig">Za "pri …". Slovenščine ni mogoče zanesljivo sklanjati samodejno.</p></div>
       <div><label for="business_phone">Telefon</label>
         <input id="business_phone" name="business_phone" value="<?= v($vnos, 'business_phone') ?>"></div>
       <div><label for="business_email">E-pošta</label>
@@ -389,7 +490,8 @@ $vseVredu   = !in_array(false, array_column($preverbe, 1), true);
     <div style="margin-top:16px">
       <label for="origins">Domene, kjer bo klepet vgrajen</label>
       <input id="origins" name="origins" value="<?= v($vnos, 'origins') ?>" placeholder="https://primer.si, https://www.primer.si">
-      <p class="namig">Ločene z vejico. Prazno pomeni, da klepet sprejme klice z vseh strani.</p>
+      <p class="namig">Ločene z vejico, v obliki https://primer.si. Prazno pomeni, da klepet
+        sprejme klice z vseh strani. Klepet je zdaj ukinjen; polje velja za novega.</p>
     </div>
 
     <h2>OpenAI in govor</h2>
@@ -434,15 +536,6 @@ $vseVredu   = !in_array(false, array_column($preverbe, 1), true);
         <input id="timezone" name="timezone" value="<?= v($vnos, 'timezone', 'Europe/Ljubljana') ?>">
         <p class="namig">Gostovanja pogosto tečejo v UTC, kar pokvari izračun delovnega časa.</p></div>
     </div>
-
-    <?php
-    // Domene pretvorimo v PHP polje, ki gre v config.php.
-    $origins = array_filter(array_map('trim', explode(',', (string) ($vnos['origins'] ?? ''))));
-    $origins_php = $origins
-        ? "['" . implode("', '", array_map(static fn($o) => str_replace("'", "\\'", $o), $origins)) . "']"
-        : '[]';
-    ?>
-    <input type="hidden" name="origins_php" value="<?= h($origins_php) ?>">
 
     <button type="submit" <?= $vseVredu ? '' : 'disabled' ?>>Namesti</button>
     <?php if (!$vseVredu): ?>
