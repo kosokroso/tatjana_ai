@@ -1081,6 +1081,10 @@ Po velikosti tveganja:
    pogovora zapiše `zapisi_pogovor()` v naš dnevnik.
 3. **`voice-agent/.env` na strežniku.** Vsebuje ključe, varuje ga samo zavrnitev
    dostopa. Na strežniku ga ne rabimo — skrivnosti so v LiveKitu. Ukrep: izbriši.
+   Od 21. 11. 2026 `.cpanel.yml` mape `voice-agent/` ne prenaša več na strežnik
+   (`--exclude='voice-agent'`); rsync nima `--delete`, zato obstoječo mapo
+   `public_html/asistent/voice-agent/` izbriši ročno v File Managerju. Zunaj vrne
+   vsaka datoteka v njej 403, kar pa ne pove, ali obstaja.
 4. **Mapa `logs/` leži znotraj web roota.** Zaščitena je z `.htaccess` in
    `Require all denied`, deploy pa `logs/*.log` izključuje, da se zapisi ne
    prepisujejo. Zaščita visi na eni datoteki: brez `.htaccess` ali ob prehodu na

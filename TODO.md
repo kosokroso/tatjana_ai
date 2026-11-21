@@ -22,7 +22,11 @@ Zadnja posodobitev: 19. 11. 2026
       - [x] `setup.php`: domene za klepet se ne zapišejo več kot surova PHP koda iz
             skritega polja (vrivanje kode v `config.php`), 20. 11.
       - [x] `tests/test-tools.sh`: glava `X-Tool-Secret`, 28 testov, noben ne zapiše
-      - [ ] Merge v `main`, push, cPanel **Update from Remote** → **Deploy HEAD Commit**
+      - [x] Commit in push v `main` (21. 11.)
+      - [x] `.cpanel.yml`: `voice-agent/` se ne nalaga več na strežnik (21. 11.,
+            še ni commitano)
+      - [ ] cPanel **Update from Remote** → **Deploy HEAD Commit**
+      - [ ] File Manager: izbriši `public_html/asistent/voice-agent/` (rsync ne briše)
       - [ ] `tests/test-tools.sh` s `TOOL_SECRET` proti živi strani: 28/28
       - [ ] Testni klic na obe številki: asistentka mora orodja klicati kot prej
 
