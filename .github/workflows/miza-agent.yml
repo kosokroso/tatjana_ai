@@ -1,0 +1,76 @@
+# Deploy restavracijskega agenta (tatjana-miza) v LiveKit projekt "miza".
+#
+# Zakaj na GitHubu: na Lukovem računalniku Windows Application Control
+# blokira lk.exe. Tu lk teče na GitHubovem Linuxu.
+#
+# Zagon: Actions -> "Agent miza" -> Run workflow -> create (prvič) ali deploy.
+#
+# Skrivnost MIZA_ENV: celotna vsebina voice-agent/.env.miza (Settings ->
+# Secrets and variables -> Actions). Repo je javen, zato se vsebina nikoli ne
+# izpiše; GitHub vrednosti skrivnosti v dnevniku prekrije.
+# Spremenljivka MIZA_AGENT_ID: ID agenta (CA_...), ki ga izpiše "create".
+#
+# Tatjane (agent.py, projekt tatjana) ta workflow ne spreminja.
+
+name: Agent miza
+
+on:
+  workflow_dispatch:
+    inputs:
+      dejanje:
+        description: "create = prvič ustvari agenta; deploy = nova verzija"
+        required: true
+        default: deploy
+        type: choice
+        options: [deploy, create]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: miza-agent
+  cancel-in-progress: false
+
+jobs:
+  miza:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: voice-agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Testi pravil (brez LiveKita)
+        run: python3 test_miza.py
+
+      - name: Namesti LiveKit CLI
+        working-directory: .
+        run: curl -sSL https://get.livekit.io/cli | bash
+
+      - name: Nastavitve iz skrivnosti
+        env:
+          MIZA_ENV: ${{ secrets.MIZA_ENV }}
+        run: |
+          if [ -z "$MIZA_ENV" ]; then echo "Manjka skrivnost MIZA_ENV."; exit 1; fi
+          printf '%s\n' "$MIZA_ENV" | tr -d '\r' > .env.miza
+          # lk se prijavi s ključi projekta miza, ne s privzetim projektom.
+          grep -E '^LIVEKIT_(URL|API_KEY|API_SECRET)=' .env.miza >> "$GITHUB_ENV"
+          grep -q '^AGENT_ZAGON=restavracija.py' .env.miza || { echo "AGENT_ZAGON mora biti restavracija.py"; exit 1; }
+
+      - name: Ustvari agenta (prvič)
+        if: inputs.dejanje == 'create'
+        run: |
+          lk --config livekit-miza.toml agent create --region eu-central --secrets-file .env.miza .
+          echo "Shrani ID agenta (CA_...) iz zgornje vrstice kot spremenljivko MIZA_AGENT_ID."
+
+      - name: Nova verzija
+        if: inputs.dejanje == 'deploy'
+        env:
+          AGENT_ID: ${{ vars.MIZA_AGENT_ID }}
+        run: |
+          if [ -z "$AGENT_ID" ]; then echo "Manjka spremenljivka MIZA_AGENT_ID."; exit 1; fi
+          lk agent deploy --id "$AGENT_ID" --secrets-file .env.miza .
+
+      - name: Pobriši nastavitve
+        if: always()
+        run: rm -f .env.miza livekit-miza.toml
