@@ -2059,4 +2059,17 @@ si ga nazadnje slišala.
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    agents.cli.run_app(server)
+    # Ista slika teče tudi kot restavracijski agent (projekt miza). LiveKit
+    # Cloud zahteva fiksen CMD brez ovojne skripte, zato program izbere ta
+    # vrstica in ne Dockerfile. Brez AGENT_ZAGON teče agencija kot doslej.
+    if os.getenv("AGENT_ZAGON") == "restavracija.py":
+        import sys
+
+        # restavracija.py uvozi "agent"; brez tega bi se ta datoteka naložila
+        # drugič kot ločen modul, z drugim strežnikom in drugo konfiguracijo.
+        sys.modules.setdefault("agent", sys.modules[__name__])
+        import restavracija
+
+        agents.cli.run_app(restavracija.server)
+    else:
+        agents.cli.run_app(server)

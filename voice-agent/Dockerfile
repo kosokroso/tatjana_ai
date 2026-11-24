@@ -83,6 +83,6 @@ USER appuser
 
 # Run the application
 # The "start" command tells the worker to connect to LiveKit and begin waiting for jobs.
-# AGENT_ZAGON izbere program: agent.py (agencija, privzeto) ali
-# restavracija.py (projekt miza). Ista slika za oba deploya.
-CMD ["sh", "-c", "exec python ${AGENT_ZAGON:-agent.py} start"]
+# Fiksen CMD brez ovoja (zahteva LiveKit Cloud). Restavracijski agent izbere
+# agent.py sam po spremenljivki AGENT_ZAGON=restavracija.py.
+CMD ["python", "agent.py", "start"]

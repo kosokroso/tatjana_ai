@@ -63,11 +63,14 @@ jobs:
           # lk se prijavi s ključi projekta miza, ne s privzetim projektom.
           grep -E '^LIVEKIT_(URL|API_KEY|API_SECRET)=' .env.miza >> "$GITHUB_ENV"
           grep -q '^AGENT_ZAGON=restavracija.py' .env.miza || { echo "AGENT_ZAGON mora biti restavracija.py"; exit 1; }
+          # Skrivnosti agenta BREZ LIVEKIT_*: LiveKit Cloud jih vstavi sam in
+          # lastne vrednosti preprečijo prijavo delavca (CrashLoop, 24. 11. 2026).
+          grep -vE '^LIVEKIT_' .env.miza > .env.agent
 
       - name: Ustvari agenta (prvič)
         if: inputs.dejanje == 'create'
         run: |
-          lk --config livekit-miza.toml agent create --region eu-central --secrets-file .env.miza .
+          lk --config livekit-miza.toml agent create --region eu-central --secrets-file .env.agent .
           echo "Shrani ID agenta (CA_...) iz zgornje vrstice kot spremenljivko MIZA_AGENT_ID."
 
       - name: Nova verzija
@@ -76,7 +79,9 @@ jobs:
           AGENT_ID: ${{ vars.MIZA_AGENT_ID }}
         run: |
           if [ -z "$AGENT_ID" ]; then echo "Manjka spremenljivka MIZA_AGENT_ID."; exit 1; fi
-          lk agent deploy --id "$AGENT_ID" --secrets-file .env.miza .
+          # --overwrite odstrani skrivnosti, ki jih v datoteki ni več (LIVEKIT_*).
+          lk agent update-secrets --id "$AGENT_ID" --secrets-file .env.agent --overwrite --yes
+          lk agent deploy --id "$AGENT_ID" --secrets-file .env.agent .
 
       # Repo je javen in dnevnik GitHub Actions tudi. Zato samo stanje in prvih
       # 45 s dnevnika (zagon), s skritimi telefonskimi številkami. Za klice
@@ -119,4 +124,4 @@ jobs:
 
       - name: Pobriši nastavitve
         if: always()
-        run: rm -f .env.miza livekit-miza.toml
+        run: rm -f .env.miza .env.agent livekit-miza.toml
