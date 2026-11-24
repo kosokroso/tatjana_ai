@@ -22,7 +22,7 @@ on:
         required: true
         default: deploy
         type: choice
-        options: [deploy, create, logs]
+        options: [deploy, create, logs, check]
 
 permissions:
   contents: read
@@ -53,6 +53,13 @@ jobs:
         run: |
           if [ -z "$MIZA_ENV" ]; then echo "Manjka skrivnost MIZA_ENV."; exit 1; fi
           printf '%s\n' "$MIZA_ENV" | tr -d '\r' > .env.miza
+          # Vsako vrednost najprej prekrijemo. GitHub prekrije samo celotno
+          # skrivnost MIZA_ENV, ne posameznih vrstic, ki jih zapišemo v
+          # GITHUB_ENV; brez add-mask se te izpišejo v javni dnevnik
+          # (24. 11. 2026 se je tako izpisal LIVEKIT_API_SECRET).
+          while IFS='=' read -r k v; do
+            [ -n "$v" ] && echo "::add-mask::$v"
+          done < <(grep -E '^[A-Z_][A-Z0-9_]*=' .env.miza)
           # lk se prijavi s ključi projekta miza, ne s privzetim projektom.
           grep -E '^LIVEKIT_(URL|API_KEY|API_SECRET)=' .env.miza >> "$GITHUB_ENV"
           grep -q '^AGENT_ZAGON=restavracija.py' .env.miza || { echo "AGENT_ZAGON mora biti restavracija.py"; exit 1; }
@@ -85,6 +92,18 @@ jobs:
           timeout 30 lk agent logs --id "$AGENT_ID" --log-type build 2>&1 | tail -n 40 || true
           echo "--- deploy"
           timeout 45 lk agent logs --id "$AGENT_ID" 2>&1 | sed -E 's/\+?[0-9][0-9 ]{7,}[0-9]/[tel]/g' | tail -n 80 || true
+
+      # Zažene agenta tukaj za 25 s, z istimi nastavitvami kot v oblaku.
+      # Pokaže napako ob zagonu, ki je dnevnik LiveKita ne izpiše. V tem času
+      # je v projektu miza en delavec več; klici ta čas lahko pridejo sem.
+      - name: Preizkus zagona
+        if: inputs.dejanje == 'check'
+        run: |
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install -q -r requirements.txt
+          # .env.miza prebere restavracija.py sama (load_dotenv), lupina je ne bere.
+          /tmp/venv/bin/python -c "import restavracija; print('uvoz ok')"
+          timeout 25 /tmp/venv/bin/python restavracija.py start 2>&1 | sed -E 's/\+?[0-9][0-9 ]{7,}[0-9]/[tel]/g' | tail -n 60 || true
 
       - name: Pobriši nastavitve
         if: always()
