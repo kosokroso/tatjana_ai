@@ -22,7 +22,7 @@ on:
         required: true
         default: deploy
         type: choice
-        options: [deploy, create, logs, check]
+        options: [deploy, create, logs, check, docker]
 
 permissions:
   contents: read
@@ -104,6 +104,16 @@ jobs:
           # .env.miza prebere restavracija.py sama (load_dotenv), lupina je ne bere.
           /tmp/venv/bin/python -c "import restavracija; print('uvoz ok')"
           timeout 25 /tmp/venv/bin/python restavracija.py start 2>&1 | sed -E 's/\+?[0-9][0-9 ]{7,}[0-9]/[tel]/g' | tail -n 60 || true
+
+      # Ista slika kot v LiveKit Cloud (Dockerfile), zagnana tukaj za 40 s.
+      # Pokaže napako, ki se zgodi samo v kontejnerju (pravice, pot, CMD).
+      - name: Preizkus Docker slike
+        if: inputs.dejanje == 'docker'
+        run: |
+          docker build -q -t miza-agent . > /dev/null
+          grep -E '^[A-Z_][A-Z0-9_]*=' .env.miza > /tmp/miza.envfile
+          timeout 40 docker run --rm --env-file /tmp/miza.envfile miza-agent 2>&1 | sed -E 's/\+?[0-9][0-9 ]{7,}[0-9]/[tel]/g' | tail -n 60 || true
+          rm -f /tmp/miza.envfile
 
       - name: Pobriši nastavitve
         if: always()
