@@ -60,7 +60,7 @@ Klicatelj (telefon, DIDWW)
 
 | | |
 |---|---|
-| Sklad strežnika | PHP 8, vanilla, brez Composerja in brez ogrodja (shared cPanel hosting) |
+| Sklad strežnika | PHP 8.3+ (podprta verzija), vanilla, brez Composerja in brez ogrodja (shared cPanel hosting) |
 | Gostovanje | cPanel, `public_html/asistent/`, `https://kreativnisplet.si/asistent/` |
 | Baza | MySQL, skupna z WordPressom, predpona tabel `ai_` |
 | Telefonski agent | Python, LiveKit Cloud, regija `eu-central` |

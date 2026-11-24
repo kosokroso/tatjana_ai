@@ -5,8 +5,12 @@ baza v cPanelu in vnos storitev.
 
 ## Kaj potrebuješ
 
-- PHP 7.4 ali novejši z razširitvami **PDO MySQL**, **mbstring**, **cURL**, **OpenSSL**
-- MySQL 5.7+ ali MariaDB 10.3+
+- PHP **8.3 ali novejši** (priporočeno 8.4+) z razširitvami **PDO MySQL**, **mbstring**, **cURL**, **OpenSSL**.
+  Verzija mora biti v podpori z varnostnimi popravki; preveri
+  https://www.php.net/supported-versions.php. V cPanelu: *Select PHP Version*.
+- MySQL 8.4 LTS ali MariaDB 10.11 / 11.4 LTS ali novejši. Starejše (MySQL 5.7,
+  8.0, MariaDB 10.3) nimajo več popravkov; datume podpore preveri pri
+  ponudniku baze.
 - Poštni predal na domeni (za obvestila o povpraševanjih)
 - OpenAI ključ, po želji Azure ključ za slovenski glas
 

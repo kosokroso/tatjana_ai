@@ -1,0 +1,9 @@
+# Druga pot do istih koncnih tock za glasovnega agenta (TOOLS_BASE_URL = .../asistent/api).
+# Od 24. 11. 2026 streznik pred PHP-jem vraca 403 na /asistent/ai/agent-config.php,
+# pravila v cPanelu ni videti, blokira pa datoteko samo (tudi po preusmeritvi).
+# Agent klice api/ai/agent-config.php, ta mapa ga poslje na ai/nastavitve-agenta.php.
+# Ostalo gre nespremenjeno na ai/ in tools/, zato ostane ena sama kopija kode.
+RewriteEngine On
+RewriteRule ^ai/agent-config\.php$ /asistent/ai/nastavitve-agenta.php [L]
+RewriteRule ^((ai|tools)/[a-z-]+\.php)$ /asistent/$1 [L]
+RewriteRule ^ - [F]

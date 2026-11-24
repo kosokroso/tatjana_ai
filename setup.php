@@ -46,7 +46,7 @@ if (!$zeNamescen && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 function preveriStreznik(): array
 {
     return [
-        ['PHP 7.4 ali novejši', version_compare(PHP_VERSION, '7.4', '>='), PHP_VERSION],
+        ['PHP 8.3 ali novejši (starejše nimajo varnostnih popravkov)', version_compare(PHP_VERSION, '8.3', '>='), PHP_VERSION],
         ['PDO MySQL', extension_loaded('pdo_mysql'), 'brez tega ne dela nič'],
         ['mbstring', extension_loaded('mbstring'), 'slovenski znaki v besedilu'],
         ['cURL', function_exists('curl_init'), 'klici na OpenAI'],
