@@ -88,10 +88,12 @@ jobs:
         run: |
           if [ -z "$AGENT_ID" ]; then echo "Manjka spremenljivka MIZA_AGENT_ID."; exit 1; fi
           lk agent status --id "$AGENT_ID" || true
-          echo "--- build"
-          timeout 30 lk agent logs --id "$AGENT_ID" --log-type build 2>&1 | tail -n 40 || true
-          echo "--- deploy"
-          timeout 45 lk agent logs --id "$AGENT_ID" 2>&1 | sed -E 's/\+?[0-9][0-9 ]{7,}[0-9]/[tel]/g' | tail -n 80 || true
+          lk agent versions --id "$AGENT_ID" || true
+          # Ponovni zagon, da dnevnik ujame zagon delavca od začetka.
+          lk agent restart --id "$AGENT_ID" || true
+          echo "--- deploy (150 s)"
+          timeout 150 lk agent logs --id "$AGENT_ID" --deployment production 2>&1 | sed -E 's/\+?[0-9][0-9 ]{7,}[0-9]/[tel]/g' | tail -n 120 || true
+          lk agent status --id "$AGENT_ID" || true
 
       # Zažene agenta tukaj za 25 s, z istimi nastavitvami kot v oblaku.
       # Pokaže napako ob zagonu, ki je dnevnik LiveKita ne izpiše. V tem času
