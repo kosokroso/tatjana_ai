@@ -22,7 +22,7 @@ on:
         required: true
         default: deploy
         type: choice
-        options: [deploy, create]
+        options: [deploy, create, logs]
 
 permissions:
   contents: read
@@ -70,6 +70,21 @@ jobs:
         run: |
           if [ -z "$AGENT_ID" ]; then echo "Manjka spremenljivka MIZA_AGENT_ID."; exit 1; fi
           lk agent deploy --id "$AGENT_ID" --secrets-file .env.miza .
+
+      # Repo je javen in dnevnik GitHub Actions tudi. Zato samo stanje in prvih
+      # 45 s dnevnika (zagon), s skritimi telefonskimi številkami. Za klice
+      # pravih gostov tega ne uporabljaj.
+      - name: Stanje in dnevnik zagona
+        if: inputs.dejanje == 'logs'
+        env:
+          AGENT_ID: ${{ vars.MIZA_AGENT_ID }}
+        run: |
+          if [ -z "$AGENT_ID" ]; then echo "Manjka spremenljivka MIZA_AGENT_ID."; exit 1; fi
+          lk agent status --id "$AGENT_ID" || true
+          echo "--- build"
+          timeout 30 lk agent logs --id "$AGENT_ID" --log-type build 2>&1 | tail -n 40 || true
+          echo "--- deploy"
+          timeout 45 lk agent logs --id "$AGENT_ID" 2>&1 | sed -E 's/\+?[0-9][0-9 ]{7,}[0-9]/[tel]/g' | tail -n 80 || true
 
       - name: Pobriši nastavitve
         if: always()
