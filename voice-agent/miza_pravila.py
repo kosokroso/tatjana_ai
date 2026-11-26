@@ -28,6 +28,11 @@ _POTRDITVE_BESEDE = {
     "prav", "velja", "seveda", "točno", "tocno", "ok", "okej", "tako", "rezerviraj",
     "odpovej", "lahko",
 }
+# Besede, ki same niso potrditev, a jo smejo spremljati ("ja, v redu je, hvala").
+_POLNILA = {
+    "v", "redu", "vredu", "je", "to", "tako", "hvala", "prosim", "no", "kar", "naj", "bo", "tisto", "se",
+    "strinjam", "vse", "super", "odlično", "odlicno", "fino", "popolno", "naroči", "naroci", "sem", "res",
+}
 _POTRDITVE_ZVEZE = ("tako je", "v redu", "se strinjam", "kar rezerviraj", "kar odpovej")
 
 
@@ -47,6 +52,11 @@ def je_cista_potrditev(besedilo: str) -> bool:
     if not besede:
         return False
     if any(b in _PRIDRZKI for b in besede) or any(z.isdigit() for z in besedilo or ""):
+        return False
+    # Seznam dovoljenih besed (ne seznam prepovedanih): vsaka beseda mora biti
+    # potrditev ali nevtralna polnila. "Ja, dodaj še eno pico", "ni v redu" ali
+    # "ja, koliko je to skupaj?" tako ne gredo skozi, ker vsebujejo drugo besedo.
+    if any(b not in _POTRDITVE_BESEDE and b not in _POLNILA for b in besede):
         return False
     cisto = " ".join(besede)
     if any(zveza in cisto for zveza in _POTRDITVE_ZVEZE):
@@ -228,4 +238,8 @@ NAVODILA_RAZLOGOV = {
         "Ob želeni uri prevzem ni mogoč ali je termin medtem zaseden. Pokliči znova s potrjeno=False "
         "in brez ure prevzema, da dobiš najzgodnejši možni čas, in ga povej gostu."
     ),
+    "invalid_qty": "Količina mora biti od 1 do 99 porcij ene jedi. Vprašaj gosta, koliko jih res želi; za večja naročila naj pokličejo restavracijo.",
+    "invalid_time": "Ure prevzema ni mogoče razumeti. Vprašaj znova ali ponudi najzgodnejši možni čas.",
+    "orders_busy": "Kuhinja je zdaj zasedena in naročil po telefonu trenutno ne sprejema. Povej to prijazno in povabi, naj pokličejo čez nekaj minut.",
+    "too_many_open_orders": "S te številke je že več odprtih naročil. Povej, naj počakajo na prevzem ali pokličejo restavracijo; ne poskušaj znova.",
 }

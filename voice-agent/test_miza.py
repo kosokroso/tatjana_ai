@@ -114,8 +114,26 @@ def preveri_narocilo() -> None:
     assert not je_cista_potrditev("Ja, 3")
 
 
+def preveri_napade_na_potrditev() -> None:
+    # Potrditev z dodatkom ali vprašanjem ni potrditev povzetka.
+    for fraza in ("Ja, dodaj še eno pico", "Ja, koliko je to skupaj?", "Ni v redu", "Mogoče ja", "Ja, pa brez sira",
+                  "ja, tri", "Ja, ob osmih", "ja, popust", "Okej, a lahko pozneje?", "Ja, kje pa ste?"):
+        assert not je_cista_potrditev(fraza), fraza
+    for fraza in ("ja", "Ja, v redu.", "Da, potrjujem", "seveda", "Ja, lahko", "Ja, v redu je, hvala", "Točno tako"):
+        assert je_cista_potrditev(fraza), fraza
+
+
+def preveri_razloge() -> None:
+    from miza_pravila import NAVODILA_RAZLOGOV
+
+    # Vsaka zavrnitev naročila, ki jo vrne /miza (lib/orders.php), mora imeti navodilo za Tatjano.
+    for koda in ("empty_order", "unknown_item", "unavailable_item", "missing_option", "too_many_options",
+                 "pickup_closed", "pickup_time_unavailable", "invalid_qty", "invalid_time", "too_many_open_orders", "orders_busy"):
+        assert koda in NAVODILA_RAZLOGOV and NAVODILA_RAZLOGOV[koda].strip(), koda
+
+
 if __name__ == "__main__":
-    for preizkus in (preveri_potrditve, preveri_osebe, preveri_datume, preveri_povzetek, preveri_cene, preveri_narocilo):
+    for preizkus in (preveri_potrditve, preveri_osebe, preveri_datume, preveri_povzetek, preveri_cene, preveri_narocilo, preveri_napade_na_potrditev, preveri_razloge):
         preizkus()
         print("ok", preizkus.__name__)
     print("vse ok")
