@@ -18,6 +18,15 @@ from miza_pravila import (
     povzetek_rezervacije,
     preberi_datum,
     preberi_uro,
+    sestavi_pozdrav,
+)
+from izgovorjava import (
+    NAJVEC_KLJUCNIH,
+    italijanski_izgovor,
+    izgovori_jedi,
+    kategorije_jedi,
+    kljucne_besede,
+    koreni_menija,
 )
 
 DANES = date(2026, 11, 24)  # torek
@@ -132,6 +141,95 @@ def preveri_razloge() -> None:
         assert koda in NAVODILA_RAZLOGOV and NAVODILA_RAZLOGOV[koda].strip(), koda
 
 
+# Meni kot ga vrne ai/menu (oblika iz klica 26. 11. 2026, skrajšano).
+MENI = [
+    {"id": 1, "kategorija": "Predjedi", "jed": "Pršut in sir", "opis": "Kraški pršut, domači sir, olive"},
+    {"id": 4, "kategorija": "Glavne jedi", "jed": "Burger Goriška", "opis": "Goveji burger, cheddar",
+     "izbire": [{"skupina": "Dodatki", "moznosti": [{"id": 3, "ime": "Slanina"}, {"id": 5, "ime": "Jalapeño"}]}]},
+    {"id": 6, "kategorija": "Pice", "jed": "Margerita", "opis": "Paradižnik, mozzarella, bazilika",
+     "izbire": [{"skupina": "Dodatki", "moznosti": [{"id": 6, "ime": "Šampinjoni"}]}]},
+    {"id": 7, "kategorija": "Pice", "jed": "Pršut", "opis": "Paradižnik, mozzarella, pršut, rukola"},
+    {"id": 10, "kategorija": "Testenine", "jed": "Pappardelle al ragù", "opis": "Govedina, pancetta"},
+    {"id": 9, "kategorija": "Sladice", "jed": "Gibanica", "opis": "Prekmurska"},
+]
+
+
+def preveri_kljucne_besede() -> None:
+    k = kljucne_besede(MENI, "Gostilna Pri Mostu")
+    # Ime restavracije in imena jedi najprej: prompt prepisa vzame samo prvih 30.
+    assert k[:3] == ["Gostilna Pri Mostu", "Pršut in sir", "Burger Goriška"], k
+    for beseda in ("Margerita", "Pršut", "Gibanica", "pica", "pice", "Jalapeño", "Šampinjoni", "Testenine"):
+        assert beseda in k, beseda
+    assert len(k) == len({b.lower() for b in k}), "podvojene besede"
+    assert k.index("Gibanica") < k.index("Šampinjoni"), "jedi pred izbirami"
+    # Velik meni: meja, brez napake.
+    velik = [{"id": i, "kategorija": "Jedi", "jed": f"Jed številka {i}"} for i in range(200)]
+    assert len(kljucne_besede(velik)) == NAJVEC_KLJUCNIH
+    # Pokvarjen ali prazen meni: samo osnovne besede, brez napake.
+    assert "pica" in kljucne_besede([None, "x", {"jed": None}])
+    assert kljucne_besede([])[0] == "rezervacija"
+
+
+def preveri_izgovorjavo() -> None:
+    for zapis, izgovor in (
+        ("capricciosa", "kapričoza"), ("quattro", "kvatro"), ("formaggi", "formadži"), ("stagioni", "stadžoni"),
+        ("prosciutto", "prošuto"), ("gnocchi", "njoki"), ("bruschetta", "brusketa"), ("focaccia", "fokača"),
+        ("tagliatelle", "taljatele"), ("lasagne", "lazanje"), ("mozzarella", "mocarela"), ("pancetta", "pančeta"),
+        ("cappuccino", "kapučino"), ("Speck", "Spek"), ("Pappardelle", "Papardele"), ("pizza", "pica"),
+    ):
+        assert italijanski_izgovor(zapis) == izgovor, (zapis, italijanski_izgovor(zapis))
+
+    koreni = koreni_menija(MENI)
+    # Stalni slovar velja vedno, tudi s sklanjatvijo; velika začetnica ostane.
+    assert izgovori_jedi("Margerita z mozzarello in Quattro Formaggi.") == "Margerita z mocarelo in Kvatro Formadži."
+    assert izgovori_jedi("burger s cheddarjem in jalapeñom") == "burger s čedarjem in halapenjom"
+    assert izgovori_jedi("špageti carbonara, pizza") == "špageti karbonara, pica"
+    # Italijanska pravila samo za besede z menija.
+    assert "papardele" in izgovori_jedi("Imamo pappardelle al ragù.", koreni).lower()
+    # Slovenske besede in imena ostanejo nedotaknjena, tudi z italijanskimi črkami.
+    for stavek in ("Slab signal, gospod Ignac.", "Oddaja naročila je uspela.", "Na ime Luka Kosovel, Tatjana.",
+                   "Gibanica in pica Pršut, 12 evrov in 50 centov, ob 19:00.", "Gospa Anna Rossi, Mattia Zanetti."):
+        assert izgovori_jedi(stavek, koreni) == stavek, izgovori_jedi(stavek, koreni)
+    # Brez menija ne pade.
+    assert izgovori_jedi("", set()) == ""
+
+
+def preveri_povzetek_s_kategorijo() -> None:
+    kategorije = kategorije_jedi(MENI)
+    assert kategorije[7] == "Pice"
+    linije = [{"item_id": 7, "name": "Pršut", "qty": 1, "options_text": None}]
+    p = povzetek_narocila(linije, 1250, DANES, "19:00", "Luka Kosovel", DANES, kategorije)
+    assert p.startswith("Naročam: pica Pršut. Skupaj 12 evrov in 50 centov."), p
+    # Predjed z istim imenom ostane brez "pica"; pica, ki že ima "pica" v imenu, tudi.
+    linije2 = [{"item_id": 1, "name": "Pršut in sir", "qty": 1}, {"item_id": 6, "name": "Pizza Margerita", "qty": 2}]
+    p2 = povzetek_narocila(linije2, 2950, DANES, "19:00", "Ana", DANES, {1: "Predjedi", 6: "Pice"})
+    assert "Naročam: Pršut in sir; Pizza Margerita, 2 krat." in p2, p2
+    # Preverjanje izgovorjenega povzetka dela tudi s predpono in z uvodom ob ponovitvi.
+    assert narocilo_izgovorjeno("Oprostite, da preverim: " + p, ["Pršut"], 1250, "19:00")
+    # Brez kategorij (stara oblika klica) ostane kot prej.
+    assert povzetek_narocila(linije, 1250, DANES, "19:00", "Luka", DANES).startswith("Naročam: Pršut.")
+
+
+def preveri_pogovorne_potrditve() -> None:
+    # Klic 26. 11. 2026: gost je potrdil po domače.
+    for fraza in ("Ja, dobro, pridem iskat, ajde.", "Ja, ja, potrdim.", "Ma ja, dobro.", "Jap, zmenjeno.", "Ja, daj."):
+        assert je_cista_potrditev(fraza), fraza
+    # Nova polnila ne smejo odpreti poti spremembam.
+    for fraza in ("Ja, daj še eno pico", "Dej, dodaj kolo", "Ja, pridem ob osmih", "Ja, bomo dva", "ajde", "dobro, ampak brez sira"):
+        assert not je_cista_potrditev(fraza), fraza
+
+
+def preveri_pozdrav() -> None:
+    privzeti = "Pozdravljeni, tukaj Tatjana, digitalna asistentka restavracije."
+    assert sestavi_pozdrav(privzeti, "Gostilna Pri Mostu") == (
+        "Gostilna Pri Mostu, pozdravljeni. Tukaj Tatjana, digitalna asistentka. Kako vam lahko pomagam?"
+    )
+    assert sestavi_pozdrav("", "") == privzeti + " Kako vam lahko pomagam?"
+    # Pozdrav restavracije ostane; vprašanje dodamo samo, če ga nima.
+    assert sestavi_pozdrav("Dober dan, Pri Mostu. Izvolite?", "X") == "Dober dan, Pri Mostu. Izvolite?"
+    assert sestavi_pozdrav("Dober dan, Pri Mostu.", "X") == "Dober dan, Pri Mostu. Kako vam lahko pomagam?"
+
+
 def preveri_sheme_orodij() -> None:
     # OpenAI strict zavrne orodje, katerega parameter je prost objekt (dict / list[dict] / Any):
     # "additionalProperties is required to be supplied and to be false". Takrat Tatjana po pozdravu
@@ -155,7 +253,9 @@ def preveri_sheme_orodij() -> None:
 
 
 if __name__ == "__main__":
-    for preizkus in (preveri_potrditve, preveri_osebe, preveri_datume, preveri_povzetek, preveri_cene, preveri_narocilo, preveri_napade_na_potrditev, preveri_razloge, preveri_sheme_orodij):
+    for preizkus in (preveri_potrditve, preveri_osebe, preveri_datume, preveri_povzetek, preveri_cene, preveri_narocilo, preveri_napade_na_potrditev, preveri_razloge, preveri_sheme_orodij,
+                     preveri_kljucne_besede, preveri_izgovorjavo, preveri_povzetek_s_kategorijo,
+                     preveri_pogovorne_potrditve, preveri_pozdrav):
         preizkus()
         print("ok", preizkus.__name__)
     print("vse ok")

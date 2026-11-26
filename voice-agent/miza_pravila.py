@@ -26,12 +26,16 @@ _PRIDRZKI = {"ne", "nee", "ampak", "vendar", "raje", "pač", "pac", "samo", "spr
 _POTRDITVE_BESEDE = {
     "ja", "jaa", "da", "drži", "drzi", "potrdim", "potrjujem", "potrjeno",
     "prav", "velja", "seveda", "točno", "tocno", "ok", "okej", "tako", "rezerviraj",
-    "odpovej", "lahko",
+    "odpovej", "lahko", "jap", "jep", "zmenjeno", "dogovorjeno", "važi", "vazi",
 }
 # Besede, ki same niso potrditev, a jo smejo spremljati ("ja, v redu je, hvala").
+# Pogovorne in narečne (klic 26. 11. 2026: "ja, dobro, pridem iskat, ajde")
+# so tu, ker gost s potrditvijo pogosto pove še, da pride.
 _POLNILA = {
     "v", "redu", "vredu", "je", "to", "tako", "hvala", "prosim", "no", "kar", "naj", "bo", "tisto", "se",
     "strinjam", "vse", "super", "odlično", "odlicno", "fino", "popolno", "naroči", "naroci", "sem", "res",
+    "dobro", "lepo", "perfektno", "ajde", "ajd", "hajde", "dej", "daj", "ma", "pol", "pridem", "pridemo",
+    "iskat", "bom", "bomo",
 }
 _POTRDITVE_ZVEZE = ("tako je", "v redu", "se strinjam", "kar rezerviraj", "kar odpovej")
 
@@ -157,15 +161,37 @@ def cena_besedilo(cent: int) -> str:
     return _cent(c)
 
 
-def povzetek_narocila(linije: list[dict], skupaj_cent: int, dan: date, ura: str, ime: str, danes: date) -> str:
+def ime_v_povzetku(ime_jedi: str, kategorija: str = "") -> str:
+    """Ime jedi, kot ga gost razume brez menija pred sabo.
+
+    Klic 26. 11. 2026: povzetek "Naročam: Pršut." je zvenel kot predjed, gost
+    je naročil pico Pršut. Pri picah zato dodamo besedo "pica".
+    """
+    ime_jedi = ime_jedi.strip()
+    kat = (kategorija or "").strip().lower()
+    nizko = ime_jedi.lower()
+    if kat.startswith(("pic", "pizz")) and not any(x in nizko for x in ("pic", "pizz")):
+        return "pica " + ime_jedi
+    return ime_jedi
+
+
+def povzetek_narocila(
+    linije: list[dict], skupaj_cent: int, dan: date, ura: str, ime: str, danes: date,
+    kategorije: dict[int, str] | None = None,
+) -> str:
     """Stavek, ki ga mora gost slišati, preden se naročilo zapiše.
 
     Jedi, količine in znesek vzamemo iz odgovora strežnika (ceno izračuna PHP iz
-    baze), ne iz tistega, kar pošlje model.
+    baze), ne iz tistega, kar pošlje model. `kategorije` (id jedi -> kategorija)
+    je iz menija ob začetku klica; brez nje povzetek ostane brez kategorije.
     """
     deli = []
     for l in linije:
-        ime_jedi = str(l.get("name", "")).strip()
+        try:
+            kategorija = (kategorije or {}).get(int(l.get("item_id") or 0), "")
+        except (TypeError, ValueError):
+            kategorija = ""
+        ime_jedi = ime_v_povzetku(str(l.get("name", "")), kategorija)
         izbire = str(l.get("options_text") or "").strip()
         qty = int(l.get("qty") or 1)
         opis = ime_jedi + (f" ({izbire})" if izbire else "")
@@ -196,6 +222,27 @@ def narocilo_izgovorjeno(izgovorjeno: str, imena_jedi: list[str], skupaj_cent: i
         return False
     ura_h = str(int(ura[:2]))
     return ura in nizko or bool(re.search(rf"\b{ura_h}(?:[:.]\d\d)?\b", nizko))
+
+
+# Privzeti pozdrav iz /miza (lib/db.php, nastavitev ai_greeting).
+TOVARNISKI_POZDRAV = "Pozdravljeni, tukaj Tatjana, digitalna asistentka restavracije."
+
+
+def sestavi_pozdrav(nastavljen: str | None, restavracija: str | None) -> str:
+    """Prvi stavek klica.
+
+    Klic 26. 11. 2026: privzeti pozdrav ni povedal imena restavracije in ni
+    vprašal ničesar, zato gost ni vedel, kam je poklical in kaj naj reče.
+    Pozdrav, ki ga je restavracija nastavila sama, ostane; dodamo le vprašanje,
+    če ga nima.
+    """
+    pozdrav = " ".join((nastavljen or "").split())
+    ime = " ".join((restavracija or "").split())
+    if not pozdrav or pozdrav == TOVARNISKI_POZDRAV:
+        pozdrav = f"{ime}, pozdravljeni. Tukaj Tatjana, digitalna asistentka." if ime else TOVARNISKI_POZDRAV
+    if "?" not in pozdrav:
+        pozdrav += " Kako vam lahko pomagam?"
+    return pozdrav
 
 
 STANJA_NAROCIL = {

@@ -43,6 +43,7 @@ from livekit.plugins import openai  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
 import agent as tatjana  # noqa: E402
+from izgovorjava import izgovori_jedi, kategorije_jedi, kljucne_besede, koreni_menija  # noqa: E402
 from miza_pravila import (  # noqa: E402
     NAVODILA_RAZLOGOV,
     STANJA_NAROCIL,
@@ -56,6 +57,7 @@ from miza_pravila import (  # noqa: E402
     povzetek_rezervacije,
     preberi_datum,
     preberi_uro,
+    sestavi_pozdrav,
 )
 
 log = logging.getLogger("tatjana-miza")
@@ -138,10 +140,17 @@ class RestavracijskiAsistent(Agent):
     _zabelezi_orodje = tatjana.TelefonskiAsistent._zabelezi_orodje
     koncaj_pogovor = tatjana.TelefonskiAsistent.koncaj_pogovor
 
-    def __init__(self, navodila: str, klicatelj: str, danes: date, telefon_restavracije: str = "") -> None:
+    def __init__(
+        self, navodila: str, klicatelj: str, danes: date, telefon_restavracije: str = "",
+        meni: list[dict] | None = None,
+    ) -> None:
         super().__init__(instructions=navodila)
         self.klicatelj = klicatelj
         self.danes = danes
+        # Meni ob začetku klica: samo za izgovorjavo in kategorije v povzetku.
+        # Cene in razpoložljivost vedno pridejo sveže iz orodja meni.
+        self._koreni_izgovora = koreni_menija(meni or [])
+        self._kategorije = kategorije_jedi(meni or [])
         self._masilo_stanje: dict = {}
         self._ponovitve: dict[str, int] = {}
         self._konec_zaradi_ponavljanja = False
@@ -155,6 +164,15 @@ class RestavracijskiAsistent(Agent):
         self._predlog_spremembe: dict | None = None
         self._predlog_odpovedi: dict | None = None
         self._predlog_narocila: dict | None = None
+
+    def izgovori_dodatno(self, besedilo: str) -> str:
+        """Kliče ga tts_node iz agent.py: tuja imena jedi z menija preberemo tako,
+        kot jih reče natakar ("mocarela", "kvatro formadži"), ne po črkah."""
+        try:
+            return izgovori_jedi(besedilo, self._koreni_izgovora)
+        except Exception as e:  # noqa: BLE001 — govor mora iti naprej tudi brez popravka
+            log.warning("izgovorjava jedi ni uspela: %s", e)
+            return besedilo
 
     # ------------------------------------------------------------------
     # Branje
@@ -529,7 +547,9 @@ class RestavracijskiAsistent(Agent):
                 "kljuc": kljuc, "prevzem": prevzem["pickup_at"], "ura": prevzem["time"],
                 "skupaj_cent": int(ponudba["total_cents"]), "jedi": [l["name"] for l in ponudba["lines"]],
             }
-            povzetek = povzetek_narocila(ponudba["lines"], int(ponudba["total_cents"]), dan, prevzem["time"], ime, self.danes)
+            povzetek = povzetek_narocila(
+                ponudba["lines"], int(ponudba["total_cents"]), dan, prevzem["time"], ime, self.danes, self._kategorije,
+            )
             odgovor = {
                 "ok": True,
                 "zapisano": False,
@@ -549,11 +569,18 @@ class RestavracijskiAsistent(Agent):
                 "naslednji_korak": "Preberi gostu povzetek z jedmi, skupnim zneskom in uro, počakaj na potrditev in šele nato pokliči znova.",
             }
         if not je_cista_potrditev(tatjana._zadnje_od_stranke(context)):
+            # Klic 26. 11. 2026: model je tu vprašal samo "Ali potrjujete?", gost je
+            # rekel "ja", sistem pa je zahteval povzetek še enkrat. Ponovni povzetek
+            # je varen (gost sliši, kaj potrjuje), zato ga zahtevamo takoj.
             return {
                 "ok": False,
                 "zapisano": False,
-                "error": "Gost povzetka ni potrdil.",
-                "naslednji_korak": "Počakaj, da gost povzetek izrecno potrdi. Če je kaj spremenil, začni znova s potrjeno=False.",
+                "error": "Potrditev ni bila jasna.",
+                "naslednji_korak": (
+                    "Če je gost kaj spremenil ali dodal, to uredi in začni znova s potrjeno=False. "
+                    "Sicer reci 'Oprostite, da preverim:' in povzetek preberi še enkrat dobesedno; "
+                    "ne sprašuj samo, ali potrjuje."
+                ),
             }
 
         await tatjana.mašilo(context, "zapis", self._masilo_stanje)
@@ -647,6 +674,18 @@ Cone: {cone}. Največ oseb za rezervacijo po telefonu: {info.get('max_party_onli
 - Plačila po telefonu ne sprejemaš. Če gost vpraša, povej, da plača v restavraciji ob prevzemu; za drugo osebje.
 - Jedi, ki je ni v meniju ali je trenutno ni, ne ponujaj. Ob omembi alergije preberi alergene jedi iz menija in dodaj, da za zagotovilo vpraša osebje.
 - Spremembe ali preklic naročila: povej, naj pokličejo restavracijo (to ne gre prek tebe).
+- Jed imenuj s kategorijo, kadar ime samo ni jasno: "pica Pršut", "pica Margerita".
+- Vprašaj eno stvar naenkrat: najprej katera jed in koliko, nato na katero ime. Uro prevzema
+  vprašaj samo, če je gost še ni povedal; sicer jo vzemi iz pogovora.
+
+## Razumevanje po telefonu
+- Prepis govora po telefonu včasih zgreši besedo: "pito" namesto "pico", "pisave" namesto "pice".
+  Če gost omeni nekaj, česar ni na meniju, a zveni podobno kot jed ali kategorija z menija,
+  vprašaj "Ste mislili pico?" Ne reci takoj, da tega nimate.
+- Gost lahko govori narečno ali pomeša hrvaške in srbske besede; prepis je lahko tudi v
+  cirilici. Razumi ga po smislu in vedno odgovarjaj v knjižni slovenščini.
+- Če gost ime popravi ali ga črkuje, uporabi popravljeno obliko natanko tako, kot jo pove.
+- Če odgovora res ne razumeš, prosi za ponovitev s kratkim vprašanjem; ne ugibaj naročila.
 
 ## Pravila
 - Proste mize nikoli ne obljubi brez orodja. Kar orodje vrne, to drži.
@@ -672,9 +711,15 @@ server.setup_fnc = tatjana.ogrej_proces
 @server.rtc_session(agent_name=os.getenv("AGENT_IME", "tatjana-miza"))
 async def vstopna_tocka(ctx: agents.JobContext) -> None:
     zacetek_klica = time.perf_counter()
-    info, (klicatelj, _identiteta) = await asyncio.gather(
-        miza("info", {}), tatjana.stevilka_klicatelja(ctx)
+    # Meni vzporedno z info: imena jedi rabi prepis že za prvo poved gosta.
+    info, (klicatelj, _identiteta), meni_odgovor = await asyncio.gather(
+        miza("info", {}), tatjana.stevilka_klicatelja(ctx), miza("menu", {})
     )
+    meni = meni_odgovor.get("menu") if meni_odgovor.get("ok") else None
+    if not isinstance(meni, list):
+        meni = []
+    kljucne = kljucne_besede(meni, info.get("restaurant") or "")
+    log.info("meni: %d jedi, %d ključnih besed za prepis", len(meni), len(kljucne))
 
     simulacija = ctx.simulation_context() is not None
     vratar = {"allow": True} if simulacija else await tatjana.vprasaj_vratarja("start", klicatelj)
@@ -691,7 +736,7 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
         danes = date.today()
 
     session = AgentSession(
-        stt=tatjana.izberi_prepis(["rezervacija", "miza", "terasa", "oseb", "alergija"]),
+        stt=tatjana.izberi_prepis(kljucne),
         llm=openai.LLM(**tatjana.nastavitve_modela()),
         tts=tatjana.izberi_glas(),
         vad=tatjana.zaznavalnik_govora(),
@@ -704,6 +749,7 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
         klicatelj,
         danes,
         (info.get("phone") or "").strip(),
+        meni,
     )
     await session.start(room=ctx.room, agent=asistent)
     tatjana.meritev("priprava_klica", zacetek_klica)
@@ -723,7 +769,7 @@ async def vstopna_tocka(ctx: agents.JobContext) -> None:
         await tatjana.odlozi(ctx)
         return
 
-    await session.say(info.get("greeting") or "Pozdravljeni, tukaj Tatjana. Kako vam lahko pomagam?")
+    await session.say(sestavi_pozdrav(info.get("greeting"), info.get("restaurant")))
 
     sekund_max = int(vratar.get("max_seconds") or os.getenv("KLIC_MAX_SEK", "600"))
     nadzor = asyncio.create_task(tatjana.straza(ctx, session, sekund_max, "Hvala za klic in lep pozdrav."))

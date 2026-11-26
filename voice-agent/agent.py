@@ -661,6 +661,9 @@ class TelefonskiAsistent(Agent):
             nase = (self.eposta_podjetja,) if self.eposta_podjetja else ()
             # Male črke za ElevenLabs: velike bere po angleško (glej eposta.py).
             male = os.getenv("CRKE_MALE") == "1"
+            # Agent lahko doda svojo izgovorjavo (restavracija: imena jedi).
+            # Tatjana za agencijo je nima, zato tu ostane brez učinka.
+            dodatno = getattr(self, "izgovori_dodatno", None) or (lambda s: s)
             ostanek = ""
             async for kos in text:
                 popravljen = samo_latinica(kos)
@@ -671,9 +674,9 @@ class TelefonskiAsistent(Agent):
                 if meja == -1:
                     continue
                 zdaj, ostanek = ostanek[: meja + 1], ostanek[meja + 1 :]
-                yield izgovori_znamke(izgovori_eposte(zdaj, nase, male))
+                yield dodatno(izgovori_znamke(izgovori_eposte(zdaj, nase, male)))
             if ostanek:
-                yield izgovori_znamke(izgovori_eposte(ostanek, nase, male))
+                yield dodatno(izgovori_znamke(izgovori_eposte(ostanek, nase, male)))
 
         # Agent.default.tts_node je asinhroni generator, osnovna tts_node pa
         # navadna metoda. Z "return super().tts_node(...)" iz async def se je
