@@ -132,8 +132,30 @@ def preveri_razloge() -> None:
         assert koda in NAVODILA_RAZLOGOV and NAVODILA_RAZLOGOV[koda].strip(), koda
 
 
+def preveri_sheme_orodij() -> None:
+    # OpenAI strict zavrne orodje, katerega parameter je prost objekt (dict / list[dict] / Any):
+    # "additionalProperties is required to be supplied and to be false". Takrat Tatjana po pozdravu
+    # molči (napaka 400 pri vsakem LLM klicu). Livekit se ne da uvoziti povsod, zato pregledamo kodo.
+    import ast
+    from pathlib import Path
+
+    for datoteka in ("restavracija.py", "agent.py"):
+        drevo = ast.parse((Path(__file__).parent / datoteka).read_text(encoding="utf-8"))
+        for fn in ast.walk(drevo):
+            if not isinstance(fn, ast.AsyncFunctionDef | ast.FunctionDef):
+                continue
+            if not any("function_tool" in ast.unparse(d) for d in fn.decorator_list):
+                continue
+            for arg in fn.args.args + fn.args.kwonlyargs:
+                if arg.annotation is None or arg.arg in ("self", "context"):
+                    continue
+                t = ast.unparse(arg.annotation)
+                prosti = any(x in t for x in ("dict", "Dict", "Any", "object"))
+                assert not prosti, f"{datoteka}:{fn.name}({arg.arg}: {t}) - uporabi pydantic model, ne dict"
+
+
 if __name__ == "__main__":
-    for preizkus in (preveri_potrditve, preveri_osebe, preveri_datume, preveri_povzetek, preveri_cene, preveri_narocilo, preveri_napade_na_potrditev, preveri_razloge):
+    for preizkus in (preveri_potrditve, preveri_osebe, preveri_datume, preveri_povzetek, preveri_cene, preveri_narocilo, preveri_napade_na_potrditev, preveri_razloge, preveri_sheme_orodij):
         preizkus()
         print("ok", preizkus.__name__)
     print("vse ok")

@@ -40,6 +40,7 @@ import httpx  # noqa: E402
 from livekit import agents  # noqa: E402
 from livekit.agents import Agent, AgentSession, RunContext, function_tool, llm, room_io  # noqa: E402
 from livekit.plugins import openai  # noqa: E402
+from pydantic import BaseModel  # noqa: E402
 
 import agent as tatjana  # noqa: E402
 from miza_pravila import (  # noqa: E402
@@ -109,6 +110,16 @@ def _z_navodilom(odgovor: dict) -> dict:
     if razlog in NAVODILA_RAZLOGOV:
         odgovor["naslednji_korak"] = NAVODILA_RAZLOGOV[razlog]
     return odgovor
+
+
+class PostavkaNarocila(BaseModel):
+    """Ena jed v naročilu. Zaprta oblika: OpenAI strict zahteva additionalProperties=false,
+    zato `list[dict]` ne gre."""
+
+    id: int
+    kolicina: int | None = None
+    izbire: list[int] | None = None
+    opomba: str | None = None
 
 
 class RestavracijskiAsistent(Agent):
@@ -438,7 +449,7 @@ class RestavracijskiAsistent(Agent):
     async def naroci(
         self,
         context: RunContext,
-        jedi: list[dict],
+        jedi: list[PostavkaNarocila],
         ime: str,
         potrjeno: bool = False,
         ura_prevzema: str | None = None,
@@ -481,14 +492,16 @@ class RestavracijskiAsistent(Agent):
         postavke: list[dict] = []
         for j in jedi or []:
             try:
-                jid = int(j.get("id"))
-                kolicina = int(j.get("kolicina") or 1)
-                izbire = [int(x) for x in (j.get("izbire") or [])]
+                # Pydantic model (ali dict v testih).
+                p = j.model_dump() if isinstance(j, BaseModel) else dict(j)
+                jid = int(p.get("id"))
+                kolicina = int(p.get("kolicina") or 1)
+                izbire = [int(x) for x in (p.get("izbire") or [])]
             except (TypeError, ValueError, AttributeError):
                 return {"ok": False, "error": "Jed mora imeti id iz menija.", "naslednji_korak": "Pokliči orodje meni in uporabi id jedi."}
             if kolicina < 1:
                 return {"ok": False, "error": "Količina mora biti vsaj 1."}
-            postavke.append({"item_id": jid, "qty": kolicina, "options": izbire, "notes": (j.get("opomba") or "").strip() or None})
+            postavke.append({"item_id": jid, "qty": kolicina, "options": izbire, "notes": (p.get("opomba") or "").strip() or None})
         if not postavke:
             return {"ok": False, "error": "Naročilo nima jedi.", "naslednji_korak": NAVODILA_RAZLOGOV["empty_order"]}
 
