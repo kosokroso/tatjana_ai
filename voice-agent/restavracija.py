@@ -44,11 +44,14 @@ from livekit.plugins import openai  # noqa: E402
 import agent as tatjana  # noqa: E402
 from miza_pravila import (  # noqa: E402
     NAVODILA_RAZLOGOV,
+    STANJA_NAROCIL,
     izgovorjen_dan,
     je_cista_potrditev,
     koledar,
+    narocilo_izgovorjeno,
     osebe_besedilo,
     povzetek_izgovorjen,
+    povzetek_narocila,
     povzetek_rezervacije,
     preberi_datum,
     preberi_uro,
@@ -140,6 +143,7 @@ class RestavracijskiAsistent(Agent):
         self._predlog: dict | None = None
         self._predlog_spremembe: dict | None = None
         self._predlog_odpovedi: dict | None = None
+        self._predlog_narocila: dict | None = None
 
     # ------------------------------------------------------------------
     # Branje
@@ -187,7 +191,8 @@ class RestavracijskiAsistent(Agent):
     async def meni(self, context: RunContext) -> dict:
         """Vrne jedi z menija s cenami in alergeni. Uporabi, ko gost vpraša, kaj
         imate, koliko kaj stane ali ali jed vsebuje alergen. Cen ne navajaj po
-        spominu. Po telefonu naštej največ tri jedi naenkrat."""
+        spominu. Po telefonu naštej največ tri jedi naenkrat. Vsaka jed ima 'id',
+        vsaka izbira ('izbire') ima 'id': oba potrebuješ za orodje naroci."""
         self._zabelezi_orodje()
         await tatjana.mašilo(context, "podatki", self._masilo_stanje)
         return await miza("menu", {})
@@ -424,6 +429,154 @@ class RestavracijskiAsistent(Agent):
         self._predlog_odpovedi = None
         return _z_navodilom(await miza("reservations/cancel", iskanje))
 
+    # ------------------------------------------------------------------
+    # Naročila za prevzem (dostave ni): povzetek in cena iz strežnika, zapis
+    # šele po prebranem povzetku in gostovi potrditvi.
+    # ------------------------------------------------------------------
+
+    @function_tool()
+    async def naroci(
+        self,
+        context: RunContext,
+        jedi: list[dict],
+        ime: str,
+        potrjeno: bool = False,
+        ura_prevzema: str | None = None,
+        datum_prevzema: str | None = None,
+        opombe: str | None = None,
+        telefon: str | None = None,
+    ) -> dict:
+        """Sprejme naročilo za prevzem v restavraciji. Dva koraka, izvaja ju sistem:
+
+        1. Pokliči s potrjeno=False. Sistem preveri jedi, izračuna ceno in najzgodnejši
+           čas prevzema ter vrne 'povzetek'. Povzetek preberi gostu DOBESEDNO (z jedmi,
+           skupnim zneskom in uro) in počakaj na odgovor.
+        2. Ko gost izrecno potrdi, pokliči znova z ISTIMI podatki in potrjeno=True.
+
+        Če gost kaj spremeni (jed, količino, uro, ime), začni znova pri koraku 1.
+        Jedi in izbire jemlji IZKLJUČNO iz orodja meni (id). Cen ne računaj sama.
+
+        Args:
+            jedi: Seznam jedi, npr. [{"id": 12, "kolicina": 2, "izbire": [31], "opomba": "brez čebule"}].
+                'id' je id jedi iz menija, 'izbire' so id-ji izbranih možnosti (npr. velikost),
+                'kolicina' je število porcij (privzeto 1), 'opomba' je neobvezna želja za to jed.
+            ime: Ime, na katerega gre naročilo.
+            potrjeno: False za povzetek, True šele po gostovi potrditvi povzetka.
+            ura_prevzema: Ura prevzema 19:30, samo če jo gost želi. Brez nje sistem vzame najzgodnejši čas.
+            datum_prevzema: Datum prevzema 2026-11-27, samo če ni danes.
+            opombe: Alergije in splošne želje za celo naročilo.
+            telefon: SAMO če sistem vrne, da številke klicatelja nima. Sicer prazno.
+        """
+        self._zabelezi_orodje()
+        ime = (ime or "").strip()
+        if len(ime) < 2:
+            return {"ok": False, "error": "Manjka ime.", "naslednji_korak": "Vprašaj, na katero ime naj bo naročilo."}
+        stevilka = self.klicatelj or (telefon or "").strip()
+        if not stevilka:
+            return {
+                "ok": False,
+                "error": "Številke klicatelja nimamo.",
+                "naslednji_korak": "Vprašaj za telefonsko številko in jo ponovi po skupinah. Nato pokliči znova s telefon=...",
+            }
+        postavke: list[dict] = []
+        for j in jedi or []:
+            try:
+                jid = int(j.get("id"))
+                kolicina = int(j.get("kolicina") or 1)
+                izbire = [int(x) for x in (j.get("izbire") or [])]
+            except (TypeError, ValueError, AttributeError):
+                return {"ok": False, "error": "Jed mora imeti id iz menija.", "naslednji_korak": "Pokliči orodje meni in uporabi id jedi."}
+            if kolicina < 1:
+                return {"ok": False, "error": "Količina mora biti vsaj 1."}
+            postavke.append({"item_id": jid, "qty": kolicina, "options": izbire, "notes": (j.get("opomba") or "").strip() or None})
+        if not postavke:
+            return {"ok": False, "error": "Naročilo nima jedi.", "naslednji_korak": NAVODILA_RAZLOGOV["empty_order"]}
+
+        zelena = None
+        if ura_prevzema:
+            u = preberi_uro(ura_prevzema)
+            d = preberi_datum(datum_prevzema) if datum_prevzema else self.danes
+            if u is None or d is None:
+                return {"ok": False, "error": "Ura mora biti 19:30 in datum 2026-11-27."}
+            zelena = f"{d.isoformat()} {u}"
+        kljuc = {"postavke": postavke, "ime": ime, "zelena": zelena, "opombe": (opombe or "").strip(), "telefon": stevilka}
+
+        if not potrjeno or not self._predlog_narocila or self._predlog_narocila["kljuc"] != kljuc:
+            await tatjana.mašilo(context, "podatki", self._masilo_stanje)
+            ponudba = await miza("orders/quote", {"items": postavke, **({"pickup_time": zelena} if zelena else {})})
+            if not ponudba.get("ok"):
+                self._predlog_narocila = None
+                return _z_navodilom(ponudba)
+            prevzem = ponudba.get("pickup")
+            if not prevzem:
+                self._predlog_narocila = None
+                return {"ok": False, "error": "pickup_closed", "naslednji_korak": NAVODILA_RAZLOGOV["pickup_closed"]}
+            dan = preberi_datum(prevzem["date"]) or self.danes
+            self._predlog_narocila = {
+                "kljuc": kljuc, "prevzem": prevzem["pickup_at"], "ura": prevzem["time"],
+                "skupaj_cent": int(ponudba["total_cents"]), "jedi": [l["name"] for l in ponudba["lines"]],
+            }
+            povzetek = povzetek_narocila(ponudba["lines"], int(ponudba["total_cents"]), dan, prevzem["time"], ime, self.danes)
+            odgovor = {
+                "ok": True,
+                "zapisano": False,
+                "povzetek": povzetek,
+                "naslednji_korak": "Preberi povzetek gostu dobesedno in počakaj na potrditev. Šele nato pokliči znova s potrjeno=True in enakimi podatki.",
+            }
+            if zelena and not prevzem.get("exact"):
+                odgovor["opozorilo"] = f"Ob želeni uri ne gre. Najprej povej, da je najzgodnejši prevzem ob {prevzem['time']}, nato preberi povzetek."
+            return odgovor
+
+        pr = self._predlog_narocila
+        if not narocilo_izgovorjeno(tatjana._zadnje_od_asistentke(context), pr["jedi"], pr["skupaj_cent"], pr["ura"]):
+            return {
+                "ok": False,
+                "zapisano": False,
+                "error": "Povzetek ni bil prebran.",
+                "naslednji_korak": "Preberi gostu povzetek z jedmi, skupnim zneskom in uro, počakaj na potrditev in šele nato pokliči znova.",
+            }
+        if not je_cista_potrditev(tatjana._zadnje_od_stranke(context)):
+            return {
+                "ok": False,
+                "zapisano": False,
+                "error": "Gost povzetka ni potrdil.",
+                "naslednji_korak": "Počakaj, da gost povzetek izrecno potrdi. Če je kaj spremenil, začni znova s potrjeno=False.",
+            }
+
+        await tatjana.mašilo(context, "zapis", self._masilo_stanje)
+        vsebina = {
+            "items": postavke, "name": ime, "phone": stevilka, "caller_phone": self.klicatelj,
+            "pickup_time": pr["prevzem"], "notes": kljuc["opombe"] or None,
+        }
+        odgovor = await miza("orders", vsebina)
+        self._predlog_narocila = None
+        if odgovor.get("ok"):
+            odgovor["naslednji_korak"] = (
+                "Povej, da je naročilo sprejeto, na katero ime in ob kateri uri je prevzem. Plačilo gost uredi v "
+                "restavraciji ob prevzemu. Kode naročila ne beri, razen če jo gost vpraša. Vprašaj, ali potrebuje še kaj."
+            )
+            return odgovor
+        return _z_navodilom(odgovor)
+
+    @function_tool()
+    async def stanje_narocila(self, context: RunContext, koda: str | None = None) -> dict:
+        """Pove, v kakšnem stanju je naročilo tega klicatelja (sprejeto, v pripravi,
+        pripravljeno za prevzem). Išče po številki, s katere kliče, ali po kodi
+        naročila. Uporabi, ko gost vpraša, ali je naročilo že pripravljeno.
+
+        Args:
+            koda: Koda naročila, če jo gost pove (4 znaki). Sicer prazno.
+        """
+        self._zabelezi_orodje()
+        await tatjana.mašilo(context, "podatki", self._masilo_stanje)
+        odgovor = await miza("orders/find", self._iskanje(koda))
+        if odgovor.get("ok"):
+            for o in odgovor.get("orders") or []:
+                o["stanje"] = STANJA_NAROCIL.get(o.get("status"), "")
+            if not odgovor.get("orders"):
+                odgovor["naslednji_korak"] = "Odprtega naročila ne najdem. Vprašaj za kodo naročila ali povej, naj pokličejo restavracijo."
+        return odgovor
+
     def _iskanje(self, koda: str | None) -> dict:
         """Iskanje vedno nosi številko iz SIP. Model je ne more nastaviti, zato
         tudi ne more poiskati tuje rezervacije po izgovorjeni številki."""
@@ -442,6 +595,12 @@ def sestavi_navodila(info: dict, danes: date, klicatelj: str) -> str:
         for d in info.get("special_days") or []
     ) or "- ni posebnosti"
     cone = ", ".join(info.get("zones") or []) or "ni con"
+    ure_prevzema = "\n".join(f"- {dan}: {', '.join(intervali)}" for dan, intervali in (info.get("pickup_hours") or {}).items())
+    prevzem = (
+        f"Naročila za prevzem sprejemaš. Ure prevzema:\n{ure_prevzema or '- ni podatka'}"
+        if info.get("pickup_enabled") else
+        "Naročil za prevzem restavracija zdaj ne sprejema. Če gost želi naročiti, povej to prijazno."
+    )
     stevilka = (
         "Številko klicatelja sistem že ima iz telefonske povezave. Zanjo NE sprašuj in je ne omenjaj."
         if klicatelj else
@@ -465,7 +624,16 @@ Cone: {cone}. Največ oseb za rezervacijo po telefonu: {info.get('max_party_onli
 - Rezervacije: preveri_termin, nato rezerviraj (dva koraka, potrditev preveri sistem).
 - Spremembe in odpovedi: moje_rezervacije, spremeni_rezervacijo, odpovej_rezervacijo.
 - Meni in alergeni: meni.
+- Naročila za prevzem: meni, nato naroci (dva koraka: povzetek s ceno in uro, potrditev preveri sistem). Stanje naročila: stanje_narocila.
 - Ko je vse urejeno in se gost poslovi: koncaj_pogovor.
+
+## Naročila za prevzem
+{prevzem}
+- Samo prevzem v restavraciji. Dostave ni: če gost vpraša, povej, da dostave ne omogočamo.
+- Cene in skupni znesek povej samo takšne, kot jih vrne orodje (povzetek). Gostu vedno poveš ceno.
+- Plačila po telefonu ne sprejemaš. Če gost vpraša, povej, da plača v restavraciji ob prevzemu; za drugo osebje.
+- Jedi, ki je ni v meniju ali je trenutno ni, ne ponujaj. Ob omembi alergije preberi alergene jedi iz menija in dodaj, da za zagotovilo vpraša osebje.
+- Spremembe ali preklic naročila: povej, naj pokličejo restavracijo (to ne gre prek tebe).
 
 ## Pravila
 - Proste mize nikoli ne obljubi brez orodja. Kar orodje vrne, to drži.

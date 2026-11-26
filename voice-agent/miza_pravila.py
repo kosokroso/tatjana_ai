@@ -116,6 +116,85 @@ def povzetek_izgovorjen(izgovorjeno: str, ime: str, osebe: int, ura: str) -> boo
     return ime_ok and osebe_ok and ura_ok
 
 
+def _evro(n: int) -> str:
+    if n % 100 == 1:
+        return f"{n} evro"
+    if n % 100 == 2:
+        return f"{n} evra"
+    if n % 100 in (3, 4):
+        return f"{n} evre"
+    return f"{n} evrov"
+
+
+def _cent(n: int) -> str:
+    if n % 100 == 1:
+        return f"{n} cent"
+    if n % 100 == 2:
+        return f"{n} centa"
+    if n % 100 in (3, 4):
+        return f"{n} cente"
+    return f"{n} centov"
+
+
+def cena_besedilo(cent: int) -> str:
+    """1550 -> '15 evrov in 50 centov'; 2000 -> '20 evrov'; 50 -> '50 centov'."""
+    cent = int(cent)
+    e, c = divmod(cent, 100)
+    if e and c:
+        return f"{_evro(e)} in {_cent(c)}"
+    if e:
+        return _evro(e)
+    return _cent(c)
+
+
+def povzetek_narocila(linije: list[dict], skupaj_cent: int, dan: date, ura: str, ime: str, danes: date) -> str:
+    """Stavek, ki ga mora gost slišati, preden se naročilo zapiše.
+
+    Jedi, količine in znesek vzamemo iz odgovora strežnika (ceno izračuna PHP iz
+    baze), ne iz tistega, kar pošlje model.
+    """
+    deli = []
+    for l in linije:
+        ime_jedi = str(l.get("name", "")).strip()
+        izbire = str(l.get("options_text") or "").strip()
+        qty = int(l.get("qty") or 1)
+        opis = ime_jedi + (f" ({izbire})" if izbire else "")
+        deli.append(f"{opis}, {qty} krat" if qty > 1 else opis)
+    return (
+        f"Naročam: {'; '.join(deli)}. Skupaj {cena_besedilo(skupaj_cent)}. "
+        f"Prevzem {izgovorjen_dan(dan, danes)} ob {ura}, na ime {ime.strip()}. Ali drži?"
+    )
+
+
+def narocilo_izgovorjeno(izgovorjeno: str, imena_jedi: list[str], skupaj_cent: int, ura: str) -> bool:
+    """Ali je asistentka res prebrala povzetek naročila: vsako jed, znesek in uro.
+
+    Jed prepoznamo po začetku katere koli besede imena (5 znakov, zaradi sklanjatve:
+    'margerita' / 'margerito'). Znesek: evri in, če so, centi.
+    """
+    nizko = (izgovorjeno or "").lower()
+    for ime in imena_jedi:
+        besede = [b for b in "".join(z if z.isalnum() else " " for z in ime.lower()).split() if len(b) >= 3]
+        if not besede or not any(b[:5] in nizko for b in besede):
+            return False
+    e, c = divmod(int(skupaj_cent), 100)
+    if e and not re.search(rf"\b{e}\b", nizko):
+        return False
+    if c and not re.search(rf"\b{c}\b", nizko):
+        return False
+    if not e and not c:
+        return False
+    ura_h = str(int(ura[:2]))
+    return ura in nizko or bool(re.search(rf"\b{ura_h}(?:[:.]\d\d)?\b", nizko))
+
+
+STANJA_NAROCIL = {
+    "new": "sprejeto, še ni v pripravi",
+    "preparing": "v pripravi",
+    "ready": "pripravljeno, čaka na prevzem",
+}
+
+
 def koledar(danes: date, dni: int = 14) -> str:
     """Tabela datumov za prompt. Model "v petek" sicer izračuna napačno."""
     vrstice = []
@@ -138,4 +217,15 @@ NAVODILA_RAZLOGOV = {
     "outside_hours": "Ob tej uri ne sprejemamo rezervacij. Ponudi alternativo s seznama.",
     "slot_full": "Ob tej uri je že veliko prihodov. Ponudi alternativo s seznama.",
     "no_table": "Ob tej uri ni proste mize. Ponudi alternativo s seznama; ne obljubljaj ničesar drugega.",
+    # naročila za prevzem
+    "empty_order": "Naročilo nima jedi. Vprašaj, kaj želi naročiti.",
+    "unknown_item": "Te jedi ni na meniju. Ne izmišljaj jedi: pokliči orodje meni in ponudi, kar obstaja.",
+    "unavailable_item": "Te jedi trenutno ni na voljo. Povej to in ponudi drugo jed z menija.",
+    "missing_option": "Za to jed je treba izbrati možnost. Vprašaj gosta in naštej možnosti iz sporočila.",
+    "too_many_options": "Za to jed je izbir preveč. Povej, koliko jih je največ, in vprašaj znova.",
+    "pickup_closed": "Prevzem trenutno ni mogoč. Povej to in povabi, naj pokličejo ob uri prevzema.",
+    "pickup_time_unavailable": (
+        "Ob želeni uri prevzem ni mogoč ali je termin medtem zaseden. Pokliči znova s potrjeno=False "
+        "in brez ure prevzema, da dobiš najzgodnejši možni čas, in ga povej gostu."
+    ),
 }

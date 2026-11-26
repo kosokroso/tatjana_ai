@@ -7,11 +7,14 @@ Zagon iz mape voice-agent, brez nameščenega LiveKita:
 from datetime import date
 
 from miza_pravila import (
+    cena_besedilo,
     izgovorjen_dan,
     je_cista_potrditev,
     koledar,
+    narocilo_izgovorjeno,
     osebe_besedilo,
     povzetek_izgovorjen,
+    povzetek_narocila,
     povzetek_rezervacije,
     preberi_datum,
     preberi_uro,
@@ -74,8 +77,45 @@ def preveri_povzetek() -> None:
     assert not povzetek_izgovorjen("Na ime Ana, 27. novembra ob 19:00", "Ana", 2, "19:00")
 
 
+def preveri_cene() -> None:
+    assert cena_besedilo(2150) == "21 evrov in 50 centov", cena_besedilo(2150)
+    assert cena_besedilo(2000) == "20 evrov"
+    assert cena_besedilo(100) == "1 evro"
+    assert cena_besedilo(251) == "2 evra in 51 centov"
+    assert cena_besedilo(304) == "3 evre in 4 cente"
+    assert cena_besedilo(50) == "50 centov"
+    assert cena_besedilo(1201) == "12 evrov in 1 cent"
+
+
+def preveri_narocilo() -> None:
+    linije = [
+        {"name": "Pizza Margerita", "qty": 2, "options_text": "velika"},
+        {"name": "Tiramisu", "qty": 1, "options_text": None},
+    ]
+    p = povzetek_narocila(linije, 2150, date(2026, 11, 24), "19:35", "Luka", DANES)
+    assert p == (
+        "Naročam: Pizza Margerita (velika), 2 krat; Tiramisu. Skupaj 21 evrov in 50 centov. "
+        "Prevzem danes, 24. novembra ob 19:35, na ime Luka. Ali drži?"
+    ), p
+    imena = ["Pizza Margerita", "Tiramisu"]
+    assert narocilo_izgovorjeno(p, imena, 2150, "19:35")
+    # Sklanjatev: 'margerito' prepozna po začetku besede.
+    assert narocilo_izgovorjeno("Dve margerito in tiramisu, 21 evrov in 50 centov, ob 19.35", imena, 2150, "19:35")
+    # Model je izpustil jed, znesek, cente ali uro, ali je znesek drug: zapis ne sme iti.
+    assert not narocilo_izgovorjeno("Naročam Pizza Margerita. Skupaj 21 evrov in 50 centov, ob 19:35.", imena, 2150, "19:35")
+    assert not narocilo_izgovorjeno("Naročam margerito in tiramisu ob 19:35. Ali drži?", imena, 2150, "19:35")
+    assert not narocilo_izgovorjeno(p.replace("21 evrov", "20 evrov"), imena, 2150, "19:35")
+    assert not narocilo_izgovorjeno(p.replace("50 centov", "40 centov"), imena, 2150, "19:35")
+    assert not narocilo_izgovorjeno(p.replace("19:35", "20:00"), imena, 2150, "19:35")
+    assert not narocilo_izgovorjeno("", imena, 2150, "19:35")
+    assert not narocilo_izgovorjeno(p, [], 0, "19:35")
+    # Potrditev z drugo količino ("ja, 3 pice") ni čista potrditev.
+    assert not je_cista_potrditev("Ja, ampak tri pice")
+    assert not je_cista_potrditev("Ja, 3")
+
+
 if __name__ == "__main__":
-    for preizkus in (preveri_potrditve, preveri_osebe, preveri_datume, preveri_povzetek):
+    for preizkus in (preveri_potrditve, preveri_osebe, preveri_datume, preveri_povzetek, preveri_cene, preveri_narocilo):
         preizkus()
         print("ok", preizkus.__name__)
     print("vse ok")
