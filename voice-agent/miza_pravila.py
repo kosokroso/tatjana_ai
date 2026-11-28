@@ -27,6 +27,8 @@ _POTRDITVE_BESEDE = {
     "ja", "jaa", "da", "drži", "drzi", "potrdim", "potrjujem", "potrjeno",
     "prav", "velja", "seveda", "točno", "tocno", "ok", "okej", "tako", "rezerviraj",
     "odpovej", "lahko", "jap", "jep", "zmenjeno", "dogovorjeno", "važi", "vazi",
+    # Klic 28. 11. 2026: gost je potrdil z "Yes." in ni šlo skozi.
+    "yes", "yeah", "yep", "okay", "oke", "okey", "sure",
 }
 # Besede, ki same niso potrditev, a jo smejo spremljati ("ja, v redu je, hvala").
 # Pogovorne in narečne (klic 26. 11. 2026: "ja, dobro, pridem iskat, ajde")
@@ -106,12 +108,35 @@ def preberi_uro(vrednost: str) -> str | None:
     return f"{ura:02d}:{minute:02d}"
 
 
-def povzetek_rezervacije(ime: str, dan: date, ura: str, osebe: int, danes: date) -> str:
-    """Stavek, ki ga mora gost slišati, preden se rezervacija zapiše."""
+def povzetek_rezervacije(ime: str, dan: date, ura: str, osebe: int, danes: date, opombe: str = "") -> str:
+    """Stavek, ki ga mora gost slišati, preden se rezervacija zapiše.
+
+    Klic 28. 11. 2026: gost je dodal "brez glutena", povzetek pa je ostal enak,
+    zato ni slišal, da je opomba zabeležena. Opomba je zato del povzetka.
+    """
+    opombe = " ".join((opombe or "").split()).rstrip(".")
     return (
         f"Rezerviram mizo za {osebe_besedilo(osebe)}, {izgovorjen_dan(dan, danes)} "
-        f"ob {ura}, na ime {ime.strip()}. Ali drži?"
+        f"ob {ura}, na ime {ime.strip()}."
+        + (f" Opomba: {opombe}." if opombe else "")
+        + " Ali drži?"
     )
+
+
+# Odgovor orodja, ko potrditev ni jasna. Skupen za rezervacijo, spremembo,
+# odpoved in naročilo. Klica 26. in 28. 11. 2026: model je sam vprašal "ali
+# potrjujete" ali celo zahteval "recite 'da, drži'", sistem pa je nato zahteval
+# povzetek še enkrat. Ponovni povzetek je varen (gost sliši, kaj potrjuje).
+NEJASNA_POTRDITEV = {
+    "ok": False,
+    "zapisano": False,
+    "error": "Potrditev ni bila jasna.",
+    "naslednji_korak": (
+        "Če je gost kaj spremenil ali dodal, to uredi in začni znova s potrjeno=False. "
+        "Sicer reci 'Da preverim:' in povzetek preberi še enkrat dobesedno. Ne sprašuj samo, "
+        "ali potrjuje, ne predpisuj besed za potrditev in ne omenjaj sistema."
+    ),
+}
 
 
 def povzetek_izgovorjen(izgovorjeno: str, ime: str, osebe: int, ura: str) -> bool:
@@ -177,7 +202,7 @@ def ime_v_povzetku(ime_jedi: str, kategorija: str = "") -> str:
 
 def povzetek_narocila(
     linije: list[dict], skupaj_cent: int, dan: date, ura: str, ime: str, danes: date,
-    kategorije: dict[int, str] | None = None,
+    kategorije: dict[int, str] | None = None, opombe: str = "",
 ) -> str:
     """Stavek, ki ga mora gost slišati, preden se naročilo zapiše.
 
@@ -196,9 +221,12 @@ def povzetek_narocila(
         qty = int(l.get("qty") or 1)
         opis = ime_jedi + (f" ({izbire})" if izbire else "")
         deli.append(f"{opis}, {qty} krat" if qty > 1 else opis)
+    opombe = " ".join((opombe or "").split()).rstrip(".")
     return (
         f"Naročam: {'; '.join(deli)}. Skupaj {cena_besedilo(skupaj_cent)}. "
-        f"Prevzem {izgovorjen_dan(dan, danes)} ob {ura}, na ime {ime.strip()}. Ali drži?"
+        f"Prevzem {izgovorjen_dan(dan, danes)} ob {ura}, na ime {ime.strip()}."
+        + (f" Opomba: {opombe}." if opombe else "")
+        + " Ali drži?"
     )
 
 

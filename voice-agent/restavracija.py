@@ -46,6 +46,7 @@ import agent as tatjana  # noqa: E402
 from izgovorjava import izgovori_jedi, kategorije_jedi, kljucne_besede, koreni_menija  # noqa: E402
 from miza_pravila import (  # noqa: E402
     NAVODILA_RAZLOGOV,
+    NEJASNA_POTRDITEV,
     STANJA_NAROCIL,
     izgovorjen_dan,
     je_cista_potrditev,
@@ -262,7 +263,7 @@ class RestavracijskiAsistent(Agent):
            Povzetek preberi gostu DOBESEDNO in počakaj na njegov odgovor.
         2. Ko gost izrecno potrdi, pokliči znova z ISTIMI podatki in potrjeno=True.
 
-        Če gost kaj spremeni (uro, število oseb, ime), začni znova pri koraku 1.
+        Če gost kaj spremeni ali doda (uro, število oseb, ime, opombo), začni znova pri koraku 1.
 
         Args:
             datum: Datum v obliki 2026-11-27.
@@ -270,7 +271,8 @@ class RestavracijskiAsistent(Agent):
             osebe: Število oseb.
             ime: Ime in priimek, na katerega gre rezervacija.
             potrjeno: False za povzetek, True šele po gostovi potrditvi povzetka.
-            opombe: Alergije, otroški stol, praznovanje. Kar gost pove.
+            opombe: Alergije, otroški stol, praznovanje. Kratko, kot bi zapisal natakar:
+                'otroški stol, ena oseba brez glutena'. Gost jih sliši v povzetku.
             cona: Neobvezno, npr. 'Terasa'.
             telefon: SAMO če sistem vrne, da številke klicatelja nima. Sicer prazno.
         """
@@ -297,7 +299,7 @@ class RestavracijskiAsistent(Agent):
                 self._predlog = None
                 return _z_navodilom(preverba)
             self._predlog = podatki
-            povzetek = povzetek_rezervacije(ime, d, u, int(osebe), self.danes)
+            povzetek = povzetek_rezervacije(ime, d, u, int(osebe), self.danes, podatki["opombe"])
             return {
                 "ok": True,
                 "zapisano": False,
@@ -312,15 +314,10 @@ class RestavracijskiAsistent(Agent):
                 "ok": False,
                 "zapisano": False,
                 "error": "Povzetek ni bil prebran.",
-                "naslednji_korak": "Preberi gostu povzetek z imenom, številom oseb in uro, počakaj na potrditev in šele nato pokliči znova.",
+                "naslednji_korak": "Reci 'Da preverim:' in preberi povzetek dobesedno (ime, število oseb, ura), počakaj na potrditev in šele nato pokliči znova. Sistema ne omenjaj.",
             }
         if not je_cista_potrditev(tatjana._zadnje_od_stranke(context)):
-            return {
-                "ok": False,
-                "zapisano": False,
-                "error": "Gost povzetka ni potrdil.",
-                "naslednji_korak": "Počakaj, da gost povzetek izrecno potrdi. Če je kaj spremenil, začni znova s potrjeno=False.",
-            }
+            return dict(NEJASNA_POTRDITEV)
 
         await tatjana.mašilo(context, "zapis", self._masilo_stanje)
         vsebina = {
@@ -404,8 +401,7 @@ class RestavracijskiAsistent(Agent):
                     "naslednji_korak": "Preberi povzetek dobesedno in počakaj na potrditev; nato pokliči znova s potrjeno=True."}
 
         if not je_cista_potrditev(tatjana._zadnje_od_stranke(context)):
-            return {"ok": False, "zapisano": False, "error": "Gost spremembe ni potrdil.",
-                    "naslednji_korak": "Počakaj na izrecno potrditev povzetka."}
+            return dict(NEJASNA_POTRDITEV)
         await tatjana.mašilo(context, "zapis", self._masilo_stanje)
         self._predlog_spremembe = None
         return _z_navodilom(await miza("reservations/change", kljuc))
@@ -452,8 +448,7 @@ class RestavracijskiAsistent(Agent):
                     "naslednji_korak": "Preberi povzetek dobesedno in počakaj na potrditev; nato pokliči znova s potrjeno=True."}
 
         if not je_cista_potrditev(tatjana._zadnje_od_stranke(context)):
-            return {"ok": False, "zapisano": False, "error": "Gost odpovedi ni potrdil.",
-                    "naslednji_korak": "Počakaj na izrecno potrditev."}
+            return dict(NEJASNA_POTRDITEV)
         await tatjana.mašilo(context, "zapis", self._masilo_stanje)
         self._predlog_odpovedi = None
         return _z_navodilom(await miza("reservations/cancel", iskanje))
@@ -549,6 +544,7 @@ class RestavracijskiAsistent(Agent):
             }
             povzetek = povzetek_narocila(
                 ponudba["lines"], int(ponudba["total_cents"]), dan, prevzem["time"], ime, self.danes, self._kategorije,
+                kljuc["opombe"],
             )
             odgovor = {
                 "ok": True,
@@ -566,22 +562,10 @@ class RestavracijskiAsistent(Agent):
                 "ok": False,
                 "zapisano": False,
                 "error": "Povzetek ni bil prebran.",
-                "naslednji_korak": "Preberi gostu povzetek z jedmi, skupnim zneskom in uro, počakaj na potrditev in šele nato pokliči znova.",
+                "naslednji_korak": "Reci 'Da preverim:' in preberi povzetek dobesedno (jedi, skupni znesek, ura), počakaj na potrditev in šele nato pokliči znova. Sistema ne omenjaj.",
             }
         if not je_cista_potrditev(tatjana._zadnje_od_stranke(context)):
-            # Klic 26. 11. 2026: model je tu vprašal samo "Ali potrjujete?", gost je
-            # rekel "ja", sistem pa je zahteval povzetek še enkrat. Ponovni povzetek
-            # je varen (gost sliši, kaj potrjuje), zato ga zahtevamo takoj.
-            return {
-                "ok": False,
-                "zapisano": False,
-                "error": "Potrditev ni bila jasna.",
-                "naslednji_korak": (
-                    "Če je gost kaj spremenil ali dodal, to uredi in začni znova s potrjeno=False. "
-                    "Sicer reci 'Oprostite, da preverim:' in povzetek preberi še enkrat dobesedno; "
-                    "ne sprašuj samo, ali potrjuje."
-                ),
-            }
+            return dict(NEJASNA_POTRDITEV)
 
         await tatjana.mašilo(context, "zapis", self._masilo_stanje)
         vsebina = {
@@ -690,6 +674,9 @@ Cone: {cone}. Največ oseb za rezervacijo po telefonu: {info.get('max_party_onli
 ## Pravila
 - Proste mize nikoli ne obljubi brez orodja. Kar orodje vrne, to drži.
 - Povzetek, ki ga vrne orodje, preberi gostu dobesedno.
+- Nikoli ne omenjaj "sistema", orodij ali postopka ("sistem ni prepoznal", "sistem zahteva").
+  Gost govori z restavracijo. Ko moraš kaj preveriti ali ponoviti, reci "Da preverim:".
+- Gostu ne predpisuj, s katerimi besedami naj potrdi.
 - Ure povej kot "ob sedmih zvečer" ali "ob 19.00"; datum kot "v petek, 27. novembra".
 - Kodo rezervacije preberi po črkah, počasi.
 - {stevilka}

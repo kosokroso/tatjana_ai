@@ -230,6 +230,28 @@ def preveri_pozdrav() -> None:
     assert sestavi_pozdrav("Dober dan, Pri Mostu.", "X") == "Dober dan, Pri Mostu. Kako vam lahko pomagam?"
 
 
+def preveri_opombe_in_nejasno_potrditev() -> None:
+    from miza_pravila import NEJASNA_POTRDITEV
+
+    # Klic 28. 11. 2026: opomba mora biti v povzetku, da jo gost sliši.
+    p = povzetek_rezervacije("Marjana Semenič", DANES, "20:00", 6, DANES, "otroški stol, ena oseba brez glutena.")
+    assert p == (
+        "Rezerviram mizo za 6 oseb, danes, 24. novembra ob 20:00, na ime Marjana Semenič. "
+        "Opomba: otroški stol, ena oseba brez glutena. Ali drži?"
+    ), p
+    assert povzetek_izgovorjen(p, "Marjana Semenič", 6, "20:00")
+    # Brez opombe ostane povzetek kot prej.
+    assert "Opomba" not in povzetek_rezervacije("Ana", DANES, "19:00", 2, DANES, "  ")
+    n = povzetek_narocila([{"name": "Tiramisu", "qty": 1}], 550, DANES, "19:00", "Ana", DANES, None, "brez oreščkov")
+    assert n.endswith("na ime Ana. Opomba: brez oreščkov. Ali drži?"), n
+    # Angleška potrditev ("Yes.") velja; navodilo ne sme omenjati sistema kot besedila za gosta.
+    for fraza in ("Yes.", "Yes, okay.", "Ja, yes."):
+        assert je_cista_potrditev(fraza), fraza
+    assert not je_cista_potrditev("Yes, but at eight")
+    korak = NEJASNA_POTRDITEV["naslednji_korak"]
+    assert "Da preverim" in korak and "ne omenjaj sistema" in korak
+
+
 def preveri_sheme_orodij() -> None:
     # OpenAI strict zavrne orodje, katerega parameter je prost objekt (dict / list[dict] / Any):
     # "additionalProperties is required to be supplied and to be false". Takrat Tatjana po pozdravu
@@ -255,7 +277,8 @@ def preveri_sheme_orodij() -> None:
 if __name__ == "__main__":
     for preizkus in (preveri_potrditve, preveri_osebe, preveri_datume, preveri_povzetek, preveri_cene, preveri_narocilo, preveri_napade_na_potrditev, preveri_razloge, preveri_sheme_orodij,
                      preveri_kljucne_besede, preveri_izgovorjavo, preveri_povzetek_s_kategorijo,
-                     preveri_pogovorne_potrditve, preveri_pozdrav):
+                     preveri_pogovorne_potrditve, preveri_pozdrav,
+                     preveri_opombe_in_nejasno_potrditev):
         preizkus()
         print("ok", preizkus.__name__)
     print("vse ok")
