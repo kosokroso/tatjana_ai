@@ -31,6 +31,7 @@ from livekit.agents import Agent, AgentSession, RunContext, function_tool, llm, 
 from livekit.plugins import azure, openai, silero
 
 from eposta import izgovori_eposte, popravi_naslov
+from izgovorjava import meja_za_govor
 
 load_dotenv()
 
@@ -663,14 +664,18 @@ class TelefonskiAsistent(Agent):
             male = os.getenv("CRKE_MALE") == "1"
             # Agent lahko doda svojo izgovorjavo (restavracija: imena jedi).
             # Tatjana za agencijo je nima, zato tu ostane brez učinka.
-            dodatno = getattr(self, "izgovori_dodatno", None) or (lambda s: s)
+            dodatno = getattr(self, "izgovori_dodatno", None)
+            # Kdor ima svojo izgovorjavo, pretvarja tudi števila ("ob 12:00" ->
+            # "ob dvanajstih"), zato del s števko počaka do konca stavka.
+            celi_stavki = dodatno is not None
+            dodatno = dodatno or (lambda s: s)
             ostanek = ""
             async for kos in text:
                 popravljen = samo_latinica(kos)
                 if popravljen != kos:
                     log.warning("iz govora odstranjena tuja pisava: %r", kos)
                 ostanek += popravljen
-                meja = ostanek.rfind(" ")
+                meja = meja_za_govor(ostanek, celi_stavki)
                 if meja == -1:
                     continue
                 zdaj, ostanek = ostanek[: meja + 1], ostanek[meja + 1 :]

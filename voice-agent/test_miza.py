@@ -22,6 +22,9 @@ from miza_pravila import (
 )
 from izgovorjava import (
     NAJVEC_KLJUCNIH,
+    besedilo_za_govor,
+    meja_za_govor,
+    stevilo_besedno,
     italijanski_izgovor,
     izgovori_jedi,
     kategorije_jedi,
@@ -252,6 +255,44 @@ def preveri_opombe_in_nejasno_potrditev() -> None:
     assert "Da preverim" in korak and "ne omenjaj sistema" in korak
 
 
+def preveri_stevila_za_govor() -> None:
+    # Klic 28. 11. 2026: datumi in ure so zveneli slabo. Povzetek iz tega klica:
+    p = ("Naročam: pica Margerita, 3 krat; pica Pršut, 2 krat. Skupaj 62 evrov. "
+         "Prevzem jutri, 29. novembra ob 12:00, na ime Drejc Kogej. Ali drži?")
+    assert besedilo_za_govor(p) == (
+        "Naročam: pica Margerita, trikrat; pica Pršut, dvakrat. Skupaj dvainšestdeset evrov. "
+        "Prevzem jutri, devetindvajsetega novembra ob dvanajstih, na ime Drejc Kogej. Ali drži?"
+    ), besedilo_za_govor(p)
+    for zapis, govor in (
+        ("za 14,50 €", "za štirinajst evrov in petdeset centov"),
+        ("12 evrov in 50 centov", "dvanajst evrov in petdeset centov"),
+        ("1 evro, 2 evra, 3 evre, 21 €, 1 cent", "en evro, dva evra, tri evre, enaindvajset evrov, en cent"),
+        ("za 1 osebo, za 2 osebi, za 6 oseb", "za eno osebo, za dve osebi, za šest oseb"),
+        ("1. decembra ob 19:30", "prvega decembra ob devetnajstih trideset"),
+        ("od 12.00 dalje, do 14.30", "od dvanajstih dalje, do štirinajstih trideset"),
+        ("ob 7 zvečer", "ob sedmih zvečer"),
+        ("za 90 minut", "za devetdeset minut"),
+        ("Koda je J – T – R – N – D – 8.", "Koda je je, te, er, en, de, osem."),
+        ("osem, X, H, S, Y, F", "osem, iks, ha, es, ipsilon, ef"),
+        ("Luka K O S O V E L", "Luka ka, o, es, o, ve, e, el"),
+    ):
+        assert besedilo_za_govor(zapis) == govor, (zapis, besedilo_za_govor(zapis))
+    # Ne sme pokvariti: telefonske številke, leta, posamezne velike črke, 1..4 brez enote.
+    for ostane in ("Pokličite 041 555 666.", "Leta 2026.", "V redu. S tem je vse. K vam pridem.",
+                   "Imamo 2 pici in 3 tiramisuje."):
+        assert besedilo_za_govor(ostane) == ostane, besedilo_za_govor(ostane)
+    assert [stevilo_besedno(n) for n in (0, 11, 21, 62, 145, 1999)] == [
+        "nič", "enajst", "enaindvajset", "dvainšestdeset", "sto petinštirideset", "tisoč devetsto devetindevetdeset"]
+
+    # Glas dobi del s števko šele, ko je stavek cel; besedilo brez števk gre takoj.
+    assert meja_za_govor("Prevzem jutri, 29. ", True) == -1
+    b = "Prevzem jutri, 29. novembra ob 12:00, na ime Drejc. Ali "
+    assert b[: meja_za_govor(b, True) + 1] == "Prevzem jutri, 29. novembra ob 12:00, na ime Drejc. "
+    assert meja_za_govor("Dober dan, kako vam ", True) == len("Dober dan, kako vam ") - 1
+    # Agencijska Tatjana (brez lastne izgovorjave) ostane pri zamiku ene besede.
+    assert meja_za_govor("Prevzem jutri, 29. ", False) == len("Prevzem jutri, 29.")
+
+
 def preveri_sheme_orodij() -> None:
     # OpenAI strict zavrne orodje, katerega parameter je prost objekt (dict / list[dict] / Any):
     # "additionalProperties is required to be supplied and to be false". Takrat Tatjana po pozdravu
@@ -278,7 +319,8 @@ if __name__ == "__main__":
     for preizkus in (preveri_potrditve, preveri_osebe, preveri_datume, preveri_povzetek, preveri_cene, preveri_narocilo, preveri_napade_na_potrditev, preveri_razloge, preveri_sheme_orodij,
                      preveri_kljucne_besede, preveri_izgovorjavo, preveri_povzetek_s_kategorijo,
                      preveri_pogovorne_potrditve, preveri_pozdrav,
-                     preveri_opombe_in_nejasno_potrditev):
+                     preveri_opombe_in_nejasno_potrditev,
+                     preveri_stevila_za_govor):
         preizkus()
         print("ok", preizkus.__name__)
     print("vse ok")

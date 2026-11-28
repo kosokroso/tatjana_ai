@@ -43,7 +43,7 @@ from livekit.plugins import openai  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
 import agent as tatjana  # noqa: E402
-from izgovorjava import izgovori_jedi, kategorije_jedi, kljucne_besede, koreni_menija  # noqa: E402
+from izgovorjava import besedilo_za_govor, izgovori_jedi, kategorije_jedi, kljucne_besede, koreni_menija  # noqa: E402
 from miza_pravila import (  # noqa: E402
     NAVODILA_RAZLOGOV,
     NEJASNA_POTRDITEV,
@@ -170,7 +170,7 @@ class RestavracijskiAsistent(Agent):
         """Kliče ga tts_node iz agent.py: tuja imena jedi z menija preberemo tako,
         kot jih reče natakar ("mocarela", "kvatro formadži"), ne po črkah."""
         try:
-            return izgovori_jedi(besedilo, self._koreni_izgovora)
+            return izgovori_jedi(besedilo_za_govor(besedilo), self._koreni_izgovora)
         except Exception as e:  # noqa: BLE001 — govor mora iti naprej tudi brez popravka
             log.warning("izgovorjava jedi ni uspela: %s", e)
             return besedilo
@@ -668,7 +668,12 @@ Cone: {cone}. Največ oseb za rezervacijo po telefonu: {info.get('max_party_onli
   vprašaj "Ste mislili pico?" Ne reci takoj, da tega nimate.
 - Gost lahko govori narečno ali pomeša hrvaške in srbske besede; prepis je lahko tudi v
   cirilici. Razumi ga po smislu in vedno odgovarjaj v knjižni slovenščini.
+- Ime in priimek prepis pogosto pokvari (28. 11. 2026: "Drejc Kogej" je postal "Drejtsko gej").
+  Če ime in priimek ne zvenita kot običajno ime in priimek, ali je priimek nenavaden, prosi:
+  "Mi lahko priimek črkujete?" Ime nato povzami po črkah gosta. Nenavadnega ali žaljivega
+  prepisa nikoli ne beri gostu nazaj kot ime.
 - Če gost ime popravi ali ga črkuje, uporabi popravljeno obliko natanko tako, kot jo pove.
+  Črke, ki jih gost črkuje, sestavi v ime ("K, O, S, O, V, E, L" je "Kosovel").
 - Če odgovora res ne razumeš, prosi za ponovitev s kratkim vprašanjem; ne ugibaj naročila.
 
 ## Pravila
